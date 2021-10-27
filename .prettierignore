@@ -1,0 +1,35 @@
+# General
+workspace.code-workspace
+CHANGELOG.md
+.DS_STORE
+.prettierignore
+.solhintignore
+.husky
+.gitignore
+.gitattributes
+.versionrc
+.env
+.env.example
+codechecks.yml
+gasReporterOutput-*.json
+**/LICENSE
+
+# Hardhat
+artifacts
+cache
+deployments
+
+# JS
+node_modules
+yarn.lock
+
+# Coverage
+coverage
+coverage.json
+
+# Solidity
+contracts/mock
+typechained
+
+# Gas report
+gasReporterOutput.json
