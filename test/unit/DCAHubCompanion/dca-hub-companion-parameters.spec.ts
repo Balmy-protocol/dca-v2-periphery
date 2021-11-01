@@ -7,7 +7,7 @@ import { DCAHubCompanionParametersMock, DCAHubCompanionParametersMock__factory }
 
 contract('DCAHubCompanionParameters', () => {
   const HUB = '0x0000000000000000000000000000000000000001';
-  const WETH = '0x0000000000000000000000000000000000000002';
+  const WRAPPED_TOKEN = '0x0000000000000000000000000000000000000002';
   let DCAHubCompanionParameters: DCAHubCompanionParametersMock;
   let DCAHubCompanionParametersFactory: DCAHubCompanionParametersMock__factory;
   let snapshotId: string;
@@ -16,7 +16,7 @@ contract('DCAHubCompanionParameters', () => {
     DCAHubCompanionParametersFactory = await ethers.getContractFactory(
       'contracts/mocks/DCAHubCompanion/DCAHubCompanionParameters.sol:DCAHubCompanionParametersMock'
     );
-    DCAHubCompanionParameters = await DCAHubCompanionParametersFactory.deploy(HUB, WETH);
+    DCAHubCompanionParameters = await DCAHubCompanionParametersFactory.deploy(HUB, WRAPPED_TOKEN);
     snapshotId = await snapshot.take();
   });
 
@@ -29,12 +29,12 @@ contract('DCAHubCompanionParameters', () => {
       then('deployment is reverted with reason', async () => {
         await behaviours.deployShouldRevertWithMessage({
           contract: DCAHubCompanionParametersFactory,
-          args: [constants.ZERO_ADDRESS, WETH],
+          args: [constants.ZERO_ADDRESS, WRAPPED_TOKEN],
           message: 'ZeroAddress',
         });
       });
     });
-    when('weth is zero address', () => {
+    when('wrapped token is zero address', () => {
       then('deployment is reverted with reason', async () => {
         await behaviours.deployShouldRevertWithMessage({
           contract: DCAHubCompanionParametersFactory,
@@ -47,8 +47,8 @@ contract('DCAHubCompanionParameters', () => {
       then('hub is set correctly', async () => {
         expect(await DCAHubCompanionParameters.hub()).to.equal(HUB);
       });
-      then('weth is set correctly', async () => {
-        expect(await DCAHubCompanionParameters.WETH()).to.equal(WETH);
+      then('wrapped token is set correctly', async () => {
+        expect(await DCAHubCompanionParameters.wToken()).to.equal(WRAPPED_TOKEN);
       });
     });
   });

@@ -6,5 +6,5 @@ import './DCAHubCompanionParameters.sol';
 
 contract DCAHubCompanionSwapHandlerMock is DCAHubCompanionSwapHandler, DCAHubCompanionParametersMock {
   // solhint-disable-next-line var-name-mixedcase
-  constructor(IDCAHub _hub) DCAHubCompanionParametersMock(_hub, IWETH9(address(1))) {}
+  constructor(IDCAHub _hub) DCAHubCompanionParametersMock(_hub, IWrappedProtocolToken(address(1))) {}
 }

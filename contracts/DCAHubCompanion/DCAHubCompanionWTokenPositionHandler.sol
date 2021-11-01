@@ -5,11 +5,11 @@ import '@openzeppelin/contracts/token/ERC20/IERC20.sol';
 import '@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol';
 import './DCAHubCompanionParameters.sol';
 
-abstract contract DCAHubCompanionETHPositionHandler is DCAHubCompanionParameters, IDCAHubCompanionETHPositionHandler {
+abstract contract DCAHubCompanionWTokenPositionHandler is DCAHubCompanionParameters, IDCAHubCompanionWTokenPositionHandler {
   // solhint-disable-next-line private-vars-leading-underscore
-  address private constant ETH = 0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE;
+  address private constant PROTOCOL_TOKEN = 0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE;
 
-  function depositUsingETH(
+  function depositUsingProtocolToken(
     address _to,
     uint256 _amount,
     uint32 _amountOfSwaps,
@@ -17,16 +17,16 @@ abstract contract DCAHubCompanionETHPositionHandler is DCAHubCompanionParameters
     address _owner,
     IDCAPermissionManager.PermissionSet[] calldata _permissions
   ) external payable returns (uint256 _positionId) {
-    // Convert ETH to WETH
-    WETH.deposit{value: _amount}();
+    // Convert to wToken
+    wToken.deposit{value: _amount}();
 
     // Approve token for the hub
-    WETH.approve(address(hub), _amount);
+    wToken.approve(address(hub), _amount);
 
     // Create position
-    _positionId = hub.deposit(address(WETH), _to, _amount, _amountOfSwaps, _swapInterval, _owner, _addPermissionsThisContract(_permissions));
+    _positionId = hub.deposit(address(wToken), _to, _amount, _amountOfSwaps, _swapInterval, _owner, _addPermissionsThisContract(_permissions));
 
-    emit ConvertedDeposit(_positionId, ETH, address(WETH));
+    emit ConvertedDeposit(_positionId, PROTOCOL_TOKEN, address(wToken));
   }
 
   function _addPermissionsThisContract(IDCAPermissionManager.PermissionSet[] calldata _permissionSets)
