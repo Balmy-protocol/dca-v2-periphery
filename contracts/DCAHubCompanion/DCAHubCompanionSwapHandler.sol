@@ -1,0 +1,75 @@
+// SPDX-License-Identifier: GPL-2.0-or-later
+pragma solidity >=0.8.7 <0.9.0;
+
+import '@openzeppelin/contracts/token/ERC20/IERC20.sol';
+import '@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol';
+import './utils/DeadlineValidation.sol';
+import './DCAHubCompanionParameters.sol';
+
+abstract contract DCAHubCompanionSwapHandler is DeadlineValidation, DCAHubCompanionParameters, IDCAHubCompanionSwapHandler {
+  enum SwapPlan {
+    NONE,
+    SWAP_FOR_CALLER
+  }
+
+  struct SwapData {
+    SwapPlan plan;
+    bytes data;
+  }
+
+  using SafeERC20 for IERC20;
+
+  function swapForCaller(
+    address[] calldata _tokens,
+    IDCAHub.PairIndexes[] calldata _pairsToSwap,
+    uint256[] calldata _minimumOutput,
+    uint256[] calldata _maximumInput,
+    uint256 _deadline
+  ) external checkDeadline(_deadline) returns (IDCAHub.SwapInfo memory _swapInfo) {
+    uint256[] memory _borrow = new uint256[](_tokens.length);
+    _swapInfo = hub.swap(
+      _tokens,
+      _pairsToSwap,
+      msg.sender,
+      address(this),
+      _borrow,
+      abi.encode(SwapData({plan: SwapPlan.SWAP_FOR_CALLER, data: abi.encode(msg.sender)}))
+    );
+
+    for (uint256 i; i < _swapInfo.tokens.length; i++) {
+      IDCAHub.TokenInSwap memory _tokenInSwap = _swapInfo.tokens[i];
+      if (_tokenInSwap.reward < _minimumOutput[i]) {
+        revert RewardNotEnough();
+      } else if (_tokenInSwap.toProvide > _maximumInput[i]) {
+        revert ToProvideIsTooMuch();
+      }
+    }
+  }
+
+  // solhint-disable-next-line func-name-mixedcase
+  function DCAHubSwapCall(
+    address _sender,
+    IDCAHub.TokenInSwap[] calldata _tokens,
+    uint256[] calldata,
+    bytes calldata _data
+  ) external {
+    if (msg.sender != address(hub)) revert CallbackNotCalledByHub();
+    if (_sender != address(this)) revert SwapNotInitiatedByCompanion();
+
+    SwapData memory _swapData = abi.decode(_data, (SwapData));
+    if (_swapData.plan == SwapPlan.SWAP_FOR_CALLER) {
+      _handleSwapForCallerCallback(_tokens, _swapData.data);
+    } else {
+      revert UnexpectedSwapPlan();
+    }
+  }
+
+  function _handleSwapForCallerCallback(IDCAHub.TokenInSwap[] calldata _tokens, bytes memory _data) internal {
+    address _caller = abi.decode(_data, (address));
+    for (uint256 i; i < _tokens.length; i++) {
+      if (_tokens[i].toProvide > 0) {
+        IERC20(_tokens[i].token).safeTransferFrom(_caller, msg.sender, _tokens[i].toProvide);
+      }
+    }
+  }
+}
