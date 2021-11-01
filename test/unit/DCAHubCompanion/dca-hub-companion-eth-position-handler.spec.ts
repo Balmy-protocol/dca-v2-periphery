@@ -62,6 +62,10 @@ contract('DCAHubCompanionETHPositionHandler', () => {
           value: AMOUNT,
         });
       });
+      then('ETH is converted to WETH', async () => {
+        expect(WETH.deposit).to.have.been.calledOnce;
+        expect(await ethers.provider.getBalance(WETH.address)).to.equal(AMOUNT);
+      });
       then('WETH is approved for the hub', () => {
         expect(WETH.approve).to.have.been.calledOnceWith(DCAHub.address, AMOUNT);
       });
