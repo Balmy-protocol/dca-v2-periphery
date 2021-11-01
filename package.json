@@ -56,7 +56,7 @@
     "postpublish": "pinst --enable"
   },
   "dependencies": {
-    "@mean-finance/dca-v2-core": "/Users/nchamo/repos/dca-v2-core"
+    "@mean-finance/dca-v2-core": "ssh://git@github.com:Mean-Finance/dca-v2-core#cf1688cb530780c5a0a5671cf196064897f80ebe"
   },
   "devDependencies": {
     "@codechecks/client": "0.1.11",
