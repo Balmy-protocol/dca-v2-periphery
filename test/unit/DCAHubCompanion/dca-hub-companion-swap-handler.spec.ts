@@ -12,7 +12,7 @@ import { BigNumberish } from '@ethersproject/bignumber';
 
 chai.use(smock.matchers);
 
-contract('DCAHubCompanionSwapHabdler', () => {
+contract('DCAHubCompanionSwapHandler', () => {
   const ABI_CODER = new ethers.utils.AbiCoder();
   let swapper: SignerWithAddress, hub: SignerWithAddress;
   let DCAHub: FakeContract<IDCAHub>;

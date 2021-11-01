@@ -2,13 +2,21 @@
 pragma solidity >=0.8.7 <0.9.0;
 
 import '@mean-finance/dca-v2-core/contracts/interfaces/IDCAHub.sol';
+import '@mean-finance/dca-v2-core/contracts/interfaces/IDCAPermissionManager.sol';
 import '@mean-finance/dca-v2-core/contracts/interfaces/IDCAHubSwapCallee.sol';
+import './IWETH9.sol';
 
 interface IDCAHubCompanionParameters {
   /// @notice Returns the DCA Hub's address
   /// @dev This value cannot be modified
   /// @return The DCA Hub contract
   function hub() external view returns (IDCAHub);
+
+  /// @notice Returns the WETH's address
+  /// @dev This value cannot be modified
+  /// @return The WETH contract
+  // solhint-disable-next-line func-name-mixedcase
+  function WETH() external view returns (IWETH9);
 }
 
 interface IDCAHubCompanionSwapHandler is IDCAHubSwapCallee {
@@ -46,7 +54,33 @@ interface IDCAHubCompanionSwapHandler is IDCAHubSwapCallee {
   ) external returns (IDCAHub.SwapInfo memory);
 }
 
-interface IDCAHubCompanion is IDCAHubCompanionParameters, IDCAHubCompanionSwapHandler {
+interface IDCAHubCompanionETHPositionHandler {
+  /// @notice Emitted when a deposit is made by converting one of the user's tokens for another asset
+  /// @param positionId The id of the position that was created
+  /// @param originalToken The token that was take from the user
+  /// @param convertedToken The token that was actually deposited on the hub
+  event ConvertedDeposit(uint256 positionId, address originalToken, address convertedToken);
+
+  /// @notice Creates a new position by converting ETH to WETH
+  /// @dev This function will also give all permissions to this contract, so that it can then withdraw/terminate and
+  /// convert back to ETH
+  /// @param _to The address of the "to" token
+  /// @param _amount How many "from" tokens will be swapped in total
+  /// @param _amountOfSwaps How many swaps to execute for this position
+  /// @param _swapInterval How frequently the position's swaps should be executed
+  /// @param _owner The address of the owner of the position being created
+  /// @return The id of the created position
+  function depositUsingETH(
+    address _to,
+    uint256 _amount,
+    uint32 _amountOfSwaps,
+    uint32 _swapInterval,
+    address _owner,
+    IDCAPermissionManager.PermissionSet[] calldata _permissions
+  ) external payable returns (uint256);
+}
+
+interface IDCAHubCompanion is IDCAHubCompanionParameters, IDCAHubCompanionSwapHandler, IDCAHubCompanionETHPositionHandler {
   /// @notice Thrown when one of the parameters is a zero address
   error ZeroAddress();
 }
