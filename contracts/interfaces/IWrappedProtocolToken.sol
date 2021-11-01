@@ -5,9 +5,9 @@ import '@openzeppelin/contracts/token/ERC20/IERC20.sol';
 
 /// @title Interface for wrapped protocol tokens, such as WETH or WMATIC
 interface IWrappedProtocolToken is IERC20 {
-  /// @notice Deposit ether to get wrapped ether
+  /// @notice Deposit the protocol token to get wrapped version
   function deposit() external payable;
 
-  /// @notice Withdraw wrapped ether to get ether
+  /// @notice Unwrap to get the protocol token back
   function withdraw(uint256) external;
 }
