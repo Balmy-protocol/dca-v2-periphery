@@ -17,16 +17,26 @@ abstract contract DCAHubCompanionWTokenPositionHandler is DCAHubCompanionParamet
     address _owner,
     IDCAPermissionManager.PermissionSet[] calldata _permissions
   ) external payable returns (uint256 _positionId) {
+    _wrapAndApprove(_amount);
+    _positionId = hub.deposit(address(wToken), _to, _amount, _amountOfSwaps, _swapInterval, _owner, _addPermissionsThisContract(_permissions));
+    emit ConvertedDeposit(_positionId, PROTOCOL_TOKEN, address(wToken));
+  }
+
+  function increasePositionUsingProtocolToken(
+    uint256 _positionId,
+    uint256 _amount,
+    uint32 _newSwaps
+  ) external payable {
+    _wrapAndApprove(_amount);
+    hub.increasePosition(_positionId, _amount, _newSwaps);
+  }
+
+  function _wrapAndApprove(uint256 _amount) internal {
     // Convert to wToken
     wToken.deposit{value: _amount}();
 
     // Approve token for the hub
     wToken.approve(address(hub), _amount);
-
-    // Create position
-    _positionId = hub.deposit(address(wToken), _to, _amount, _amountOfSwaps, _swapInterval, _owner, _addPermissionsThisContract(_permissions));
-
-    emit ConvertedDeposit(_positionId, PROTOCOL_TOKEN, address(wToken));
   }
 
   function _addPermissionsThisContract(IDCAPermissionManager.PermissionSet[] calldata _permissionSets)

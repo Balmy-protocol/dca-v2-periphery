@@ -41,6 +41,8 @@ contract('DCAHubCompanionWTokenPositionHandlerMock', () => {
   beforeEach('Deploy and configure', async () => {
     await snapshot.revert(snapshotId);
     DCAHub.deposit.reset();
+    DCAHub.increasePosition.reset();
+    wToken.deposit.reset();
     wToken.approve.reset();
   });
 
@@ -113,6 +115,35 @@ contract('DCAHubCompanionWTokenPositionHandlerMock', () => {
         await expect(tx)
           .to.emit(DCAHubCompanionWTokenPositionHandlerMock, 'ConvertedDeposit')
           .withArgs(POSITION_ID, '0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE', wToken.address);
+      });
+    });
+  });
+
+  describe('increasePositionUsingProtocolToken', () => {
+    const POSITION_ID = 10;
+    when('trying to increase with more protocol token that was sent', () => {
+      then('reverts with message', async () => {
+        const tx = DCAHubCompanionWTokenPositionHandlerMock.increasePositionUsingProtocolToken(POSITION_ID, AMOUNT, AMOUNT_OF_SWAPS, {
+          value: AMOUNT - 1,
+        });
+        await behaviours.checkTxRevertedWithMessage({ tx, message: 'Transaction reverted: function call failed to execute' });
+      });
+    });
+    when('a valid increase is made', () => {
+      given(async () => {
+        await DCAHubCompanionWTokenPositionHandlerMock.increasePositionUsingProtocolToken(POSITION_ID, AMOUNT, AMOUNT_OF_SWAPS, {
+          value: AMOUNT,
+        });
+      });
+      then('protocol token is wrapped', async () => {
+        expect(wToken.deposit).to.have.been.calledOnce;
+        expect(await ethers.provider.getBalance(wToken.address)).to.equal(AMOUNT);
+      });
+      then('wrapped token is approved for the hub', () => {
+        expect(wToken.approve).to.have.been.calledOnceWith(DCAHub.address, AMOUNT);
+      });
+      then('increase is executed', () => {
+        expect(DCAHub.increasePosition).to.have.been.calledOnceWith(POSITION_ID, AMOUNT, AMOUNT_OF_SWAPS);
       });
     });
   });

@@ -78,6 +78,17 @@ interface IDCAHubCompanionWTokenPositionHandler {
     address _owner,
     IDCAPermissionManager.PermissionSet[] calldata _permissions
   ) external payable returns (uint256);
+
+  /// @notice Takes the unswapped balance, adds the new deposited funds and modifies the position so that
+  /// it is executed in _newSwaps swaps
+  /// @param _positionId The position's id
+  /// @param _amount Amount of funds to add to the position
+  /// @param _newSwaps The new amount of swaps
+  function increasePositionUsingProtocolToken(
+    uint256 _positionId,
+    uint256 _amount,
+    uint32 _newSwaps
+  ) external payable;
 }
 
 interface IDCAHubCompanion is IDCAHubCompanionParameters, IDCAHubCompanionSwapHandler, IDCAHubCompanionWTokenPositionHandler {
