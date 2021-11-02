@@ -57,13 +57,25 @@ interface IDCAHubCompanionSwapHandler is IDCAHubSwapCallee {
 interface IDCAHubCompanionWTokenPositionHandler {
   /// @notice Emitted when a deposit is made by converting one of the user's tokens for another asset
   /// @param positionId The id of the position that was created
-  /// @param originalToken The token that was take from the user
-  /// @param convertedToken The token that was actually deposited on the hub
-  event ConvertedDeposit(uint256 positionId, address originalToken, address convertedToken);
+  /// @param originalTokenFrom The original "from" token
+  /// @param convertedTokenFrom The "from" token that was actually deposited on the hub
+  /// @param originalTokenTo The original "to" token
+  /// @param convertedTokenTo The "to" token that was actually part of the position
+  event ConvertedDeposit(
+    uint256 positionId,
+    address originalTokenFrom,
+    address convertedTokenFrom,
+    address originalTokenTo,
+    address convertedTokenTo
+  );
+
+  /// @notice Thrown when the user tries to make a deposit where neither for the tokens is the protocol token
+  error NoProtocolToken();
 
   /// @notice Creates a new position by converting the protocol's base token to its wrapped version
   /// @dev This function will also give all permissions to this contract, so that it can then withdraw/terminate and
-  /// convert back to protocol's token
+  /// convert back to protocol's token. Will revert with NoProtocolToken if neither `from` nor `to` are the protocol token
+  /// @param _from The address of the "from" token
   /// @param _to The address of the "to" token
   /// @param _amount How many "from" tokens will be swapped in total
   /// @param _amountOfSwaps How many swaps to execute for this position
@@ -71,6 +83,7 @@ interface IDCAHubCompanionWTokenPositionHandler {
   /// @param _owner The address of the owner of the position being created
   /// @return The id of the created position
   function depositUsingProtocolToken(
+    address _from,
     address _to,
     uint256 _amount,
     uint32 _amountOfSwaps,
