@@ -376,7 +376,7 @@ contract('DCAHubCompanionWTokenPositionHandler', () => {
     permissionTest({
       permission: Permission.INCREASE,
       execute: (DCAHubCompanionWTokenPositionHandler) =>
-        DCAHubCompanionWTokenPositionHandler.increasePositionUsingProtocolToken(POSITION_ID, AMOUNT, AMOUNT_OF_SWAPS),
+        DCAHubCompanionWTokenPositionHandler.increasePositionUsingProtocolToken(POSITION_ID, AMOUNT, AMOUNT_OF_SWAPS, { value: AMOUNT }),
       context: () => addPlatformTokenBalance(DCAHubCompanionWTokenPositionHandler, AMOUNT),
     });
   });
