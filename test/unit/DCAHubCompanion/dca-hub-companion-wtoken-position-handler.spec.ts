@@ -48,7 +48,6 @@ contract('DCAHubCompanionWTokenPositionHandlerMock', () => {
     DCAHub.increasePosition.reset();
     wToken.deposit.reset();
     wToken.approve.reset();
-    wToken.deposit.reset();
   });
 
   describe('depositUsingProtocolToken', () => {
