@@ -5,5 +5,5 @@ import '../../DCAHubCompanion/DCAHubCompanionSwapHandler.sol';
 import './DCAHubCompanionParameters.sol';
 
 contract DCAHubCompanionSwapHandlerMock is DCAHubCompanionSwapHandler, DCAHubCompanionParametersMock {
-  constructor(IDCAHub _hub) DCAHubCompanionParametersMock(_hub) {}
+  constructor(IDCAHub _hub) DCAHubCompanionParametersMock(_hub, IWrappedProtocolToken(address(1))) {}
 }

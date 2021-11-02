@@ -4,5 +4,5 @@ pragma solidity >=0.8.7 <0.9.0;
 import '../../DCAHubCompanion/DCAHubCompanionParameters.sol';
 
 contract DCAHubCompanionParametersMock is DCAHubCompanionParameters {
-  constructor(IDCAHub _hub) DCAHubCompanionParameters(_hub) {}
+  constructor(IDCAHub _hub, IWrappedProtocolToken _wToken) DCAHubCompanionParameters(_hub, _wToken) {}
 }
