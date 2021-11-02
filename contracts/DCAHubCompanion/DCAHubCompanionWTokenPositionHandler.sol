@@ -6,10 +6,13 @@ import '@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol';
 import './DCAHubCompanionParameters.sol';
 
 abstract contract DCAHubCompanionWTokenPositionHandler is DCAHubCompanionParameters, IDCAHubCompanionWTokenPositionHandler {
+  using SafeERC20 for IERC20;
+
   // solhint-disable-next-line private-vars-leading-underscore
   address private constant PROTOCOL_TOKEN = 0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE;
 
   function depositUsingProtocolToken(
+    address _from,
     address _to,
     uint256 _amount,
     uint32 _amountOfSwaps,
@@ -17,9 +20,31 @@ abstract contract DCAHubCompanionWTokenPositionHandler is DCAHubCompanionParamet
     address _owner,
     IDCAPermissionManager.PermissionSet[] calldata _permissions
   ) external payable returns (uint256 _positionId) {
-    _wrapAndApprove(_amount);
-    _positionId = hub.deposit(address(wToken), _to, _amount, _amountOfSwaps, _swapInterval, _owner, _addPermissionsThisContract(_permissions));
-    emit ConvertedDeposit(_positionId, PROTOCOL_TOKEN, address(wToken));
+    if (_from != PROTOCOL_TOKEN && _to != PROTOCOL_TOKEN) revert NoProtocolToken();
+
+    address _convertedFrom = _from;
+    address _convertedTo = _to;
+    if (_from == PROTOCOL_TOKEN) {
+      _wrapAndApprove(_amount);
+      _convertedFrom = address(wToken);
+    } else {
+      IERC20(_from).safeTransferFrom(msg.sender, address(this), _amount);
+      IERC20(_from).approve(address(hub), _amount);
+      _convertedTo = address(wToken);
+    }
+
+    // Create position
+    _positionId = hub.deposit(
+      _convertedFrom,
+      _convertedTo,
+      _amount,
+      _amountOfSwaps,
+      _swapInterval,
+      _owner,
+      _addPermissionsToThisContract(_permissions)
+    );
+
+    emit ConvertedDeposit(_positionId, _from, _convertedFrom, _to, _convertedTo);
   }
 
   function withdrawSwappedUsingProtocolToken(uint256 _positionId, address payable _recipient) external returns (uint256 _swapped) {
@@ -62,7 +87,7 @@ abstract contract DCAHubCompanionWTokenPositionHandler is DCAHubCompanionParamet
     wToken.approve(address(hub), _amount);
   }
 
-  function _addPermissionsThisContract(IDCAPermissionManager.PermissionSet[] calldata _permissionSets)
+  function _addPermissionsToThisContract(IDCAPermissionManager.PermissionSet[] calldata _permissionSets)
     internal
     view
     returns (IDCAPermissionManager.PermissionSet[] memory _newPermissionSets)
