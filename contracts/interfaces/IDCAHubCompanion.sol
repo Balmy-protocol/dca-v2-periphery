@@ -79,6 +79,12 @@ interface IDCAHubCompanionWTokenPositionHandler {
     IDCAPermissionManager.PermissionSet[] calldata _permissions
   ) external payable returns (uint256);
 
+  /// @notice Withdraws all swapped tokens from a position to a recipient
+  /// @param _positionId The position's id
+  /// @param _recipient The address to withdraw swapped tokens to
+  /// @return _swapped How much was withdrawn
+  function withdrawSwappedUsingProtocolToken(uint256 _positionId, address payable _recipient) external returns (uint256 _swapped);
+
   /// @notice Takes the unswapped balance, adds the new deposited funds and modifies the position so that
   /// it is executed in _newSwaps swaps
   /// @param _positionId The position's id

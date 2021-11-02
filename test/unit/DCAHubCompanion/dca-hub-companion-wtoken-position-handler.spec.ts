@@ -12,6 +12,8 @@ import {
 import { FakeContract, smock } from '@defi-wonderland/smock';
 import moment from 'moment';
 import { TransactionResponse } from '@ethersproject/abstract-provider';
+import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signers';
+import { BigNumber } from 'ethers';
 
 chai.use(smock.matchers);
 
@@ -22,28 +24,32 @@ contract('DCAHubCompanionWTokenPositionHandlerMock', () => {
   const SWAP_INTERVAL = moment().day(1).seconds();
   const OWNER = '0x0000000000000000000000000000000000000002';
 
+  let recipient: SignerWithAddress;
   let DCAHub: FakeContract<IDCAHub>;
   let wToken: FakeContract<IWrappedProtocolToken>;
-  let DCAHubCompanionWTokenPositionHandlerMock: DCAHubCompanionWTokenPositionHandlerMock;
-  let DCAHubCompanionWTokenPositionHandlerMockFactory: DCAHubCompanionWTokenPositionHandlerMock__factory;
+  let DCAHubCompanionWTokenPositionHandler: DCAHubCompanionWTokenPositionHandlerMock;
+  let DCAHubCompanionWTokenPositionHandlerFactory: DCAHubCompanionWTokenPositionHandlerMock__factory;
   let snapshotId: string;
 
   before('Setup accounts and contracts', async () => {
-    DCAHubCompanionWTokenPositionHandlerMockFactory = await ethers.getContractFactory(
+    [, recipient] = await ethers.getSigners();
+    DCAHubCompanionWTokenPositionHandlerFactory = await ethers.getContractFactory(
       'contracts/mocks/DCAHubCompanion/DCAHubCompanionWTokenPositionHandler.sol:DCAHubCompanionWTokenPositionHandlerMock'
     );
     DCAHub = await smock.fake('IDCAHub');
     wToken = await smock.fake('IWrappedProtocolToken');
-    DCAHubCompanionWTokenPositionHandlerMock = await DCAHubCompanionWTokenPositionHandlerMockFactory.deploy(DCAHub.address, wToken.address);
+    DCAHubCompanionWTokenPositionHandler = await DCAHubCompanionWTokenPositionHandlerFactory.deploy(DCAHub.address, wToken.address);
     snapshotId = await snapshot.take();
   });
 
   beforeEach('Deploy and configure', async () => {
     await snapshot.revert(snapshotId);
     DCAHub.deposit.reset();
+    DCAHub.withdrawSwapped.reset();
     DCAHub.increasePosition.reset();
     wToken.deposit.reset();
     wToken.approve.reset();
+    wToken.withdraw.reset();
   });
 
   describe('depositUsingProtocolToken', () => {
@@ -54,17 +60,9 @@ contract('DCAHubCompanionWTokenPositionHandlerMock', () => {
 
     when('trying to deposit more protocol token that was sent', () => {
       then('reverts with message', async () => {
-        const tx = DCAHubCompanionWTokenPositionHandlerMock.depositUsingProtocolToken(
-          TO_TOKEN,
-          AMOUNT,
-          AMOUNT_OF_SWAPS,
-          SWAP_INTERVAL,
-          OWNER,
-          [],
-          {
-            value: AMOUNT - 1,
-          }
-        );
+        const tx = DCAHubCompanionWTokenPositionHandler.depositUsingProtocolToken(TO_TOKEN, AMOUNT, AMOUNT_OF_SWAPS, SWAP_INTERVAL, OWNER, [], {
+          value: AMOUNT - 1,
+        });
         await behaviours.checkTxRevertedWithMessage({ tx, message: 'Transaction reverted: function call failed to execute' });
       });
     });
@@ -73,7 +71,7 @@ contract('DCAHubCompanionWTokenPositionHandlerMock', () => {
       let tx: TransactionResponse;
       given(async () => {
         DCAHub.deposit.returns(POSITION_ID);
-        tx = await DCAHubCompanionWTokenPositionHandlerMock.depositUsingProtocolToken(
+        tx = await DCAHubCompanionWTokenPositionHandler.depositUsingProtocolToken(
           TO_TOKEN,
           AMOUNT,
           AMOUNT_OF_SWAPS,
@@ -108,13 +106,42 @@ contract('DCAHubCompanionWTokenPositionHandlerMock', () => {
         expect(permissions[0].operator).to.equal(PERMISSIONS.operator);
         expect(permissions[0].permissions).to.eql(PERMISSIONS.permissions);
         // Make sure that handler was added with full access
-        expect(permissions[1].operator).to.equal(DCAHubCompanionWTokenPositionHandlerMock.address);
+        expect(permissions[1].operator).to.equal(DCAHubCompanionWTokenPositionHandler.address);
         expect(permissions[1].permissions).to.eql([0, 1, 2, 3]);
       });
       then('event is emitted', async () => {
         await expect(tx)
-          .to.emit(DCAHubCompanionWTokenPositionHandlerMock, 'ConvertedDeposit')
+          .to.emit(DCAHubCompanionWTokenPositionHandler, 'ConvertedDeposit')
           .withArgs(POSITION_ID, '0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE', wToken.address);
+      });
+    });
+  });
+
+  describe('withdrawSwapped', () => {
+    const POSITION_ID = 10;
+    const SWAPPED = 200000;
+    when('a withdraw is executed', () => {
+      let initialRecipientBalance: BigNumber;
+      given(async () => {
+        DCAHub.withdrawSwapped.returns(SWAPPED);
+        initialRecipientBalance = await ethers.provider.getBalance(recipient.address);
+
+        // This is meant to simulate wToken#withdraw
+        await ethers.provider.send('hardhat_setBalance', [DCAHubCompanionWTokenPositionHandler.address, ethers.utils.hexValue(SWAPPED)]);
+        await DCAHubCompanionWTokenPositionHandler.withdrawSwappedUsingProtocolToken(POSITION_ID, recipient.address);
+      });
+      then(`hub's withdraw is executed and balance is sent to companion`, () => {
+        expect(DCAHub.withdrawSwapped).to.have.been.calledOnceWith(POSITION_ID, DCAHubCompanionWTokenPositionHandler.address);
+      });
+      then('wToken is unwrapped', async () => {
+        expect(wToken.withdraw).to.have.been.calledOnceWith(SWAPPED);
+      });
+      then('platform token is sent to the recipient', async () => {
+        const currentRecipientBalance = await ethers.provider.getBalance(recipient.address);
+        expect(currentRecipientBalance.sub(initialRecipientBalance)).to.equal(SWAPPED);
+      });
+      then('companion has no balance remaining', async () => {
+        expect(await ethers.provider.getBalance(DCAHubCompanionWTokenPositionHandler.address)).to.equal(0);
       });
     });
   });
@@ -123,7 +150,7 @@ contract('DCAHubCompanionWTokenPositionHandlerMock', () => {
     const POSITION_ID = 10;
     when('trying to increase with more protocol token that was sent', () => {
       then('reverts with message', async () => {
-        const tx = DCAHubCompanionWTokenPositionHandlerMock.increasePositionUsingProtocolToken(POSITION_ID, AMOUNT, AMOUNT_OF_SWAPS, {
+        const tx = DCAHubCompanionWTokenPositionHandler.increasePositionUsingProtocolToken(POSITION_ID, AMOUNT, AMOUNT_OF_SWAPS, {
           value: AMOUNT - 1,
         });
         await behaviours.checkTxRevertedWithMessage({ tx, message: 'Transaction reverted: function call failed to execute' });
@@ -131,7 +158,7 @@ contract('DCAHubCompanionWTokenPositionHandlerMock', () => {
     });
     when('a valid increase is made', () => {
       given(async () => {
-        await DCAHubCompanionWTokenPositionHandlerMock.increasePositionUsingProtocolToken(POSITION_ID, AMOUNT, AMOUNT_OF_SWAPS, {
+        await DCAHubCompanionWTokenPositionHandler.increasePositionUsingProtocolToken(POSITION_ID, AMOUNT, AMOUNT_OF_SWAPS, {
           value: AMOUNT,
         });
       });

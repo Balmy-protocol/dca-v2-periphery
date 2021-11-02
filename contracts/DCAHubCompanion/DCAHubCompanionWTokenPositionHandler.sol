@@ -22,6 +22,11 @@ abstract contract DCAHubCompanionWTokenPositionHandler is DCAHubCompanionParamet
     emit ConvertedDeposit(_positionId, PROTOCOL_TOKEN, address(wToken));
   }
 
+  function withdrawSwappedUsingProtocolToken(uint256 _positionId, address payable _recipient) external returns (uint256 _swapped) {
+    _swapped = hub.withdrawSwapped(_positionId, address(this));
+    _unwrapAndSend(_swapped, _recipient);
+  }
+
   function increasePositionUsingProtocolToken(
     uint256 _positionId,
     uint256 _amount,
@@ -29,6 +34,14 @@ abstract contract DCAHubCompanionWTokenPositionHandler is DCAHubCompanionParamet
   ) external payable {
     _wrapAndApprove(_amount);
     hub.increasePosition(_positionId, _amount, _newSwaps);
+  }
+
+  function _unwrapAndSend(uint256 _amount, address payable _recipient) internal {
+    // Unwrap wToken
+    wToken.withdraw(_amount);
+
+    // Send protocol token to recipient
+    _recipient.transfer(_amount);
   }
 
   function _wrapAndApprove(uint256 _amount) internal {
