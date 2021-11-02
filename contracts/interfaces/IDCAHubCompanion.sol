@@ -69,12 +69,19 @@ interface IDCAHubCompanionWTokenPositionHandler {
     address convertedTokenTo
   );
 
-  /// @notice Thrown when the user tries to make a deposit where neither for the tokens is the protocol token
-  error NoProtocolToken();
+  /// @notice Thrown when the user tries to make a deposit where neither or both of the tokens are the protocol token
+  error InvalidTokens();
+
+  /// @notice Thrown when a user tries operate on a position that they don't have access to
+  error UnauthorizedCaller();
+
+  /// @notice Returns the permission manager contract
+  /// @return The contract itself
+  function permissionManager() external view returns (IDCAPermissionManager);
 
   /// @notice Creates a new position by converting the protocol's base token to its wrapped version
   /// @dev This function will also give all permissions to this contract, so that it can then withdraw/terminate and
-  /// convert back to protocol's token. Will revert with NoProtocolToken if neither `from` nor `to` are the protocol token
+  /// convert back to protocol's token. Will revert with InvalidTokens unless only one of the tokens is the protocol token
   /// @param _from The address of the "from" token
   /// @param _to The address of the "to" token
   /// @param _amount How many "from" tokens will be swapped in total
@@ -129,6 +136,30 @@ interface IDCAHubCompanionWTokenPositionHandler {
     uint32 _newSwaps,
     address payable _recipient
   ) external;
+
+  /// @notice Terminates the position and sends all unswapped and swapped balance to the specified recipients
+  /// @param _positionId The position's id
+  /// @param _recipientUnswapped The address to withdraw unswapped tokens to
+  /// @param _recipientSwapped The address to withdraw swapped tokens to
+  /// @return _unswapped The unswapped balance sent to `_recipientUnswapped`
+  /// @return _swapped The swapped balance sent to `_recipientSwapped`
+  function terminateUsingProtocolTokenAsFrom(
+    uint256 _positionId,
+    address payable _recipientUnswapped,
+    address _recipientSwapped
+  ) external returns (uint256 _unswapped, uint256 _swapped);
+
+  /// @notice Terminates the position and sends all unswapped and swapped balance to the specified recipients
+  /// @param _positionId The position's id
+  /// @param _recipientUnswapped The address to withdraw unswapped tokens to
+  /// @param _recipientSwapped The address to withdraw swapped tokens to
+  /// @return _unswapped The unswapped balance sent to `_recipientUnswapped`
+  /// @return _swapped The swapped balance sent to `_recipientSwapped`
+  function terminateUsingProtocolTokenAsTo(
+    uint256 _positionId,
+    address _recipientUnswapped,
+    address payable _recipientSwapped
+  ) external returns (uint256 _unswapped, uint256 _swapped);
 }
 
 interface IDCAHubCompanion is IDCAHubCompanionParameters, IDCAHubCompanionSwapHandler, IDCAHubCompanionWTokenPositionHandler {

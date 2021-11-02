@@ -729,10 +729,10 @@
   resolved "https://registry.yarnpkg.com/@hutson/parse-repository-url/-/parse-repository-url-3.0.2.tgz#98c23c950a3d9b6c8f0daed06da6c3af06981340"
   integrity sha512-H9XAx3hc0BQHY6l+IFSWHDySypcXsvsuLhgYLUGywmJ5pswRVQJUHpOsobnLYp2ZUaUlKiKDrgWWhosOwAEM8Q==
 
-"@mean-finance/dca-v2-core@^1.0.0-rc.3":
-  version "1.0.0-rc.3"
-  resolved "https://registry.yarnpkg.com/@mean-finance/dca-v2-core/-/dca-v2-core-1.0.0-rc.3.tgz#b62aae13c421fc2b801f6f901edede9695241ea3"
-  integrity sha512-hIo0OG/HBeusQCG0z/9UTSqYIJg/uRSsc1zOjDr9Fu7sCxQ8L6Gd79i3dLbjFypbnNi4GuAcp+LFX1ml1hfrTQ==
+"@mean-finance/dca-v2-core@^1.0.0-rc.4":
+  version "1.0.0-rc.4"
+  resolved "https://registry.yarnpkg.com/@mean-finance/dca-v2-core/-/dca-v2-core-1.0.0-rc.4.tgz#d9d5a4908ee2fe702e3a74dc2a7a6fa991be095e"
+  integrity sha512-d2vDeO/CME7/xq27KRTebQ3Bq4+vhT6DfOeYausyyU0oKIjq7mWc1oFTnSwJjNuY3CaG9fGT3hJLUrwIDd2sqw==
   dependencies:
     "@chainlink/contracts" "^0.2.2"
     "@openzeppelin/contracts" "4.3.2"
