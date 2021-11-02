@@ -8,8 +8,14 @@ import './DCAHubCompanionParameters.sol';
 abstract contract DCAHubCompanionWTokenPositionHandler is DCAHubCompanionParameters, IDCAHubCompanionWTokenPositionHandler {
   using SafeERC20 for IERC20;
 
+  IDCAPermissionManager public immutable permissionManager;
+
   // solhint-disable-next-line private-vars-leading-underscore
   address private constant PROTOCOL_TOKEN = 0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE;
+
+  constructor() {
+    permissionManager = hub.permissionManager();
+  }
 
   function depositUsingProtocolToken(
     address _from,
@@ -20,7 +26,7 @@ abstract contract DCAHubCompanionWTokenPositionHandler is DCAHubCompanionParamet
     address _owner,
     IDCAPermissionManager.PermissionSet[] calldata _permissions
   ) external payable returns (uint256 _positionId) {
-    if (_from != PROTOCOL_TOKEN && _to != PROTOCOL_TOKEN) revert NoProtocolToken();
+    if ((_from == PROTOCOL_TOKEN) == (_to == PROTOCOL_TOKEN)) revert InvalidTokens();
 
     address _convertedFrom = _from;
     address _convertedTo = _to;
@@ -48,7 +54,23 @@ abstract contract DCAHubCompanionWTokenPositionHandler is DCAHubCompanionParamet
   }
 
   function withdrawSwappedUsingProtocolToken(uint256 _positionId, address payable _recipient) external returns (uint256 _swapped) {
+    if (!permissionManager.hasPermission(_positionId, msg.sender, IDCAPermissionManager.Permission.WITHDRAW)) revert UnauthorizedCaller();
     _swapped = hub.withdrawSwapped(_positionId, address(this));
+    _unwrapAndSend(_swapped, _recipient);
+  }
+
+  function withdrawSwappedManyUsingProtocolToken(uint256[] calldata _positionIds, address payable _recipient)
+    external
+    returns (uint256 _swapped)
+  {
+    for (uint256 i; i < _positionIds.length; i++) {
+      if (!permissionManager.hasPermission(_positionIds[i], msg.sender, IDCAPermissionManager.Permission.WITHDRAW)) revert UnauthorizedCaller();
+    }
+    IDCAHub.PositionSet[] memory _positionSets = new IDCAHub.PositionSet[](1);
+    _positionSets[0].token = address(wToken);
+    _positionSets[0].positionIds = _positionIds;
+    uint256[] memory _withdrawn = hub.withdrawSwappedMany(_positionSets, address(this));
+    _swapped = _withdrawn[0];
     _unwrapAndSend(_swapped, _recipient);
   }
 
@@ -57,6 +79,7 @@ abstract contract DCAHubCompanionWTokenPositionHandler is DCAHubCompanionParamet
     uint256 _amount,
     uint32 _newSwaps
   ) external payable {
+    if (!permissionManager.hasPermission(_positionId, msg.sender, IDCAPermissionManager.Permission.INCREASE)) revert UnauthorizedCaller();
     _wrapAndApprove(_amount);
     hub.increasePosition(_positionId, _amount, _newSwaps);
   }
@@ -67,8 +90,29 @@ abstract contract DCAHubCompanionWTokenPositionHandler is DCAHubCompanionParamet
     uint32 _newSwaps,
     address payable _recipient
   ) external {
+    if (!permissionManager.hasPermission(_positionId, msg.sender, IDCAPermissionManager.Permission.REDUCE)) revert UnauthorizedCaller();
     hub.reducePosition(_positionId, _amount, _newSwaps, address(this));
     _unwrapAndSend(_amount, _recipient);
+  }
+
+  function terminateUsingProtocolTokenAsFrom(
+    uint256 _positionId,
+    address payable _recipientUnswapped,
+    address _recipientSwapped
+  ) external returns (uint256 _unswapped, uint256 _swapped) {
+    if (!permissionManager.hasPermission(_positionId, msg.sender, IDCAPermissionManager.Permission.TERMINATE)) revert UnauthorizedCaller();
+    (_unswapped, _swapped) = hub.terminate(_positionId, address(this), _recipientSwapped);
+    _unwrapAndSend(_unswapped, _recipientUnswapped);
+  }
+
+  function terminateUsingProtocolTokenAsTo(
+    uint256 _positionId,
+    address _recipientUnswapped,
+    address payable _recipientSwapped
+  ) external returns (uint256 _unswapped, uint256 _swapped) {
+    if (!permissionManager.hasPermission(_positionId, msg.sender, IDCAPermissionManager.Permission.TERMINATE)) revert UnauthorizedCaller();
+    (_unswapped, _swapped) = hub.terminate(_positionId, _recipientUnswapped, address(this));
+    _unwrapAndSend(_swapped, _recipientSwapped);
   }
 
   function _unwrapAndSend(uint256 _amount, address payable _recipient) internal {
@@ -84,7 +128,7 @@ abstract contract DCAHubCompanionWTokenPositionHandler is DCAHubCompanionParamet
     wToken.deposit{value: _amount}();
 
     // Approve token for the hub
-    wToken.approve(address(hub), _amount);
+    wToken.approve(address(hub), _amount); // TODO: Consider approving max possible on deployment to make calls cheaper
   }
 
   function _addPermissionsToThisContract(IDCAPermissionManager.PermissionSet[] calldata _permissionSets)
