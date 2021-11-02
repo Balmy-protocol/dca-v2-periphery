@@ -79,6 +79,9 @@ interface IDCAHubCompanionWTokenPositionHandler {
   /// @return The contract itself
   function permissionManager() external view returns (IDCAPermissionManager);
 
+  /// @notice Thrown when the user sends more or less of the protocol token than is actually necessary
+  error InvalidAmountOfProtocolTokenReceived();
+
   /// @notice Creates a new position by converting the protocol's base token to its wrapped version
   /// @dev This function will also give all permissions to this contract, so that it can then withdraw/terminate and
   /// convert back to protocol's token. Will revert with InvalidTokens unless only one of the tokens is the protocol token

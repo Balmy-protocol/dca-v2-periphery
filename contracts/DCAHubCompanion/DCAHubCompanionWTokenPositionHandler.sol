@@ -124,6 +124,8 @@ abstract contract DCAHubCompanionWTokenPositionHandler is DCAHubCompanionParamet
   }
 
   function _wrapAndApprove(uint256 _amount) internal {
+    if (msg.value != _amount) revert InvalidAmountOfProtocolTokenReceived();
+
     // Convert to wToken
     wToken.deposit{value: _amount}();
 

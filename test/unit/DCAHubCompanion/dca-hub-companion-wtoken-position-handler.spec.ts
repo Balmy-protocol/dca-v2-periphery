@@ -19,7 +19,7 @@ import { BigNumber, Wallet } from 'ethers';
 
 chai.use(smock.matchers);
 
-contract('DCAHubCompanionWTokenPositionHandlerMock', () => {
+contract('DCAHubCompanionWTokenPositionHandler', () => {
   const AMOUNT = 10000000000;
   const AMOUNT_OF_SWAPS = 10;
 
@@ -113,7 +113,24 @@ contract('DCAHubCompanionWTokenPositionHandlerMock', () => {
         await behaviours.checkTxRevertedWithMessage({ tx, message: 'InvalidTokens' });
       });
     });
-    when('trying to deposit more protocol token that was sent', () => {
+    when('sending more protocol token than expected', () => {
+      then('reverts with message', async () => {
+        const tx = DCAHubCompanionWTokenPositionHandler.depositUsingProtocolToken(
+          PROTOCOL_TOKEN,
+          erc20Token.address,
+          AMOUNT,
+          AMOUNT_OF_SWAPS,
+          SWAP_INTERVAL,
+          OWNER,
+          [],
+          {
+            value: AMOUNT + 1,
+          }
+        );
+        await behaviours.checkTxRevertedWithMessage({ tx, message: 'InvalidAmountOfProtocolTokenReceived' });
+      });
+    });
+    when('sending less protocol token than expected', () => {
       then('reverts with message', async () => {
         const tx = DCAHubCompanionWTokenPositionHandler.depositUsingProtocolToken(
           PROTOCOL_TOKEN,
@@ -127,7 +144,7 @@ contract('DCAHubCompanionWTokenPositionHandlerMock', () => {
             value: AMOUNT - 1,
           }
         );
-        await behaviours.checkTxRevertedWithMessage({ tx, message: 'Transaction reverted: function call failed to execute' });
+        await behaviours.checkTxRevertedWithMessage({ tx, message: 'InvalidAmountOfProtocolTokenReceived' });
       });
     });
     when('from is protocol token', () => {
@@ -322,12 +339,20 @@ contract('DCAHubCompanionWTokenPositionHandlerMock', () => {
 
   describe('increasePositionUsingProtocolToken', () => {
     const POSITION_ID = 10;
-    when('trying to increase with more protocol token that was sent', () => {
+    when('sending more protocol token than expected', () => {
+      then('reverts with message', async () => {
+        const tx = DCAHubCompanionWTokenPositionHandler.increasePositionUsingProtocolToken(POSITION_ID, AMOUNT, AMOUNT_OF_SWAPS, {
+          value: AMOUNT + 1,
+        });
+        await behaviours.checkTxRevertedWithMessage({ tx, message: 'InvalidAmountOfProtocolTokenReceived' });
+      });
+    });
+    when('sending less protocol token than expected', () => {
       then('reverts with message', async () => {
         const tx = DCAHubCompanionWTokenPositionHandler.increasePositionUsingProtocolToken(POSITION_ID, AMOUNT, AMOUNT_OF_SWAPS, {
           value: AMOUNT - 1,
         });
-        await behaviours.checkTxRevertedWithMessage({ tx, message: 'Transaction reverted: function call failed to execute' });
+        await behaviours.checkTxRevertedWithMessage({ tx, message: 'InvalidAmountOfProtocolTokenReceived' });
       });
     });
     when('a valid increase is made', () => {
