@@ -36,6 +36,16 @@ abstract contract DCAHubCompanionWTokenPositionHandler is DCAHubCompanionParamet
     hub.increasePosition(_positionId, _amount, _newSwaps);
   }
 
+  function reducePositionUsingProtocolToken(
+    uint256 _positionId,
+    uint256 _amount,
+    uint32 _newSwaps,
+    address payable _recipient
+  ) external {
+    hub.reducePosition(_positionId, _amount, _newSwaps, address(this));
+    _unwrapAndSend(_amount, _recipient);
+  }
+
   function _unwrapAndSend(uint256 _amount, address payable _recipient) internal {
     // Unwrap wToken
     wToken.withdraw(_amount);

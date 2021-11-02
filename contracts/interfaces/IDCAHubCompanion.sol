@@ -95,6 +95,19 @@ interface IDCAHubCompanionWTokenPositionHandler {
     uint256 _amount,
     uint32 _newSwaps
   ) external payable;
+
+  /// @notice Withdraws the specified amount from the unswapped balance and modifies the position so that
+  /// it is executed in _newSwaps swaps
+  /// @param _positionId The position's id
+  /// @param _amount Amount of funds to withdraw from the position
+  /// @param _newSwaps The new amount of swaps
+  /// @param _recipient The address to send tokens to
+  function reducePositionUsingProtocolToken(
+    uint256 _positionId,
+    uint256 _amount,
+    uint32 _newSwaps,
+    address payable _recipient
+  ) external;
 }
 
 interface IDCAHubCompanion is IDCAHubCompanionParameters, IDCAHubCompanionSwapHandler, IDCAHubCompanionWTokenPositionHandler {
