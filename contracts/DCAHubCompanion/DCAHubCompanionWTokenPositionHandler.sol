@@ -8,8 +8,14 @@ import './DCAHubCompanionParameters.sol';
 abstract contract DCAHubCompanionWTokenPositionHandler is DCAHubCompanionParameters, IDCAHubCompanionWTokenPositionHandler {
   using SafeERC20 for IERC20;
 
+  IDCAPermissionManager public immutable permissionManager;
+
   // solhint-disable-next-line private-vars-leading-underscore
   address private constant PROTOCOL_TOKEN = 0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE;
+
+  constructor() {
+    permissionManager = hub.permissionManager();
+  }
 
   function depositUsingProtocolToken(
     address _from,
@@ -48,6 +54,7 @@ abstract contract DCAHubCompanionWTokenPositionHandler is DCAHubCompanionParamet
   }
 
   function withdrawSwappedUsingProtocolToken(uint256 _positionId, address payable _recipient) external returns (uint256 _swapped) {
+    if (!permissionManager.hasPermission(_positionId, msg.sender, IDCAPermissionManager.Permission.WITHDRAW)) revert UnauthorizedCaller();
     _swapped = hub.withdrawSwapped(_positionId, address(this));
     _unwrapAndSend(_swapped, _recipient);
   }
@@ -56,6 +63,9 @@ abstract contract DCAHubCompanionWTokenPositionHandler is DCAHubCompanionParamet
     external
     returns (uint256 _swapped)
   {
+    for (uint256 i; i < _positionIds.length; i++) {
+      if (!permissionManager.hasPermission(_positionIds[i], msg.sender, IDCAPermissionManager.Permission.WITHDRAW)) revert UnauthorizedCaller();
+    }
     IDCAHub.PositionSet[] memory _positionSets = new IDCAHub.PositionSet[](1);
     _positionSets[0].token = address(wToken);
     _positionSets[0].positionIds = _positionIds;
@@ -69,6 +79,7 @@ abstract contract DCAHubCompanionWTokenPositionHandler is DCAHubCompanionParamet
     uint256 _amount,
     uint32 _newSwaps
   ) external payable {
+    if (!permissionManager.hasPermission(_positionId, msg.sender, IDCAPermissionManager.Permission.INCREASE)) revert UnauthorizedCaller();
     _wrapAndApprove(_amount);
     hub.increasePosition(_positionId, _amount, _newSwaps);
   }
@@ -79,6 +90,7 @@ abstract contract DCAHubCompanionWTokenPositionHandler is DCAHubCompanionParamet
     uint32 _newSwaps,
     address payable _recipient
   ) external {
+    if (!permissionManager.hasPermission(_positionId, msg.sender, IDCAPermissionManager.Permission.REDUCE)) revert UnauthorizedCaller();
     hub.reducePosition(_positionId, _amount, _newSwaps, address(this));
     _unwrapAndSend(_amount, _recipient);
   }

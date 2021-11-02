@@ -72,6 +72,13 @@ interface IDCAHubCompanionWTokenPositionHandler {
   /// @notice Thrown when the user tries to make a deposit where neither for the tokens is the protocol token
   error NoProtocolToken();
 
+  /// @notice Thrown when a user tries operate on a position that they don't have access to
+  error UnauthorizedCaller();
+
+  /// @notice Returns the permission manager contract
+  /// @return The contract itself
+  function permissionManager() external view returns (IDCAPermissionManager);
+
   /// @notice Creates a new position by converting the protocol's base token to its wrapped version
   /// @dev This function will also give all permissions to this contract, so that it can then withdraw/terminate and
   /// convert back to protocol's token. Will revert with NoProtocolToken if neither `from` nor `to` are the protocol token
