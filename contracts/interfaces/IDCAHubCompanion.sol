@@ -72,6 +72,9 @@ interface IDCAHubCompanionWTokenPositionHandler {
   /// @notice Thrown when the user tries to make a deposit where neither for the tokens is the protocol token
   error NoProtocolToken();
 
+  /// @notice Thrown when the user sends more or less of the protocol token than is actually necessary
+  error InvalidAmountOfProtocolTokenReceived();
+
   /// @notice Creates a new position by converting the protocol's base token to its wrapped version
   /// @dev This function will also give all permissions to this contract, so that it can then withdraw/terminate and
   /// convert back to protocol's token. Will revert with NoProtocolToken if neither `from` nor `to` are the protocol token
