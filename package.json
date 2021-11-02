@@ -56,7 +56,7 @@
     "postpublish": "pinst --enable"
   },
   "dependencies": {
-    "@mean-finance/dca-v2-core": "^1.0.0-rc.2"
+    "@mean-finance/dca-v2-core": "^1.0.0-rc.3"
   },
   "devDependencies": {
     "@codechecks/client": "0.1.11",

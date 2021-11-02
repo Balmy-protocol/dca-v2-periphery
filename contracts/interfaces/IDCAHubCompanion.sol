@@ -98,6 +98,14 @@ interface IDCAHubCompanionWTokenPositionHandler {
   /// @return _swapped How much was withdrawn
   function withdrawSwappedUsingProtocolToken(uint256 _positionId, address payable _recipient) external returns (uint256 _swapped);
 
+  /// @notice Withdraws all swapped tokens from multiple positions
+  /// @param _positionIds A list positions whose 'to' token is the wToken
+  /// @param _recipient The address to withdraw swapped tokens to
+  /// @return _swapped How much was withdrawn in total
+  function withdrawSwappedManyUsingProtocolToken(uint256[] calldata _positionIds, address payable _recipient)
+    external
+    returns (uint256 _swapped);
+
   /// @notice Takes the unswapped balance, adds the new deposited funds and modifies the position so that
   /// it is executed in _newSwaps swaps
   /// @param _positionId The position's id

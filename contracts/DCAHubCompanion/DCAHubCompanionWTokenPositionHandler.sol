@@ -52,6 +52,18 @@ abstract contract DCAHubCompanionWTokenPositionHandler is DCAHubCompanionParamet
     _unwrapAndSend(_swapped, _recipient);
   }
 
+  function withdrawSwappedManyUsingProtocolToken(uint256[] calldata _positionIds, address payable _recipient)
+    external
+    returns (uint256 _swapped)
+  {
+    IDCAHub.PositionSet[] memory _positionSets = new IDCAHub.PositionSet[](1);
+    _positionSets[0].token = address(wToken);
+    _positionSets[0].positionIds = _positionIds;
+    uint256[] memory _withdrawn = hub.withdrawSwappedMany(_positionSets, address(this));
+    _swapped = _withdrawn[0];
+    _unwrapAndSend(_swapped, _recipient);
+  }
+
   function increasePositionUsingProtocolToken(
     uint256 _positionId,
     uint256 _amount,

@@ -47,6 +47,7 @@ contract('DCAHubCompanionWTokenPositionHandlerMock', () => {
     erc20Token.approve.reset();
     DCAHub.deposit.reset();
     DCAHub.withdrawSwapped.reset();
+    DCAHub.withdrawSwappedMany.reset();
     DCAHub.increasePosition.reset();
     DCAHub.reducePosition.reset();
     wToken.deposit.reset();
@@ -204,7 +205,7 @@ contract('DCAHubCompanionWTokenPositionHandlerMock', () => {
     });
   });
 
-  describe('withdrawSwapped', () => {
+  describe('withdrawSwappedUsingProtocolToken', () => {
     const POSITION_ID = 10;
     const SWAPPED = 200000;
     when('a withdraw is executed', () => {
@@ -226,6 +227,41 @@ contract('DCAHubCompanionWTokenPositionHandlerMock', () => {
       then('platform token is sent to the recipient', async () => {
         const currentRecipientBalance = await ethers.provider.getBalance(recipient.address);
         expect(currentRecipientBalance.sub(initialRecipientBalance)).to.equal(SWAPPED);
+      });
+      then('companion has no balance remaining', async () => {
+        expect(await ethers.provider.getBalance(DCAHubCompanionWTokenPositionHandler.address)).to.equal(0);
+      });
+    });
+  });
+
+  describe('withdrawSwappedManyUsingProtocolToken', () => {
+    const POSITION_IDS = [BigNumber.from(10), BigNumber.from(20), BigNumber.from(30)];
+    const TOTAL_SWAPPED = 200000;
+    when('a withdraw is executed', () => {
+      let initialRecipientBalance: BigNumber;
+      given(async () => {
+        DCAHub.withdrawSwappedMany.returns([TOTAL_SWAPPED]);
+        initialRecipientBalance = await ethers.provider.getBalance(recipient.address);
+
+        // This is meant to simulate wToken#withdraw
+        await ethers.provider.send('hardhat_setBalance', [DCAHubCompanionWTokenPositionHandler.address, ethers.utils.hexValue(TOTAL_SWAPPED)]);
+        await DCAHubCompanionWTokenPositionHandler.withdrawSwappedManyUsingProtocolToken(POSITION_IDS, recipient.address);
+      });
+      then(`hub's withdraw is executed with companion as recipient`, () => {
+        expect(DCAHub.withdrawSwappedMany).to.have.been.calledOnce;
+        const [positionsUncasted, recipient] = DCAHub.withdrawSwappedMany.getCall(0).args;
+        const positions = positionsUncasted as { token: string; positionIds: number[] }[];
+        expect(positions.length).to.equal(1);
+        expect(positions[0].token).to.equal(wToken.address);
+        expect(positions[0].positionIds).to.eql(POSITION_IDS);
+        expect(recipient).to.equal(DCAHubCompanionWTokenPositionHandler.address);
+      });
+      then('wToken is unwrapped', async () => {
+        expect(wToken.withdraw).to.have.been.calledOnceWith(TOTAL_SWAPPED);
+      });
+      then('platform token is sent to the recipient', async () => {
+        const currentRecipientBalance = await ethers.provider.getBalance(recipient.address);
+        expect(currentRecipientBalance.sub(initialRecipientBalance)).to.equal(TOTAL_SWAPPED);
       });
       then('companion has no balance remaining', async () => {
         expect(await ethers.provider.getBalance(DCAHubCompanionWTokenPositionHandler.address)).to.equal(0);
