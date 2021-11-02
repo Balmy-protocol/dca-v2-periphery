@@ -26,7 +26,7 @@ abstract contract DCAHubCompanionWTokenPositionHandler is DCAHubCompanionParamet
     address _owner,
     IDCAPermissionManager.PermissionSet[] calldata _permissions
   ) external payable returns (uint256 _positionId) {
-    if (_from != PROTOCOL_TOKEN && _to != PROTOCOL_TOKEN) revert NoProtocolToken();
+    if ((_from == PROTOCOL_TOKEN) == (_to == PROTOCOL_TOKEN)) revert InvalidTokens();
 
     address _convertedFrom = _from;
     address _convertedTo = _to;
@@ -95,6 +95,26 @@ abstract contract DCAHubCompanionWTokenPositionHandler is DCAHubCompanionParamet
     _unwrapAndSend(_amount, _recipient);
   }
 
+  function terminateUsingProtocolTokenAsFrom(
+    uint256 _positionId,
+    address payable _recipientUnswapped,
+    address _recipientSwapped
+  ) external returns (uint256 _unswapped, uint256 _swapped) {
+    if (!permissionManager.hasPermission(_positionId, msg.sender, IDCAPermissionManager.Permission.TERMINATE)) revert UnauthorizedCaller();
+    (_unswapped, _swapped) = hub.terminate(_positionId, address(this), _recipientSwapped);
+    _unwrapAndSend(_unswapped, _recipientUnswapped);
+  }
+
+  function terminateUsingProtocolTokenAsTo(
+    uint256 _positionId,
+    address _recipientUnswapped,
+    address payable _recipientSwapped
+  ) external returns (uint256 _unswapped, uint256 _swapped) {
+    if (!permissionManager.hasPermission(_positionId, msg.sender, IDCAPermissionManager.Permission.TERMINATE)) revert UnauthorizedCaller();
+    (_unswapped, _swapped) = hub.terminate(_positionId, _recipientUnswapped, address(this));
+    _unwrapAndSend(_swapped, _recipientSwapped);
+  }
+
   function _unwrapAndSend(uint256 _amount, address payable _recipient) internal {
     // Unwrap wToken
     wToken.withdraw(_amount);
@@ -108,7 +128,7 @@ abstract contract DCAHubCompanionWTokenPositionHandler is DCAHubCompanionParamet
     wToken.deposit{value: _amount}();
 
     // Approve token for the hub
-    wToken.approve(address(hub), _amount);
+    wToken.approve(address(hub), _amount); // TODO: Consider approving max possible on deployment to make calls cheaper
   }
 
   function _addPermissionsToThisContract(IDCAPermissionManager.PermissionSet[] calldata _permissionSets)
