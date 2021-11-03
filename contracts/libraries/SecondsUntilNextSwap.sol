@@ -6,7 +6,7 @@ import '@mean-finance/dca-v2-core/contracts/libraries/TokenSorting.sol';
 import '@mean-finance/dca-v2-core/contracts/libraries/Intervals.sol';
 
 /// @title Seconds Until Next Swap Library
-/// @notice Provides functions to how long users have to wait until a pair's next swap is available
+/// @notice Provides functions to calculate how long users have to wait until a pair's next swap is available
 library SecondsUntilNextSwap {
   /// @notice A pair of tokens
   struct Pair {
