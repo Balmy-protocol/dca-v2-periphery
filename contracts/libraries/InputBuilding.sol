@@ -1,8 +1,6 @@
 // SPDX-License-Identifier: GPL-2.0-or-later
 pragma solidity >=0.8.7 <0.9.0;
 
-import '@mean-finance/dca-v2-core/contracts/interfaces/IDCAHub.sol';
-
 /// @title Input Building Library
 /// @notice Provides functions to build input for swap related actions
 /// @dev Please note that these functions are very expensive. Ideally, these would be used for off-chain purposes
