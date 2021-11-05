@@ -195,7 +195,7 @@ contract('DCAHubCompanionWTokenPositionHandler', () => {
           .to.emit(DCAHubCompanionWTokenPositionHandler, 'ConvertedDeposit')
           .withArgs(POSITION_ID, PROTOCOL_TOKEN, wToken.address, erc20Token.address, erc20Token.address);
       });
-      thenTokenIsWrappedAndApproved(AMOUNT);
+      thenTokenIsWrappedAnd(AMOUNT);
     });
     when('to is protocol token', () => {
       const POSITION_ID = 10;
@@ -334,7 +334,7 @@ contract('DCAHubCompanionWTokenPositionHandler', () => {
       then('increase is executed', () => {
         expect(DCAHub.increasePosition).to.have.been.calledOnceWith(POSITION_ID, AMOUNT, AMOUNT_OF_SWAPS);
       });
-      thenTokenIsWrappedAndApproved(AMOUNT);
+      thenTokenIsWrappedAnd(AMOUNT);
     });
 
     permissionTest({
@@ -443,7 +443,7 @@ contract('DCAHubCompanionWTokenPositionHandler', () => {
     });
   }
 
-  function thenTokenIsWrappedAndApproved(amount: number) {
+  function thenTokenIsWrappedAnd(amount: number) {
     then('protocol token is wrapped', async () => {
       const wTokenBalance = await getPlatformBalance(wToken);
       expect(wTokenBalance).to.equal(INITIAL_WTOKEN_AND_PLATFORM_BALANCE + amount);
@@ -451,10 +451,6 @@ contract('DCAHubCompanionWTokenPositionHandler', () => {
     then(`companion's ERC20 balance increases`, async () => {
       const wTokenBalance = await wToken.balanceOf(DCAHubCompanionWTokenPositionHandler.address);
       expect(wTokenBalance).to.equal(INITIAL_WTOKEN_AND_PLATFORM_BALANCE + amount);
-    });
-    then('wrapped token is approved for the hub', async () => {
-      const allowance = await wToken.allowance(DCAHubCompanionWTokenPositionHandler.address, DCAHub.address);
-      expect(allowance).to.equal(AMOUNT);
     });
   }
 

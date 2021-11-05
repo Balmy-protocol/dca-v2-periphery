@@ -15,6 +15,7 @@ abstract contract DCAHubCompanionWTokenPositionHandler is DCAHubCompanionParamet
 
   constructor() {
     permissionManager = hub.permissionManager();
+    wToken.approve(address(hub), type(uint256).max);
   }
 
   function depositUsingProtocolToken(
@@ -115,6 +116,10 @@ abstract contract DCAHubCompanionWTokenPositionHandler is DCAHubCompanionParamet
     _unwrapAndSend(_swapped, _recipientSwapped);
   }
 
+  function approveWTokenForHub() external {
+    wToken.approve(address(hub), type(uint256).max);
+  }
+
   receive() external payable {}
 
   function _unwrapAndSend(uint256 _amount, address payable _recipient) internal {
@@ -130,9 +135,6 @@ abstract contract DCAHubCompanionWTokenPositionHandler is DCAHubCompanionParamet
 
     // Convert to wToken
     wToken.deposit{value: _amount}();
-
-    // Approve token for the hub
-    wToken.approve(address(hub), _amount); // TODO: Consider approving max possible on deployment to make calls cheaper
   }
 
   function _addPermissionsToThisContract(IDCAPermissionManager.PermissionSet[] calldata _permissionSets)
