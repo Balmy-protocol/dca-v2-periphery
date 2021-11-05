@@ -221,7 +221,7 @@ contract('DCAHubCompanionSwapHandler', () => {
         });
       });
     });
-    describe('#swapForCaller', () => {
+    describe('handleSwapForCaller', () => {
       when('swap for caller plan is executed without less of protocol token than required', () => {
         let tx: Promise<TransactionResponse>;
         given(async () => {
