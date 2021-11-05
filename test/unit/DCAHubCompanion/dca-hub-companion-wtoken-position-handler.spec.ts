@@ -73,6 +73,9 @@ contract('DCAHubCompanionWTokenPositionHandler', () => {
       then('permission manager is set correctly', async () => {
         expect(await DCAHubCompanionWTokenPositionHandler.permissionManager()).to.equal(DCAPermissionManager.address);
       });
+      then('hub is approved for wToken', async () => {
+        expect(await wToken.allowance(DCAHubCompanionWTokenPositionHandler.address, DCAHub.address)).to.equal(constants.MAX_UINT_256);
+      });
     });
   });
 
