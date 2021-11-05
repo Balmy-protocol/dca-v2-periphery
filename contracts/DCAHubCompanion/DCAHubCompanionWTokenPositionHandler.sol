@@ -115,6 +115,8 @@ abstract contract DCAHubCompanionWTokenPositionHandler is DCAHubCompanionParamet
     _unwrapAndSend(_swapped, _recipientSwapped);
   }
 
+  receive() external payable {}
+
   function _unwrapAndSend(uint256 _amount, address payable _recipient) internal {
     // Unwrap wToken
     wToken.withdraw(_amount);
