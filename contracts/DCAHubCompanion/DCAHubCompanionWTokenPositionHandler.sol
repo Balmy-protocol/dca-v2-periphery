@@ -5,6 +5,7 @@ import '@openzeppelin/contracts/token/ERC20/IERC20.sol';
 import '@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol';
 import './DCAHubCompanionParameters.sol';
 
+// TODO: Add re-entrancy guard
 abstract contract DCAHubCompanionWTokenPositionHandler is DCAHubCompanionParameters, IDCAHubCompanionWTokenPositionHandler {
   using SafeERC20 for IERC20;
 
@@ -15,7 +16,7 @@ abstract contract DCAHubCompanionWTokenPositionHandler is DCAHubCompanionParamet
 
   constructor() {
     permissionManager = hub.permissionManager();
-    wToken.approve(address(hub), type(uint256).max);
+    approveWTokenForHub();
   }
 
   function depositUsingProtocolToken(
@@ -32,7 +33,7 @@ abstract contract DCAHubCompanionWTokenPositionHandler is DCAHubCompanionParamet
     address _convertedFrom = _from;
     address _convertedTo = _to;
     if (_from == PROTOCOL_TOKEN) {
-      _wrapAndApprove(_amount);
+      _wrap(_amount);
       _convertedFrom = address(wToken);
     } else {
       IERC20(_from).safeTransferFrom(msg.sender, address(this), _amount);
@@ -81,7 +82,7 @@ abstract contract DCAHubCompanionWTokenPositionHandler is DCAHubCompanionParamet
     uint32 _newSwaps
   ) external payable {
     if (!permissionManager.hasPermission(_positionId, msg.sender, IDCAPermissionManager.Permission.INCREASE)) revert UnauthorizedCaller();
-    _wrapAndApprove(_amount);
+    _wrap(_amount);
     hub.increasePosition(_positionId, _amount, _newSwaps);
   }
 
@@ -116,7 +117,7 @@ abstract contract DCAHubCompanionWTokenPositionHandler is DCAHubCompanionParamet
     _unwrapAndSend(_swapped, _recipientSwapped);
   }
 
-  function approveWTokenForHub() external {
+  function approveWTokenForHub() public {
     wToken.approve(address(hub), type(uint256).max);
   }
 
@@ -130,7 +131,7 @@ abstract contract DCAHubCompanionWTokenPositionHandler is DCAHubCompanionParamet
     _recipient.transfer(_amount);
   }
 
-  function _wrapAndApprove(uint256 _amount) internal {
+  function _wrap(uint256 _amount) internal {
     if (msg.value != _amount) revert InvalidAmountOfProtocolTokenReceived();
 
     // Convert to wToken
