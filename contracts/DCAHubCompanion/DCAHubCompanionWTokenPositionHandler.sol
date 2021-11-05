@@ -5,7 +5,6 @@ import '@openzeppelin/contracts/token/ERC20/IERC20.sol';
 import '@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol';
 import './DCAHubCompanionParameters.sol';
 
-// TODO: Add re-entrancy guard
 abstract contract DCAHubCompanionWTokenPositionHandler is DCAHubCompanionParameters, IDCAHubCompanionWTokenPositionHandler {
   using SafeERC20 for IERC20;
 
