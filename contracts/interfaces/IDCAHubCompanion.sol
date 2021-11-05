@@ -51,7 +51,7 @@ interface IDCAHubCompanionSwapHandler is IDCAHubSwapCallee {
     uint256[] calldata _minimumOutput,
     uint256[] calldata _maximumInput,
     uint256 _deadline
-  ) external returns (IDCAHub.SwapInfo memory);
+  ) external payable returns (IDCAHub.SwapInfo memory);
 }
 
 interface IDCAHubCompanionWTokenPositionHandler {

@@ -25,7 +25,7 @@ abstract contract DCAHubCompanionSwapHandler is DeadlineValidation, DCAHubCompan
     uint256[] calldata _minimumOutput,
     uint256[] calldata _maximumInput,
     uint256 _deadline
-  ) external checkDeadline(_deadline) returns (IDCAHub.SwapInfo memory _swapInfo) {
+  ) external payable checkDeadline(_deadline) returns (IDCAHub.SwapInfo memory _swapInfo) {
     uint256[] memory _borrow = new uint256[](_tokens.length);
     _swapInfo = hub.swap(
       _tokens,
@@ -33,7 +33,7 @@ abstract contract DCAHubCompanionSwapHandler is DeadlineValidation, DCAHubCompan
       msg.sender,
       address(this),
       _borrow,
-      abi.encode(SwapData({plan: SwapPlan.SWAP_FOR_CALLER, data: abi.encode(msg.sender)}))
+      abi.encode(SwapData({plan: SwapPlan.SWAP_FOR_CALLER, data: abi.encode(msg.sender, msg.value)}))
     );
 
     for (uint256 i; i < _swapInfo.tokens.length; i++) {
@@ -65,10 +65,20 @@ abstract contract DCAHubCompanionSwapHandler is DeadlineValidation, DCAHubCompan
   }
 
   function _handleSwapForCallerCallback(IDCAHub.TokenInSwap[] calldata _tokens, bytes memory _data) internal {
-    address _caller = abi.decode(_data, (address));
+    (address _caller, uint256 _msgValue) = abi.decode(_data, (address, uint256));
     for (uint256 i; i < _tokens.length; i++) {
-      if (_tokens[i].toProvide > 0) {
-        IERC20(_tokens[i].token).safeTransferFrom(_caller, msg.sender, _tokens[i].toProvide);
+      IDCAHub.TokenInSwap memory _token = _tokens[i];
+      if (_token.toProvide > 0) {
+        if (_token.token == address(wToken) && _msgValue != 0) {
+          // Wrap necessary
+          wToken.deposit{value: _token.toProvide}();
+
+          // Return any extra tokens to the original caller
+          if (_msgValue > _token.toProvide) {
+            payable(_caller).transfer(_msgValue - _token.toProvide);
+          }
+        }
+        IERC20(_token.token).safeTransferFrom(_caller, address(hub), _token.toProvide);
       }
     }
   }

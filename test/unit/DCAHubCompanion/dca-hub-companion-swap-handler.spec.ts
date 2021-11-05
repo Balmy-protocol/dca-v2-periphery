@@ -4,11 +4,18 @@ import { behaviours, constants, erc20 } from '@test-utils';
 import { contract, given, then, when } from '@test-utils/bdd';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signers';
 import { snapshot } from '@test-utils/evm';
-import { DCAHubCompanionSwapHandlerMock, DCAHubCompanionSwapHandlerMock__factory, IDCAHub } from '@typechained';
+import {
+  DCAHubCompanionSwapHandlerMock,
+  DCAHubCompanionSwapHandlerMock__factory,
+  IDCAHub,
+  WrappedPlatformTokenMock,
+  WrappedPlatformTokenMock__factory,
+} from '@typechained';
 import { FakeContract, smock } from '@defi-wonderland/smock';
-import { TokenContract } from '@test-utils/erc20';
+import { addExtra, ERC20TokenContract, TokenContract } from '@test-utils/erc20';
 import moment from 'moment';
-import { BigNumberish } from '@ethersproject/bignumber';
+import { TransactionResponse } from '@ethersproject/abstract-provider';
+import { BigNumber, BigNumberish } from '@ethersproject/bignumber';
 
 chai.use(smock.matchers);
 
@@ -18,19 +25,24 @@ contract('DCAHubCompanionSwapHandler', () => {
   let DCAHub: FakeContract<IDCAHub>;
   let DCAHubCompanionSwapHandler: DCAHubCompanionSwapHandlerMock;
   let DCAHubCompanionSwapHandlerFactory: DCAHubCompanionSwapHandlerMock__factory;
-  let tokenA: TokenContract, tokenB: TokenContract;
+  let wToken: TokenContract<WrappedPlatformTokenMock>;
+  let tokenA: ERC20TokenContract, tokenB: ERC20TokenContract;
   let snapshotId: string;
 
   const INDEXES = [{ indexTokenA: 0, indexTokenB: 1 }];
   let tokens: string[];
 
   before('Setup accounts and contracts', async () => {
-    [swapper, hub] = await ethers.getSigners();
+    [, swapper, hub] = await ethers.getSigners();
     DCAHubCompanionSwapHandlerFactory = await ethers.getContractFactory(
       'contracts/mocks/DCAHubCompanion/DCAHubCompanionSwapHandler.sol:DCAHubCompanionSwapHandlerMock'
     );
+    const wTokenFactory: WrappedPlatformTokenMock__factory = await ethers.getContractFactory(
+      'contracts/mocks/WrappedPlatformTokenMock.sol:WrappedPlatformTokenMock'
+    );
+    wToken = await addExtra(await wTokenFactory.deploy('WETH', 'WETH', 18));
     DCAHub = await smock.fake('IDCAHub');
-    DCAHubCompanionSwapHandler = await DCAHubCompanionSwapHandlerFactory.deploy(DCAHub.address);
+    DCAHubCompanionSwapHandler = await DCAHubCompanionSwapHandlerFactory.deploy(DCAHub.address, wToken.address);
     const deploy = (decimals: number) => erc20.deploy({ name: 'A name', symbol: 'SYMB', decimals });
     const deployedTokens = await Promise.all([deploy(12), deploy(16)]);
     [tokenA, tokenB] = deployedTokens.sort((a, b) => a.address.localeCompare(b.address));
@@ -117,9 +129,9 @@ contract('DCAHubCompanionSwapHandler', () => {
         });
       });
     });
-    when('swap is executed correctly', () => {
+    when('swap is executed without any value', () => {
       given(async () => {
-        await DCAHubCompanionSwapHandler.swapForCaller(tokens, INDEXES, [], [], constants.MAX_UINT_256);
+        await DCAHubCompanionSwapHandler.connect(swapper).swapForCaller(tokens, INDEXES, [], [], constants.MAX_UINT_256);
       });
       then('hub is called with the correct parameters', () => {
         expect(DCAHub.swap).to.have.been.calledOnce;
@@ -129,21 +141,42 @@ contract('DCAHubCompanionSwapHandler', () => {
         expect(rewardRecipient).to.equal(swapper.address);
         expect(callbackHandler).to.equal(DCAHubCompanionSwapHandler.address);
         expect(borrow).to.eql([constants.ZERO, constants.ZERO]);
-        const expectedData = ABI_CODER.encode(['tuple(uint256, bytes)'], [[1, ABI_CODER.encode(['address'], [swapper.address])]]);
+        const expectedData = ABI_CODER.encode(['tuple(uint256, bytes)'], [[1, ABI_CODER.encode(['address', 'uint256'], [swapper.address, 0])]]);
+        expect(data).to.equal(expectedData);
+      });
+    });
+    when('swap is executed with some value', () => {
+      const SENT_VALUE = 1000;
+      given(async () => {
+        await DCAHubCompanionSwapHandler.connect(swapper).swapForCaller(tokens, INDEXES, [], [], constants.MAX_UINT_256, { value: SENT_VALUE });
+      });
+      then('hub is called with the correct parameters', () => {
+        expect(DCAHub.swap).to.have.been.calledOnce;
+        const [tokens, indexes, rewardRecipient, callbackHandler, borrow, data] = DCAHub.swap.getCall(0).args;
+        expect(tokens).to.eql(tokens);
+        expect((indexes as any)[0]).to.eql([0, 1]);
+        expect(rewardRecipient).to.equal(swapper.address);
+        expect(callbackHandler).to.equal(DCAHubCompanionSwapHandler.address);
+        expect(borrow).to.eql([constants.ZERO, constants.ZERO]);
+        const expectedData = ABI_CODER.encode(
+          ['tuple(uint256, bytes)'],
+          [[1, ABI_CODER.encode(['address', 'uint256'], [swapper.address, SENT_VALUE])]]
+        );
         expect(data).to.equal(expectedData);
       });
     });
   });
 
   describe('DCAHubSwapCall', () => {
+    const AMOUNT_TO_PROVIDE_OF_WTOKEN = 200;
     let tokensInSwap: { token: string; toProvide: BigNumberish; reward: BigNumberish; platformFee: BigNumberish }[];
     let DCAHubCompanionSwapHandler: DCAHubCompanionSwapHandlerMock;
     given(async () => {
       tokensInSwap = [
+        { token: wToken.address, toProvide: wToken.asUnits(AMOUNT_TO_PROVIDE_OF_WTOKEN), reward: 0, platformFee: 0 },
         { token: tokenA.address, toProvide: tokenA.asUnits(100), reward: 0, platformFee: 0 },
-        { token: tokenB.address, toProvide: tokenB.asUnits(200), reward: 0, platformFee: 0 },
       ];
-      DCAHubCompanionSwapHandler = await DCAHubCompanionSwapHandlerFactory.deploy(hub.address);
+      DCAHubCompanionSwapHandler = await DCAHubCompanionSwapHandlerFactory.deploy(hub.address, wToken.address);
     });
     when('caller is not the hub', () => {
       then('reverts with message', async () => {
@@ -188,26 +221,92 @@ contract('DCAHubCompanionSwapHandler', () => {
         });
       });
     });
-    when('swap for caller plan is executed', () => {
+    when('swap for caller plan is executed without less of protocol token than required', () => {
+      let tx: Promise<TransactionResponse>;
       given(async () => {
-        const swapData = ABI_CODER.encode(['tuple(uint256, bytes)'], [[1, ABI_CODER.encode(['address'], [swapper.address])]]);
-        for (const tokenInSwap of tokensInSwap) {
-          const token = fromAddressToToken(tokenInSwap.token);
-          await token.mint(swapper.address, tokenInSwap.toProvide);
-          await token.connect(swapper).approve(DCAHubCompanionSwapHandler.address, tokenInSwap.toProvide);
-        }
-        await DCAHubCompanionSwapHandler.connect(hub).DCAHubSwapCall(DCAHubCompanionSwapHandler.address, tokensInSwap, [], swapData);
+        const sentProtocolToken = wToken.asUnits(AMOUNT_TO_PROVIDE_OF_WTOKEN).sub(1);
+        await ethers.provider.send('hardhat_setBalance', [DCAHubCompanionSwapHandler.address, ethers.utils.hexValue(sentProtocolToken)]);
+        const swapData = ABI_CODER.encode(
+          ['tuple(uint256, bytes)'],
+          [[1, ABI_CODER.encode(['address', 'uint256'], [swapper.address, sentProtocolToken])]]
+        );
+        await mintAndApproveTokens();
+        tx = DCAHubCompanionSwapHandler.connect(hub).DCAHubSwapCall(DCAHubCompanionSwapHandler.address, tokensInSwap, [], swapData);
       });
-      then('tokens are sent from the swapper to the hub correctly', async () => {
-        for (const tokenInSwap of tokensInSwap) {
-          const token = fromAddressToToken(tokenInSwap.token);
-          expect(await token.balanceOf(swapper.address)).to.equal(0);
-          expect(await token.balanceOf(hub.address)).to.equal(tokenInSwap.toProvide);
-        }
+      then('tx reverts with message', async () => {
+        await behaviours.checkTxRevertedWithMessage({ tx, message: 'Transaction reverted: function call failed to execute' });
       });
     });
+
+    handleSwapForCallerTest({
+      when: 'swap for caller plan is executed without protocol token',
+      sentProtocolToken: 0,
+    });
+
+    handleSwapForCallerTest({
+      when: 'swap for caller plan is executed with the exact amount of protocol token',
+      sentProtocolToken: AMOUNT_TO_PROVIDE_OF_WTOKEN,
+    });
+
+    handleSwapForCallerTest({
+      when: 'swap for caller plan is executed with more protocol token than needed',
+      sentProtocolToken: AMOUNT_TO_PROVIDE_OF_WTOKEN + 1,
+    });
+
+    function handleSwapForCallerTest({ when: title, sentProtocolToken }: { when: string; sentProtocolToken: number }) {
+      when(title, () => {
+        let initialSwapperBalance: BigNumber;
+        let sentProtocolTokenAsUnits: BigNumber;
+        given(async () => {
+          sentProtocolTokenAsUnits = wToken.asUnits(sentProtocolToken);
+          const swapData = ABI_CODER.encode(
+            ['tuple(uint256, bytes)'],
+            [[1, ABI_CODER.encode(['address', 'uint256'], [swapper.address, sentProtocolTokenAsUnits])]]
+          );
+          await ethers.provider.send('hardhat_setBalance', [
+            DCAHubCompanionSwapHandler.address,
+            ethers.utils.hexValue(sentProtocolTokenAsUnits),
+          ]);
+          await mintAndApproveTokens();
+          initialSwapperBalance = await ethers.provider.getBalance(swapper.address);
+          await DCAHubCompanionSwapHandler.connect(hub).DCAHubSwapCall(DCAHubCompanionSwapHandler.address, tokensInSwap, [], swapData);
+        });
+        then('tokens are sent from the swapper to the hub correctly', async () => {
+          for (const tokenInSwap of tokensInSwap) {
+            const token = fromAddressToToken(tokenInSwap.token);
+            expect(await token.balanceOf(swapper.address)).to.equal(0);
+            expect(await token.balanceOf(hub.address)).to.equal(tokenInSwap.toProvide);
+          }
+        });
+        then(`companion's protocol token balance continues to be 0`, async () => {
+          const balance = await ethers.provider.getBalance(DCAHubCompanionSwapHandler.address);
+          expect(balance).to.equal(0);
+        });
+        if (sentProtocolToken > AMOUNT_TO_PROVIDE_OF_WTOKEN) {
+          then('extra tokens are returned to original caller', async () => {
+            const balance = await ethers.provider.getBalance(swapper.address);
+            expect(balance).to.equal(initialSwapperBalance.add(sentProtocolTokenAsUnits.sub(wToken.asUnits(AMOUNT_TO_PROVIDE_OF_WTOKEN))));
+          });
+        }
+      });
+    }
+    async function mintAndApproveTokens() {
+      for (const tokenInSwap of tokensInSwap) {
+        const token = fromAddressToToken(tokenInSwap.token);
+        await token.mint(swapper.address, tokenInSwap.toProvide);
+        await token.connect(swapper).approve(DCAHubCompanionSwapHandler.address, tokenInSwap.toProvide);
+      }
+    }
   });
-  function fromAddressToToken(tokenAddress: string): TokenContract {
-    return tokenAddress === tokenA.address ? tokenA : tokenB;
+  function fromAddressToToken(tokenAddress: string): TokenContract<ERC20TokenContract> {
+    switch (tokenAddress) {
+      case tokenA.address:
+        return tokenA;
+      case tokenB.address:
+        return tokenB;
+      case wToken.address:
+        return wToken;
+    }
+    throw new Error('Unknown address');
   }
 });
