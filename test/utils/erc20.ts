@@ -14,7 +14,7 @@ const deploy = async ({
   decimals?: BigNumber | number;
   initialAccount?: string;
   initialAmount?: BigNumber | number;
-}): Promise<TokenContract> => {
+}): Promise<ERC20TokenContract> => {
   const erc20MockContract = (await ethers.getContractFactory('contracts/mocks/ERC20Mock.sol:ERC20Mock')) as ERC20Mock__factory;
   const deployedContract = await erc20MockContract.deploy(
     name,
@@ -26,7 +26,7 @@ const deploy = async ({
   return addExtra(deployedContract);
 };
 
-async function addExtra(tokenContract: ERC20Mock): Promise<TokenContract> {
+export async function addExtra<T extends ERC20Mock>(tokenContract: T): Promise<TokenContract<T>> {
   const decimals = await tokenContract.decimals();
   // @ts-ignore
   tokenContract.asUnits = (toParse: string | number) => utils.parseUnits(`${toParse}`, decimals);
@@ -38,7 +38,9 @@ async function addExtra(tokenContract: ERC20Mock): Promise<TokenContract> {
   return tokenContract;
 }
 
-export type TokenContract = ERC20Mock & {
+export type ERC20TokenContract = TokenContract<ERC20Mock>;
+
+export type TokenContract<T extends ERC20Mock> = T & {
   asUnits: (toParse: string | number) => BigNumber;
   amountOfDecimals: number;
   magnitude: BigNumber;
