@@ -107,7 +107,7 @@ library InputBuilding {
 
     for (uint8 i; i < _tokens.length; i++) {
       for (uint8 j = i + 1; j < _tokens.length; j++) {
-        for (uint256 k = 0; k < _pairs.length; k++) {
+        for (uint256 k; k < _pairs.length; k++) {
           if (
             (_tokens[i] == _pairs[k].tokenA && _tokens[j] == _pairs[k].tokenB) ||
             (_tokens[i] == _pairs[k].tokenB && _tokens[j] == _pairs[k].tokenA)
