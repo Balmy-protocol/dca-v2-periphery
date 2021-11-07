@@ -163,6 +163,10 @@ interface IDCAHubCompanionWTokenPositionHandler {
     address _recipientUnswapped,
     address payable _recipientSwapped
   ) external returns (uint256 _unswapped, uint256 _swapped);
+
+  /// @notice Increases the allowance of wToken to the max, for the DCAHub
+  /// @dev Anyone can call this method
+  function approveWTokenForHub() external;
 }
 
 interface IDCAHubCompanion is IDCAHubCompanionParameters, IDCAHubCompanionSwapHandler, IDCAHubCompanionWTokenPositionHandler {
