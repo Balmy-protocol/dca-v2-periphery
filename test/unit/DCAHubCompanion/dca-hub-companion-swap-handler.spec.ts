@@ -1,6 +1,6 @@
 import chai, { expect } from 'chai';
 import { ethers } from 'hardhat';
-import { behaviours, constants, erc20 } from '@test-utils';
+import { behaviours, constants, erc20, wallet } from '@test-utils';
 import { contract, given, then, when } from '@test-utils/bdd';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signers';
 import { snapshot } from '@test-utils/evm';
@@ -56,13 +56,14 @@ contract('DCAHubCompanionSwapHandler', () => {
   });
 
   describe('swapForCaller', () => {
+    const SOME_RANDOM_ADDRESS = wallet.generateRandomAddress();
     when('deadline has expired', () => {
       const NOW = moment().unix();
       then('reverts with message', async () => {
         await behaviours.txShouldRevertWithMessage({
           contract: DCAHubCompanionSwapHandler,
           func: 'swapForCaller',
-          args: [tokens, INDEXES, [], [], NOW - 1],
+          args: [tokens, INDEXES, [], [], SOME_RANDOM_ADDRESS, NOW - 1],
           message: 'Transaction too old',
         });
       });
@@ -93,7 +94,7 @@ contract('DCAHubCompanionSwapHandler', () => {
         await behaviours.txShouldRevertWithMessage({
           contract: DCAHubCompanionSwapHandler,
           func: 'swapForCaller',
-          args: [tokens, INDEXES, [MIN_OUTPUT, MIN_OUTPUT], [MAX_INPUT, MAX_INPUT], constants.MAX_UINT_256],
+          args: [tokens, INDEXES, [MIN_OUTPUT, MIN_OUTPUT], [MAX_INPUT, MAX_INPUT], SOME_RANDOM_ADDRESS, constants.MAX_UINT_256],
           message: 'RewardNotEnough',
         });
       });
@@ -124,21 +125,21 @@ contract('DCAHubCompanionSwapHandler', () => {
         await behaviours.txShouldRevertWithMessage({
           contract: DCAHubCompanionSwapHandler,
           func: 'swapForCaller',
-          args: [tokens, INDEXES, [MIN_OUTPUT, MIN_OUTPUT], [MAX_INPUT, MAX_INPUT], constants.MAX_UINT_256],
+          args: [tokens, INDEXES, [MIN_OUTPUT, MIN_OUTPUT], [MAX_INPUT, MAX_INPUT], SOME_RANDOM_ADDRESS, constants.MAX_UINT_256],
           message: 'ToProvideIsTooMuch',
         });
       });
     });
     when('swap is executed without any value', () => {
       given(async () => {
-        await DCAHubCompanionSwapHandler.connect(swapper).swapForCaller(tokens, INDEXES, [], [], constants.MAX_UINT_256);
+        await DCAHubCompanionSwapHandler.connect(swapper).swapForCaller(tokens, INDEXES, [], [], SOME_RANDOM_ADDRESS, constants.MAX_UINT_256);
       });
       then('hub is called with the correct parameters', () => {
         expect(DCAHub.swap).to.have.been.calledOnce;
         const [tokens, indexes, rewardRecipient, callbackHandler, borrow, data] = DCAHub.swap.getCall(0).args;
         expect(tokens).to.eql(tokens);
         expect((indexes as any)[0]).to.eql([0, 1]);
-        expect(rewardRecipient).to.equal(swapper.address);
+        expect(rewardRecipient).to.equal(SOME_RANDOM_ADDRESS);
         expect(callbackHandler).to.equal(DCAHubCompanionSwapHandler.address);
         expect(borrow).to.eql([constants.ZERO, constants.ZERO]);
         const expectedData = ABI_CODER.encode(['tuple(uint256, bytes)'], [[1, ABI_CODER.encode(['address', 'uint256'], [swapper.address, 0])]]);
@@ -148,14 +149,16 @@ contract('DCAHubCompanionSwapHandler', () => {
     when('swap is executed with some value', () => {
       const SENT_VALUE = 1000;
       given(async () => {
-        await DCAHubCompanionSwapHandler.connect(swapper).swapForCaller(tokens, INDEXES, [], [], constants.MAX_UINT_256, { value: SENT_VALUE });
+        await DCAHubCompanionSwapHandler.connect(swapper).swapForCaller(tokens, INDEXES, [], [], SOME_RANDOM_ADDRESS, constants.MAX_UINT_256, {
+          value: SENT_VALUE,
+        });
       });
       then('hub is called with the correct parameters', () => {
         expect(DCAHub.swap).to.have.been.calledOnce;
         const [tokens, indexes, rewardRecipient, callbackHandler, borrow, data] = DCAHub.swap.getCall(0).args;
         expect(tokens).to.eql(tokens);
         expect((indexes as any)[0]).to.eql([0, 1]);
-        expect(rewardRecipient).to.equal(swapper.address);
+        expect(rewardRecipient).to.equal(SOME_RANDOM_ADDRESS);
         expect(callbackHandler).to.equal(DCAHubCompanionSwapHandler.address);
         expect(borrow).to.eql([constants.ZERO, constants.ZERO]);
         const expectedData = ABI_CODER.encode(

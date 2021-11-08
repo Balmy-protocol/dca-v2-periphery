@@ -9,7 +9,7 @@ import constants from '@test-utils/constants';
 
 chai.use(smock.matchers);
 
-contract.only('ModifyPositionWithRate', () => {
+contract('ModifyPositionWithRate', () => {
   const POSITION_ID = 1;
   const ORIGINAL_RATE = 100000;
   const SWAPS_LEFT = 10;
