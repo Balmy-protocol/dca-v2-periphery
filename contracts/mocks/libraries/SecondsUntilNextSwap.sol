@@ -12,7 +12,7 @@ contract SecondsUntilNextSwapMock {
     return SecondsUntilNextSwap.secondsUntilNextSwap(_hub, _tokenA, _tokenB);
   }
 
-  function secondsUntilNextSwap(IDCAHub _hub, SecondsUntilNextSwap.Pair[] calldata _pairs) external view returns (uint256[] memory) {
+  function secondsUntilNextSwap(IDCAHub _hub, Pair[] calldata _pairs) external view returns (uint256[] memory) {
     return SecondsUntilNextSwap.secondsUntilNextSwap(_hub, _pairs);
   }
 }

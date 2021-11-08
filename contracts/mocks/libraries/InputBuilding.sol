@@ -4,7 +4,7 @@ pragma solidity >=0.8.7 <0.9.0;
 import '../../libraries/InputBuilding.sol';
 
 contract InputBuildingMock {
-  function buildGetNextSwapInfoInput(InputBuilding.Pair[] calldata _pairs)
+  function buildGetNextSwapInfoInput(Pair[] calldata _pairs)
     external
     pure
     returns (address[] memory _tokens, IDCAHub.PairIndexes[] memory _pairsToSwap)
@@ -12,7 +12,7 @@ contract InputBuildingMock {
     return InputBuilding.buildGetNextSwapInfoInput(_pairs);
   }
 
-  function buildSwapInput(InputBuilding.Pair[] calldata _pairs, IDCAHub.AmountOfToken[] memory _toBorrow)
+  function buildSwapInput(Pair[] calldata _pairs, IDCAHub.AmountOfToken[] memory _toBorrow)
     external
     pure
     returns (
