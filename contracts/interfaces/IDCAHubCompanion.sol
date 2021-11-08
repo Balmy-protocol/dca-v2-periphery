@@ -5,6 +5,8 @@ import '@mean-finance/dca-v2-core/contracts/interfaces/IDCAHub.sol';
 import '@mean-finance/dca-v2-core/contracts/interfaces/IDCAPermissionManager.sol';
 import '@mean-finance/dca-v2-core/contracts/interfaces/IDCAHubSwapCallee.sol';
 import './IWrappedProtocolToken.sol';
+import './utils/ICollectableDust.sol';
+import './utils/IGovernable.sol';
 
 interface IDCAHubCompanionParameters {
   /// @notice Returns the DCA Hub's address
@@ -15,8 +17,13 @@ interface IDCAHubCompanionParameters {
   /// @notice Returns the address of the wrapped token
   /// @dev This value cannot be modified
   /// @return The wToken contract
-  // solhint-disable-next-line func-name-mixedcase
   function wToken() external view returns (IWrappedProtocolToken);
+
+  /// @notice Returns the address used to represent the protocol token (f.e. ETH/MATIC)
+  /// @dev This value cannot be modified
+  /// @return The protocol token
+  // solhint-disable-next-line func-name-mixedcase
+  function PROTOCOL_TOKEN() external view returns (address);
 }
 
 interface IDCAHubCompanionSwapHandler is IDCAHubSwapCallee {
@@ -169,7 +176,14 @@ interface IDCAHubCompanionWTokenPositionHandler {
   function approveWTokenForHub() external;
 }
 
-interface IDCAHubCompanion is IDCAHubCompanionParameters, IDCAHubCompanionSwapHandler, IDCAHubCompanionWTokenPositionHandler {
+interface IDCAHubCompanionDustHandler is ICollectableDust, IGovernable {}
+
+interface IDCAHubCompanion is
+  IDCAHubCompanionParameters,
+  IDCAHubCompanionSwapHandler,
+  IDCAHubCompanionWTokenPositionHandler,
+  IDCAHubCompanionDustHandler
+{
   /// @notice Thrown when one of the parameters is a zero address
   error ZeroAddress();
 }
