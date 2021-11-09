@@ -62,7 +62,7 @@ abstract contract DCAHubCompanionSwapHandler is DeadlineValidation, DCAHubCompan
     bytes[] calldata _callsTo0x,
     address _leftoverRecipient,
     uint256 _deadline
-  ) external checkDeadline(_deadline) returns (IDCAHub.SwapInfo memory) {
+  ) external returns (IDCAHub.SwapInfo memory) {
     return _swapWith0x(_tokens, _pairsToSwap, _callsTo0x, _leftoverRecipient, false, _deadline);
   }
 
@@ -72,7 +72,7 @@ abstract contract DCAHubCompanionSwapHandler is DeadlineValidation, DCAHubCompan
     bytes[] calldata _callsTo0x,
     address _leftoverRecipient,
     uint256 _deadline
-  ) external checkDeadline(_deadline) returns (IDCAHub.SwapInfo memory) {
+  ) external returns (IDCAHub.SwapInfo memory) {
     return _swapWith0x(_tokens, _pairsToSwap, _callsTo0x, _leftoverRecipient, true, _deadline);
   }
 
@@ -141,9 +141,7 @@ abstract contract DCAHubCompanionSwapHandler is DeadlineValidation, DCAHubCompan
 
     // Execute swaps
     for (uint256 i; i < _callbackData.callsTo0x.length; i++) {
-      // solhint-disable-next-line avoid-low-level-calls
-      (bool success, ) = _zrx.call{value: 0}(_callbackData.callsTo0x[i]);
-      require(success, 'Swapper: ZRX trade reverted');
+      _call0x(_zrx, _callbackData.callsTo0x[i]);
     }
 
     // Send remaining tokens to either hub, or leftover recipient
@@ -168,6 +166,12 @@ abstract contract DCAHubCompanionSwapHandler is DeadlineValidation, DCAHubCompan
         }
       }
     }
+  }
+
+  function _call0x(address _zrx, bytes memory _data) internal virtual {
+    // solhint-disable-next-line avoid-low-level-calls
+    (bool success, ) = _zrx.call{value: 0}(_data);
+    require(success, 'Swapper: ZRX trade reverted');
   }
 
   struct CallbackDataCaller {

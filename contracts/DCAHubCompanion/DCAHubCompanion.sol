@@ -6,5 +6,10 @@ import './DCAHubCompanionSwapHandler.sol';
 import './DCAHubCompanionWTokenPositionHandler.sol';
 
 contract DCAHubCompanion is DCAHubCompanionParameters, DCAHubCompanionSwapHandler, DCAHubCompanionWTokenPositionHandler, IDCAHubCompanion {
-  constructor(IDCAHub _hub, IWrappedProtocolToken _wToken) DCAHubCompanionParameters(_hub, _wToken) {}
+  constructor(
+    IDCAHub _hub,
+    IWrappedProtocolToken _wToken,
+    // solhint-disable-next-line var-name-mixedcase
+    address _ZRX
+  ) DCAHubCompanionParameters(_hub, _wToken) DCAHubCompanionSwapHandler(_ZRX) {}
 }

@@ -16,11 +16,13 @@ import { addExtra, ERC20TokenContract, TokenContract } from '@test-utils/erc20';
 import moment from 'moment';
 import { TransactionResponse } from '@ethersproject/abstract-provider';
 import { BigNumber, BigNumberish } from '@ethersproject/bignumber';
+import { BytesLike } from '@ethersproject/bytes';
 
 chai.use(smock.matchers);
 
-contract('DCAHubCompanionSwapHandler', () => {
+contract.only('DCAHubCompanionSwapHandler', () => {
   const ABI_CODER = new ethers.utils.AbiCoder();
+  const ZRX = constants.NOT_ZERO_ADDRESS;
   let swapper: SignerWithAddress, hub: SignerWithAddress;
   let DCAHub: FakeContract<IDCAHub>;
   let DCAHubCompanionSwapHandler: DCAHubCompanionSwapHandlerMock;
@@ -42,7 +44,7 @@ contract('DCAHubCompanionSwapHandler', () => {
     );
     wToken = await addExtra(await wTokenFactory.deploy('WETH', 'WETH', 18));
     DCAHub = await smock.fake('IDCAHub');
-    DCAHubCompanionSwapHandler = await DCAHubCompanionSwapHandlerFactory.deploy(DCAHub.address, wToken.address);
+    DCAHubCompanionSwapHandler = await DCAHubCompanionSwapHandlerFactory.deploy(DCAHub.address, wToken.address, ZRX);
     const deploy = (decimals: number) => erc20.deploy({ name: 'A name', symbol: 'SYMB', decimals });
     const deployedTokens = await Promise.all([deploy(12), deploy(16)]);
     [tokenA, tokenB] = deployedTokens.sort((a, b) => a.address.localeCompare(b.address));
@@ -54,18 +56,26 @@ contract('DCAHubCompanionSwapHandler', () => {
     await snapshot.revert(snapshotId);
     DCAHub.swap.reset();
   });
-
-  describe('swapForCaller', () => {
-    when('deadline has expired', () => {
-      const NOW = moment().unix();
-      then('reverts with message', async () => {
-        await behaviours.txShouldRevertWithMessage({
-          contract: DCAHubCompanionSwapHandler,
-          func: 'swapForCaller',
-          args: [tokens, INDEXES, [], [], NOW - 1],
-          message: 'Transaction too old',
+  describe('constructor', () => {
+    when('ZRX is zero address', () => {
+      then('deployment is reverted with reason', async () => {
+        await behaviours.deployShouldRevertWithMessage({
+          contract: DCAHubCompanionSwapHandlerFactory,
+          args: [constants.NOT_ZERO_ADDRESS, constants.NOT_ZERO_ADDRESS, constants.ZERO_ADDRESS],
+          message: 'ZeroAddress',
         });
       });
+    });
+    when('contract is initiated', () => {
+      then('ZRX is set correctly', async () => {
+        expect(await DCAHubCompanionSwapHandler.ZRX()).to.equal(ZRX);
+      });
+    });
+  });
+  describe('swapForCaller', () => {
+    whenDeadlineHasExpiredThenTxReverts({
+      func: 'swapForCaller',
+      args: () => [tokens, INDEXES, [], [], moment().unix() - 1],
     });
     when('hub returns less than minimum output', () => {
       const MIN_OUTPUT = 200000;
@@ -133,16 +143,9 @@ contract('DCAHubCompanionSwapHandler', () => {
       given(async () => {
         await DCAHubCompanionSwapHandler.connect(swapper).swapForCaller(tokens, INDEXES, [], [], constants.MAX_UINT_256);
       });
-      then('hub is called with the correct parameters', () => {
-        expect(DCAHub.swap).to.have.been.calledOnce;
-        const [tokens, indexes, rewardRecipient, callbackHandler, borrow, data] = DCAHub.swap.getCall(0).args;
-        expect(tokens).to.eql(tokens);
-        expect((indexes as any)[0]).to.eql([0, 1]);
-        expect(rewardRecipient).to.equal(swapper.address);
-        expect(callbackHandler).to.equal(DCAHubCompanionSwapHandler.address);
-        expect(borrow).to.eql([constants.ZERO, constants.ZERO]);
-        const expectedData = ABI_CODER.encode(['tuple(uint256, bytes)'], [[1, ABI_CODER.encode(['address', 'uint256'], [swapper.address, 0])]]);
-        expect(data).to.equal(expectedData);
+      thenHubWasCalledWith({
+        rewardRecipient: () => swapper,
+        data: () => encode({ plan: 'swap for caller', bytes: { caller: swapper, msgValue: 0 } }),
       });
     });
     when('swap is executed with some value', () => {
@@ -150,19 +153,47 @@ contract('DCAHubCompanionSwapHandler', () => {
       given(async () => {
         await DCAHubCompanionSwapHandler.connect(swapper).swapForCaller(tokens, INDEXES, [], [], constants.MAX_UINT_256, { value: SENT_VALUE });
       });
-      then('hub is called with the correct parameters', () => {
-        expect(DCAHub.swap).to.have.been.calledOnce;
-        const [tokens, indexes, rewardRecipient, callbackHandler, borrow, data] = DCAHub.swap.getCall(0).args;
-        expect(tokens).to.eql(tokens);
-        expect((indexes as any)[0]).to.eql([0, 1]);
-        expect(rewardRecipient).to.equal(swapper.address);
-        expect(callbackHandler).to.equal(DCAHubCompanionSwapHandler.address);
-        expect(borrow).to.eql([constants.ZERO, constants.ZERO]);
-        const expectedData = ABI_CODER.encode(
-          ['tuple(uint256, bytes)'],
-          [[1, ABI_CODER.encode(['address', 'uint256'], [swapper.address, SENT_VALUE])]]
+      thenHubWasCalledWith({
+        rewardRecipient: () => swapper,
+        data: () => encode({ plan: 'swap for caller', bytes: { caller: swapper, msgValue: SENT_VALUE } }),
+      });
+    });
+  });
+  describe('swapWith0x', () => {
+    const BYTES = ethers.utils.randomBytes(10);
+    whenDeadlineHasExpiredThenTxReverts({
+      func: 'swapWith0x',
+      args: () => [tokens, INDEXES, [], constants.NOT_ZERO_ADDRESS, moment().unix() - 1],
+    });
+    when('swap is executed', () => {
+      given(async () => {
+        await DCAHubCompanionSwapHandler.connect(swapper).swapWith0x(tokens, INDEXES, [BYTES], swapper.address, constants.MAX_UINT_256);
+      });
+      thenHubWasCalledWith({
+        rewardRecipient: () => DCAHubCompanionSwapHandler,
+        data: () => encode({ plan: '0x', bytes: { leftoverRecipient: swapper, callsTo0x: [BYTES], sendToProvideLeftoverToHub: false } }),
+      });
+    });
+  });
+  describe('swapWith0xAndShareLeftoverWithHub', () => {
+    const BYTES = ethers.utils.randomBytes(10);
+    whenDeadlineHasExpiredThenTxReverts({
+      func: 'swapWith0xAndShareLeftoverWithHub',
+      args: () => [tokens, INDEXES, [], constants.NOT_ZERO_ADDRESS, moment().unix() - 1],
+    });
+    when('swap is executed', () => {
+      given(async () => {
+        await DCAHubCompanionSwapHandler.connect(swapper).swapWith0xAndShareLeftoverWithHub(
+          tokens,
+          INDEXES,
+          [BYTES],
+          swapper.address,
+          constants.MAX_UINT_256
         );
-        expect(data).to.equal(expectedData);
+      });
+      thenHubWasCalledWith({
+        rewardRecipient: () => DCAHubCompanionSwapHandler,
+        data: () => encode({ plan: '0x', bytes: { leftoverRecipient: swapper, callsTo0x: [BYTES], sendToProvideLeftoverToHub: true } }),
       });
     });
   });
@@ -176,7 +207,7 @@ contract('DCAHubCompanionSwapHandler', () => {
         { token: wToken.address, toProvide: wToken.asUnits(AMOUNT_TO_PROVIDE_OF_WTOKEN), reward: 0, platformFee: 0 },
         { token: tokenA.address, toProvide: tokenA.asUnits(100), reward: 0, platformFee: 0 },
       ];
-      DCAHubCompanionSwapHandler = await DCAHubCompanionSwapHandlerFactory.deploy(hub.address, wToken.address);
+      DCAHubCompanionSwapHandler = await DCAHubCompanionSwapHandlerFactory.deploy(hub.address, wToken.address, ZRX);
     });
     when('caller is not the hub', () => {
       then('reverts with message', async () => {
@@ -222,15 +253,13 @@ contract('DCAHubCompanionSwapHandler', () => {
       });
     });
     describe('handleSwapForCaller', () => {
+      const swapDataWithValue = (msgValue: BigNumberish) => encode({ plan: 'swap for caller', bytes: { caller: swapper, msgValue: msgValue } });
       when('swap for caller plan is executed without less of protocol token than required', () => {
         let tx: Promise<TransactionResponse>;
         given(async () => {
           const sentProtocolToken = wToken.asUnits(AMOUNT_TO_PROVIDE_OF_WTOKEN).sub(1);
           await ethers.provider.send('hardhat_setBalance', [DCAHubCompanionSwapHandler.address, ethers.utils.hexValue(sentProtocolToken)]);
-          const swapData = ABI_CODER.encode(
-            ['tuple(uint256, bytes)'],
-            [[1, ABI_CODER.encode(['address', 'uint256'], [swapper.address, sentProtocolToken])]]
-          );
+          const swapData = swapDataWithValue(sentProtocolToken);
           await mintAndApproveTokens();
           tx = DCAHubCompanionSwapHandler.connect(hub).DCAHubSwapCall(DCAHubCompanionSwapHandler.address, tokensInSwap, [], swapData);
         });
@@ -260,10 +289,7 @@ contract('DCAHubCompanionSwapHandler', () => {
           let sentProtocolTokenAsUnits: BigNumber;
           given(async () => {
             sentProtocolTokenAsUnits = wToken.asUnits(sentProtocolToken);
-            const swapData = ABI_CODER.encode(
-              ['tuple(uint256, bytes)'],
-              [[1, ABI_CODER.encode(['address', 'uint256'], [swapper.address, sentProtocolTokenAsUnits])]]
-            );
+            const swapData = swapDataWithValue(sentProtocolTokenAsUnits);
             await ethers.provider.send('hardhat_setBalance', [
               DCAHubCompanionSwapHandler.address,
               ethers.utils.hexValue(sentProtocolTokenAsUnits),
@@ -310,5 +336,61 @@ contract('DCAHubCompanionSwapHandler', () => {
         return wToken;
     }
     throw new Error('Unknown address');
+  }
+  function whenDeadlineHasExpiredThenTxReverts({ func, args }: { func: keyof DCAHubCompanionSwapHandlerMock['functions']; args: () => any[] }) {
+    when('deadline has expired', () => {
+      then('reverts with message', async () => {
+        await behaviours.txShouldRevertWithMessage({
+          contract: DCAHubCompanionSwapHandler,
+          func,
+          args: args(),
+          message: 'Transaction too old',
+        });
+      });
+    });
+  }
+  function thenHubWasCalledWith({
+    data: expectedData,
+    rewardRecipient: expectedRewardRecipient,
+  }: {
+    rewardRecipient: () => { address: string };
+    data: () => BytesLike;
+  }) {
+    then('hub was called with the correct parameters', () => {
+      expect(DCAHub.swap).to.have.been.calledOnce;
+      const [tokens, indexes, rewardRecipient, callbackHandler, borrow, data] = DCAHub.swap.getCall(0).args;
+      expect(tokens).to.eql(tokens);
+      expect((indexes as any)[0]).to.eql([0, 1]);
+      expect(rewardRecipient).to.equal(expectedRewardRecipient().address);
+      expect(callbackHandler).to.equal(DCAHubCompanionSwapHandler.address);
+      expect(borrow).to.eql([constants.ZERO, constants.ZERO]);
+      expect(data).to.equal(expectedData());
+    });
+  }
+  type SwapForCallerData = { caller: { address: string }; msgValue: BigNumberish };
+  type SwapWith0x = { leftoverRecipient: { address: string }; callsTo0x: BytesLike[]; sendToProvideLeftoverToHub: boolean };
+  function encode({ plan, bytes }: { plan: 'none' | 'invalid' | 'swap for caller' | '0x'; bytes: 'random' | SwapForCallerData | SwapWith0x }) {
+    let swapPlan: number = 0;
+    let swapData: BytesLike;
+    if (plan === 'none') {
+      swapPlan = 0;
+    } else if (plan === 'swap for caller') {
+      swapPlan = 1;
+    } else if (plan === '0x') {
+      swapPlan = 2;
+    } else if (plan === 'invalid') {
+      swapPlan = 10;
+    }
+    if (bytes == 'random') {
+      swapData = ethers.utils.randomBytes(10);
+    } else if ('caller' in bytes) {
+      swapData = ABI_CODER.encode(['tuple(address, uint256)'], [[bytes.caller.address, bytes.msgValue]]);
+    } else {
+      swapData = ABI_CODER.encode(
+        ['tuple(address, bytes[], bool)'],
+        [[bytes.leftoverRecipient.address, bytes.callsTo0x, bytes.sendToProvideLeftoverToHub]]
+      );
+    }
+    return ABI_CODER.encode(['tuple(uint256, bytes)'], [[swapPlan, swapData]]);
   }
 });
