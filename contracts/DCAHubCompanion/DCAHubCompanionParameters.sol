@@ -6,6 +6,7 @@ import '../interfaces/IDCAHubCompanion.sol';
 abstract contract DCAHubCompanionParameters is IDCAHubCompanionParameters {
   IDCAHub public immutable hub;
   IWrappedProtocolToken public immutable wToken;
+  address public constant PROTOCOL_TOKEN = 0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE;
 
   constructor(IDCAHub _hub, IWrappedProtocolToken _wToken) {
     if (address(_hub) == address(0) || address(_wToken) == address(0)) revert IDCAHubCompanion.ZeroAddress();
