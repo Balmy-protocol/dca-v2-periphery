@@ -128,20 +128,18 @@ abstract contract DCAHubCompanionSwapHandler is DeadlineValidation, DCAHubCompan
 
   function _handleSwapWith0xCallback(IDCAHub.TokenInSwap[] calldata _tokens, bytes memory _data) internal {
     CallbackData0x memory _callbackData = abi.decode(_data, (CallbackData0x));
-    address _hub = address(hub);
-    address _zrx = ZRX;
 
     // Approve ZRX
     for (uint256 i; i < _tokens.length; i++) {
       IDCAHub.TokenInSwap memory _tokenInSwap = _tokens[i];
       if (_tokenInSwap.toProvide > 0) {
-        IERC20(_tokenInSwap.token).approve(_zrx, _tokenInSwap.toProvide);
+        IERC20(_tokenInSwap.token).approve(ZRX, _tokenInSwap.toProvide);
       }
     }
 
     // Execute swaps
     for (uint256 i; i < _callbackData.callsTo0x.length; i++) {
-      _call0x(_zrx, _callbackData.callsTo0x[i]);
+      _call0x(ZRX, _callbackData.callsTo0x[i]);
     }
 
     // Send remaining tokens to either hub, or leftover recipient
@@ -154,10 +152,10 @@ abstract contract DCAHubCompanionSwapHandler is DeadlineValidation, DCAHubCompan
           // If the hub expects some tokens in return, check if we want to send the whole balance or just the necessary amount
           if (_callbackData.sendToProvideLeftoverToHub || _balance == _toProvide) {
             // Send everything
-            _erc20.safeTransfer(_hub, _balance);
+            _erc20.safeTransfer(address(hub), _balance);
           } else {
             // Send necessary to hub, and the rest to the leftover recipient
-            _erc20.safeTransfer(_hub, _toProvide);
+            _erc20.safeTransfer(address(hub), _toProvide);
             _erc20.safeTransfer(_callbackData.leftoverRecipient, _balance - _toProvide);
           }
         } else {
@@ -181,7 +179,6 @@ abstract contract DCAHubCompanionSwapHandler is DeadlineValidation, DCAHubCompan
 
   function _handleSwapForCallerCallback(IDCAHub.TokenInSwap[] calldata _tokens, bytes memory _data) internal {
     CallbackDataCaller memory _callbackData = abi.decode(_data, (CallbackDataCaller));
-    address _hub = address(hub);
     for (uint256 i; i < _tokens.length; i++) {
       IDCAHub.TokenInSwap memory _token = _tokens[i];
       if (_token.toProvide > 0) {
@@ -194,7 +191,7 @@ abstract contract DCAHubCompanionSwapHandler is DeadlineValidation, DCAHubCompan
             payable(_callbackData.caller).transfer(_callbackData.msgValue - _token.toProvide);
           }
         }
-        IERC20(_token.token).safeTransferFrom(_callbackData.caller, _hub, _token.toProvide);
+        IERC20(_token.token).safeTransferFrom(_callbackData.caller, address(hub), _token.toProvide);
       }
     }
   }
