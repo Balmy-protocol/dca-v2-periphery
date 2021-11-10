@@ -4,16 +4,11 @@ pragma solidity >=0.8.7 <0.9.0;
 import '@mean-finance/dca-v2-core/contracts/interfaces/IDCAHub.sol';
 import '@mean-finance/dca-v2-core/contracts/libraries/TokenSorting.sol';
 import '@mean-finance/dca-v2-core/contracts/libraries/Intervals.sol';
+import '../interfaces/ISharedTypes.sol';
 
 /// @title Seconds Until Next Swap Library
 /// @notice Provides functions to calculate how long users have to wait until a pair's next swap is available
 library SecondsUntilNextSwap {
-  /// @notice A pair of tokens
-  struct Pair {
-    address tokenA;
-    address tokenB;
-  }
-
   /// @notice Returns how many seconds left until the next swap is available for a specific pair
   /// @dev _tokenA and _tokenB may be passed in either tokenA/tokenB or tokenB/tokenA order
   /// @param _hub The address of the DCA Hub

@@ -7,6 +7,7 @@ import '@mean-finance/dca-v2-core/contracts/interfaces/IDCAHubSwapCallee.sol';
 import './IWrappedProtocolToken.sol';
 import './utils/ICollectableDust.sol';
 import './utils/IGovernable.sol';
+import './ISharedTypes.sol';
 
 interface IDCAHubCompanionParameters {
   /// @notice Returns the DCA Hub's address
@@ -180,11 +181,26 @@ interface IDCAHubCompanionWTokenPositionHandler {
 
 interface IDCAHubCompanionDustHandler is ICollectableDust, IGovernable {}
 
+interface IDCAHubCompanionLibrariesHandler {
+  /// @notice Takes a list of pairs and returns how it would look like to execute a swap for all of them
+  /// @dev Please note that this function is very expensive. Ideally, it would be used for off-chain purposes
+  /// @param _pairs The pairs to be involved in the swap
+  /// @return How executing a swap for all the given pairs would look like
+  function getNextSwapInfo(Pair[] calldata _pairs) external view returns (IDCAHub.SwapInfo memory);
+
+  /// @notice Returns how many seconds left until the next swap is available for a list of pairs
+  /// @dev Tokens in pairs may be passed in either tokenA/tokenB or tokenB/tokenA order
+  /// @param _pairs Pairs to check
+  /// @return The amount of seconds until next swap for each of the pairs
+  function secondsUntilNextSwap(Pair[] calldata _pairs) external view returns (uint256[] memory);
+}
+
 interface IDCAHubCompanion is
   IDCAHubCompanionParameters,
   IDCAHubCompanionSwapHandler,
   IDCAHubCompanionWTokenPositionHandler,
-  IDCAHubCompanionDustHandler
+  IDCAHubCompanionDustHandler,
+  IDCAHubCompanionLibrariesHandler
 {
   /// @notice Thrown when one of the parameters is a zero address
   error ZeroAddress();
