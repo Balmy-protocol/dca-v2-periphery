@@ -24,13 +24,14 @@ abstract contract DCAHubCompanionSwapHandler is DeadlineValidation, DCAHubCompan
     IDCAHub.PairIndexes[] calldata _pairsToSwap,
     uint256[] calldata _minimumOutput,
     uint256[] calldata _maximumInput,
+    address _recipient,
     uint256 _deadline
   ) external payable checkDeadline(_deadline) returns (IDCAHub.SwapInfo memory _swapInfo) {
     uint256[] memory _borrow = new uint256[](_tokens.length);
     _swapInfo = hub.swap(
       _tokens,
       _pairsToSwap,
-      msg.sender,
+      _recipient,
       address(this),
       _borrow,
       abi.encode(SwapData({plan: SwapPlan.SWAP_FOR_CALLER, data: abi.encode(CallbackDataCaller({caller: msg.sender, msgValue: msg.value}))}))
