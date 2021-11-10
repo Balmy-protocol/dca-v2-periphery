@@ -57,6 +57,7 @@ abstract contract DCAHubCompanionSwapHandler is DeadlineValidation, DCAHubCompan
     }
   }
 
+  // TODO: Add to interface
   function swapWith0x(
     address[] calldata _tokens,
     IDCAHub.PairIndexes[] calldata _pairsToSwap,
@@ -67,6 +68,7 @@ abstract contract DCAHubCompanionSwapHandler is DeadlineValidation, DCAHubCompan
     return _swapWith0x(_tokens, _pairsToSwap, _callsTo0x, _leftoverRecipient, false, _deadline);
   }
 
+  // TODO: Add to interface
   function swapWith0xAndShareLeftoverWithHub(
     address[] calldata _tokens,
     IDCAHub.PairIndexes[] calldata _pairsToSwap,
@@ -170,6 +172,7 @@ abstract contract DCAHubCompanionSwapHandler is DeadlineValidation, DCAHubCompan
   function _call0x(address _zrx, bytes memory _data) internal virtual {
     // solhint-disable-next-line avoid-low-level-calls
     (bool success, ) = _zrx.call{value: 0}(_data);
+    // TODO: Throw error instead of require
     require(success, 'Swapper: ZRX trade reverted');
   }
 
