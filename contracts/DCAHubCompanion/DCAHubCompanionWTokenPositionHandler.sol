@@ -10,9 +10,6 @@ abstract contract DCAHubCompanionWTokenPositionHandler is DCAHubCompanionParamet
 
   IDCAPermissionManager public immutable permissionManager;
 
-  // solhint-disable-next-line private-vars-leading-underscore
-  address private constant PROTOCOL_TOKEN = 0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE;
-
   constructor() {
     permissionManager = hub.permissionManager();
     approveWTokenForHub();
