@@ -24,16 +24,17 @@ abstract contract DCAHubCompanionSwapHandler is DeadlineValidation, DCAHubCompan
     IDCAHub.PairIndexes[] calldata _pairsToSwap,
     uint256[] calldata _minimumOutput,
     uint256[] calldata _maximumInput,
+    address _recipient,
     uint256 _deadline
   ) external payable checkDeadline(_deadline) returns (IDCAHub.SwapInfo memory _swapInfo) {
     uint256[] memory _borrow = new uint256[](_tokens.length);
     _swapInfo = hub.swap(
       _tokens,
       _pairsToSwap,
-      msg.sender,
+      _recipient,
       address(this),
       _borrow,
-      abi.encode(SwapData({plan: SwapPlan.SWAP_FOR_CALLER, data: abi.encode(msg.sender, msg.value)}))
+      abi.encode(SwapData({plan: SwapPlan.SWAP_FOR_CALLER, data: abi.encode(CallbackDataCaller({caller: msg.sender, msgValue: msg.value}))}))
     );
 
     for (uint256 i; i < _swapInfo.tokens.length; i++) {
@@ -64,21 +65,27 @@ abstract contract DCAHubCompanionSwapHandler is DeadlineValidation, DCAHubCompan
     }
   }
 
+  struct CallbackDataCaller {
+    address caller;
+    uint256 msgValue;
+  }
+
   function _handleSwapForCallerCallback(IDCAHub.TokenInSwap[] calldata _tokens, bytes memory _data) internal {
-    (address _caller, uint256 _msgValue) = abi.decode(_data, (address, uint256));
+    CallbackDataCaller memory _callbackData = abi.decode(_data, (CallbackDataCaller));
+    address _hub = address(hub);
     for (uint256 i; i < _tokens.length; i++) {
       IDCAHub.TokenInSwap memory _token = _tokens[i];
       if (_token.toProvide > 0) {
-        if (_token.token == address(wToken) && _msgValue != 0) {
+        if (_token.token == address(wToken) && _callbackData.msgValue != 0) {
           // Wrap necessary
           wToken.deposit{value: _token.toProvide}();
 
           // Return any extra tokens to the original caller
-          if (_msgValue > _token.toProvide) {
-            payable(_caller).transfer(_msgValue - _token.toProvide);
+          if (_callbackData.msgValue > _token.toProvide) {
+            payable(_callbackData.caller).transfer(_callbackData.msgValue - _token.toProvide);
           }
         }
-        IERC20(_token.token).safeTransferFrom(_caller, address(hub), _token.toProvide);
+        IERC20(_token.token).safeTransferFrom(_callbackData.caller, _hub, _token.toProvide);
       }
     }
   }

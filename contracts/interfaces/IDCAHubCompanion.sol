@@ -51,6 +51,7 @@ interface IDCAHubCompanionSwapHandler is IDCAHubSwapCallee {
   /// @param _pairsToSwap The pairs to swap
   /// @param _minimumOutput The minimum amount of tokens to receive as part of the swap
   /// @param _maximumInput The maximum amount of tokens to provide as part of the swap
+  /// @param _recipient Address that will recieve all the tokens from the swap
   /// @param _deadline Deadline when the swap becomes invalid
   /// @return The information about the executed swap
   function swapForCaller(
@@ -58,6 +59,7 @@ interface IDCAHubCompanionSwapHandler is IDCAHubSwapCallee {
     IDCAHub.PairIndexes[] calldata _pairsToSwap,
     uint256[] calldata _minimumOutput,
     uint256[] calldata _maximumInput,
+    address _recipient,
     uint256 _deadline
   ) external payable returns (IDCAHub.SwapInfo memory);
 }
