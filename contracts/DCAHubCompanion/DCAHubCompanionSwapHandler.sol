@@ -57,7 +57,6 @@ abstract contract DCAHubCompanionSwapHandler is DeadlineValidation, DCAHubCompan
     }
   }
 
-  // TODO: Add to interface
   function swapWith0x(
     address[] calldata _tokens,
     IDCAHub.PairIndexes[] calldata _pairsToSwap,
@@ -68,7 +67,6 @@ abstract contract DCAHubCompanionSwapHandler is DeadlineValidation, DCAHubCompan
     return _swapWith0x(_tokens, _pairsToSwap, _callsTo0x, _leftoverRecipient, false, _deadline);
   }
 
-  // TODO: Add to interface
   function swapWith0xAndShareLeftoverWithHub(
     address[] calldata _tokens,
     IDCAHub.PairIndexes[] calldata _pairsToSwap,
@@ -124,7 +122,7 @@ abstract contract DCAHubCompanionSwapHandler is DeadlineValidation, DCAHubCompan
   struct CallbackData0x {
     address leftoverRecipient;
     bytes[] callsTo0x;
-    // This flag is just a way to make transactions cheapers. If Mean Finance is executing the swap, then it's the same for us
+    // This flag is just a way to make transactions cheaper. If Mean Finance is executing the swap, then it's the same for us
     // if the leftover tokens go to the hub, or to another address. But, it's cheaper in terms of gas to send them to the hub
     bool sendToProvideLeftoverToHub;
   }
@@ -148,9 +146,9 @@ abstract contract DCAHubCompanionSwapHandler is DeadlineValidation, DCAHubCompan
     // Send remaining tokens to either hub, or leftover recipient
     for (uint256 i; i < _tokens.length; i++) {
       IERC20 _erc20 = IERC20(_tokens[i].token);
-      uint256 _toProvide = _tokens[i].toProvide;
       uint256 _balance = _erc20.balanceOf(address(this));
       if (_balance > 0) {
+        uint256 _toProvide = _tokens[i].toProvide;
         if (_toProvide > 0) {
           // If the hub expects some tokens in return, check if we want to send the whole balance or just the necessary amount
           if (_callbackData.sendToProvideLeftoverToHub || _balance == _toProvide) {
@@ -162,7 +160,7 @@ abstract contract DCAHubCompanionSwapHandler is DeadlineValidation, DCAHubCompan
             _erc20.safeTransfer(_callbackData.leftoverRecipient, _balance - _toProvide);
           }
         } else {
-          // Since the hub doesn't expect any amount of this token, send everything to the left over recipient
+          // Since the hub doesn't expect any amount of this token, send everything to the leftover recipient
           _erc20.safeTransfer(_callbackData.leftoverRecipient, _balance);
         }
       }
@@ -172,8 +170,7 @@ abstract contract DCAHubCompanionSwapHandler is DeadlineValidation, DCAHubCompan
   function _call0x(address _zrx, bytes memory _data) internal virtual {
     // solhint-disable-next-line avoid-low-level-calls
     (bool success, ) = _zrx.call{value: 0}(_data);
-    // TODO: Throw error instead of require
-    require(success, 'Swapper: ZRX trade reverted');
+    if (!success) revert ZRXFailed();
   }
 
   struct CallbackDataCaller {

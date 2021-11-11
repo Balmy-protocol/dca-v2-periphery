@@ -257,7 +257,7 @@ contract('DCAHubCompanionSwapHandler', () => {
       });
     });
     describe('handleSwapForCaller', () => {
-      const swapDataWithValue = (msgValue: BigNumberish) => encode({ plan: 'swap for caller', bytes: { caller: swapper, msgValue: msgValue } });
+      const swapDataWithValue = (msgValue: BigNumberish) => encode({ plan: 'swap for caller', bytes: { caller: swapper, msgValue } });
       when('swap for caller plan is executed without less of protocol token than required', () => {
         let tx: Promise<TransactionResponse>;
         given(async () => {
