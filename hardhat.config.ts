@@ -74,16 +74,7 @@ const config: HardhatUserConfig = {
   solidity: {
     compilers: [
       {
-        version: '0.8.8',
-        settings: {
-          optimizer: {
-            enabled: true,
-            runs: 200,
-          },
-        },
-      },
-      {
-        version: '0.7.6',
+        version: '0.8.10',
         settings: {
           optimizer: {
             enabled: true,
@@ -92,17 +83,6 @@ const config: HardhatUserConfig = {
         },
       },
     ],
-    overrides: {
-      '@uniswap/v3-core/contracts/libraries/FullMath.sol': {
-        version: '0.7.6',
-      },
-      '@uniswap/v3-core/contracts/libraries/TickMath.sol': {
-        version: '0.7.6',
-      },
-      '@uniswap/v3-periphery/contracts/libraries/PoolAddress.sol': {
-        version: '0.7.6',
-      },
-    },
   },
   gasReporter: {
     currency: process.env.COINMARKETCAP_DEFAULT_CURRENCY || 'USD',
