@@ -18,6 +18,8 @@ contract DCAHubCompanion is
   constructor(
     IDCAHub _hub,
     IWrappedProtocolToken _wToken,
-    address _governor
-  ) DCAHubCompanionParameters(_hub, _wToken) DCAHubCompanionDustHandler(_governor) {}
+    address _governor,
+    // solhint-disable-next-line var-name-mixedcase
+    address _ZRX
+  ) DCAHubCompanionParameters(_hub, _wToken) DCAHubCompanionDustHandler(_governor) DCAHubCompanionSwapHandler(_ZRX) {}
 }

@@ -5,5 +5,16 @@ import '../../DCAHubCompanion/DCAHubCompanionSwapHandler.sol';
 import './DCAHubCompanionParameters.sol';
 
 contract DCAHubCompanionSwapHandlerMock is DCAHubCompanionSwapHandler, DCAHubCompanionParametersMock {
-  constructor(IDCAHub _hub, IWrappedProtocolToken _wToken) DCAHubCompanionParametersMock(_hub, _wToken) {}
+  bytes[] public zrxCalledWith;
+
+  constructor(
+    IDCAHub _hub,
+    IWrappedProtocolToken _wToken,
+    // solhint-disable-next-line var-name-mixedcase
+    address _ZRX
+  ) DCAHubCompanionParametersMock(_hub, _wToken) DCAHubCompanionSwapHandler(_ZRX) {}
+
+  function _call0x(address, bytes memory _data) internal override {
+    zrxCalledWith.push(_data);
+  }
 }

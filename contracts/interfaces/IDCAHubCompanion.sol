@@ -43,6 +43,9 @@ interface IDCAHubCompanionSwapHandler is IDCAHubSwapCallee {
   /// @notice Thrown when the callback is executed with an unexpected swap plan
   error UnexpectedSwapPlan();
 
+  /// @notice Thrown when a call to ZRX fails
+  error ZRXFailed();
+
   /// @notice Executes a swap for the caller, by sending them the reward, and taking from them the needed tokens
   /// @dev Will revert:
   /// With RewardNotEnough if the minimum output is not met
@@ -51,7 +54,7 @@ interface IDCAHubCompanionSwapHandler is IDCAHubSwapCallee {
   /// @param _pairsToSwap The pairs to swap
   /// @param _minimumOutput The minimum amount of tokens to receive as part of the swap
   /// @param _maximumInput The maximum amount of tokens to provide as part of the swap
-  /// @param _recipient Address that will recieve all the tokens from the swap
+  /// @param _recipient Address that will receive all the tokens from the swap
   /// @param _deadline Deadline when the swap becomes invalid
   /// @return The information about the executed swap
   function swapForCaller(
@@ -62,6 +65,37 @@ interface IDCAHubCompanionSwapHandler is IDCAHubSwapCallee {
     address _recipient,
     uint256 _deadline
   ) external payable returns (IDCAHub.SwapInfo memory);
+
+  /// @notice Executes a swap against 0x, and sends all unspent tokens to the given recipient
+  /// @param _tokens The tokens involved in the swap
+  /// @param _pairsToSwap The pairs to swap
+  /// @param _callsTo0x The bytes to send to 0x to execute swaps
+  /// @param _leftoverRecipient Address that will receive all unspent tokens
+  /// @param _deadline Deadline when the swap becomes invalid
+  /// @return The information about the executed swap
+  function swapWith0x(
+    address[] calldata _tokens,
+    IDCAHub.PairIndexes[] calldata _pairsToSwap,
+    bytes[] calldata _callsTo0x,
+    address _leftoverRecipient,
+    uint256 _deadline
+  ) external returns (IDCAHub.SwapInfo memory);
+
+  /// @notice Executes a swap against 0x and sends all `reward` unspent tokens to the given recipient.
+  /// All positive slippage for tokens that need to be returned to the hub is also sent to the hub
+  /// @param _tokens The tokens involved in the swap
+  /// @param _pairsToSwap The pairs to swap
+  /// @param _callsTo0x The bytes to send to 0x to execute swaps
+  /// @param _leftoverRecipient Address that will receive `reward` unspent tokens
+  /// @param _deadline Deadline when the swap becomes invalid
+  /// @return The information about the executed swap
+  function swapWith0xAndShareLeftoverWithHub(
+    address[] calldata _tokens,
+    IDCAHub.PairIndexes[] calldata _pairsToSwap,
+    bytes[] calldata _callsTo0x,
+    address _leftoverRecipient,
+    uint256 _deadline
+  ) external returns (IDCAHub.SwapInfo memory);
 }
 
 interface IDCAHubCompanionWTokenPositionHandler {
