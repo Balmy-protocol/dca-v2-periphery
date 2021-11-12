@@ -374,43 +374,43 @@ contract('DCAHubCompanionSwapHandler', () => {
 
       handleSwapWith0x({
         when: 'token has no balance',
+        then: 'no transfer is executed',
         balance: 0,
-        // then no transfer is executed
         assertion: (token) => expect(token.transfer).to.not.have.been.called,
       });
 
       handleSwapWith0x({
         when: 'token has balance but it does not need to be sent to the hub',
+        then: 'balance is sent entirely to the recipient',
         balance: 100,
         toProvide: 0,
-        // then it is sent entirely to the recipient
         assertion: (token, recipient) => expect(token.transfer).to.have.been.calledOnceWith(recipient, 100),
       });
 
       handleSwapWith0x({
         when: 'token needs to be sent to the hub, and there is no extra balance',
+        then: 'balance is sent entirely to the hub even if the flag is off',
         balance: 100,
         toProvide: 100,
         sendToHubFlag: false,
-        // then it is sent entirely to the hub even if the flag is off
         assertion: (token) => expect(token.transfer).to.have.been.calledOnceWith(hub.address, 100),
       });
 
       handleSwapWith0x({
         when: 'token needs to be sent to the hub, there is some extra balance and flag is on',
+        then: 'balance is sent entirely to the hub',
         balance: 150,
         toProvide: 100,
         sendToHubFlag: true,
-        // then it is sent entirely to the hub
         assertion: (token) => expect(token.transfer).to.have.been.calledOnceWith(hub.address, 150),
       });
 
       handleSwapWith0x({
         when: 'token needs to be sent to the hub, there is some extra balance and flag is off',
+        then: 'balance is split between hub and recipient',
         balance: 150,
         toProvide: 100,
         sendToHubFlag: false,
-        // then the balance is split
         assertion: (token, recipient) => {
           expect(token.transfer).to.have.been.calledTwice;
           expect(token.transfer).to.have.been.calledWith(hub.address, 100);
@@ -420,12 +420,14 @@ contract('DCAHubCompanionSwapHandler', () => {
 
       function handleSwapWith0x({
         when: title,
+        then: thenTitle,
         balance,
         toProvide,
         sendToHubFlag,
         assertion,
       }: {
         when: string;
+        then: string;
         balance: BigNumberish;
         toProvide?: BigNumberish;
         sendToHubFlag?: boolean;
@@ -438,7 +440,7 @@ contract('DCAHubCompanionSwapHandler', () => {
             const data = swapData({ callsTo0x: [], sendToHubFlag: sendToHubFlag ?? true });
             await DCAHubCompanionSwapHandler.connect(hub).DCAHubSwapCall(DCAHubCompanionSwapHandler.address, tokensInSwap, [], data);
           });
-          then('transfers are executed as expected', () => assertion(tokenA, swapper.address));
+          then(thenTitle, () => assertion(tokenA, swapper.address));
         });
       }
     });
