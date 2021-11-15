@@ -22,6 +22,7 @@ abstract contract DCAHubCompanionSwapHandler is DeadlineValidation, DCAHubCompan
 
   // solhint-disable-next-line var-name-mixedcase
   address public immutable ZRX;
+  mapping(address => bool) public isDexSupported;
 
   // solhint-disable-next-line var-name-mixedcase
   constructor(address _ZRX) {
@@ -117,6 +118,11 @@ abstract contract DCAHubCompanionSwapHandler is DeadlineValidation, DCAHubCompan
     } else {
       revert UnexpectedSwapPlan();
     }
+  }
+
+  function defineDexSupport(address _dex, bool _support) external onlyGovernor {
+    if (_dex == address(0)) revert IDCAHubCompanion.ZeroAddress();
+    isDexSupported[_dex] = _support;
   }
 
   struct CallbackData0x {

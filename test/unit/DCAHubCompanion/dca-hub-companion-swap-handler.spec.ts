@@ -24,7 +24,7 @@ chai.use(smock.matchers);
 contract('DCAHubCompanionSwapHandler', () => {
   const ABI_CODER = new ethers.utils.AbiCoder();
   const ZRX = constants.NOT_ZERO_ADDRESS;
-  let swapper: SignerWithAddress, hub: SignerWithAddress;
+  let swapper: SignerWithAddress, hub: SignerWithAddress, governor: SignerWithAddress;
   let DCAHub: FakeContract<IDCAHub>;
   let DCAHubCompanionSwapHandler: DCAHubCompanionSwapHandlerMock;
   let DCAHubCompanionSwapHandlerFactory: DCAHubCompanionSwapHandlerMock__factory;
@@ -36,7 +36,7 @@ contract('DCAHubCompanionSwapHandler', () => {
   let tokens: string[];
 
   before('Setup accounts and contracts', async () => {
-    [, swapper, hub] = await ethers.getSigners();
+    [, swapper, hub, governor] = await ethers.getSigners();
     DCAHubCompanionSwapHandlerFactory = await ethers.getContractFactory(
       'contracts/mocks/DCAHubCompanion/DCAHubCompanionSwapHandler.sol:DCAHubCompanionSwapHandlerMock'
     );
@@ -45,7 +45,7 @@ contract('DCAHubCompanionSwapHandler', () => {
     );
     wToken = await addExtra(await wTokenFactory.deploy('WETH', 'WETH', 18));
     DCAHub = await smock.fake('IDCAHub');
-    DCAHubCompanionSwapHandler = await DCAHubCompanionSwapHandlerFactory.deploy(DCAHub.address, wToken.address, ZRX);
+    DCAHubCompanionSwapHandler = await DCAHubCompanionSwapHandlerFactory.deploy(DCAHub.address, wToken.address, ZRX, governor.address);
     const deploy = (decimals: number) => erc20.deploy({ name: 'A name', symbol: 'SYMB', decimals });
     const deployedTokens = await Promise.all([deploy(12), deploy(16)]);
     [tokenA, tokenB] = deployedTokens.sort((a, b) => a.address.localeCompare(b.address));
@@ -62,7 +62,7 @@ contract('DCAHubCompanionSwapHandler', () => {
       then('deployment is reverted with reason', async () => {
         await behaviours.deployShouldRevertWithMessage({
           contract: DCAHubCompanionSwapHandlerFactory,
-          args: [constants.NOT_ZERO_ADDRESS, constants.NOT_ZERO_ADDRESS, constants.ZERO_ADDRESS],
+          args: [constants.NOT_ZERO_ADDRESS, constants.NOT_ZERO_ADDRESS, constants.ZERO_ADDRESS, constants.NOT_ZERO_ADDRESS],
           message: 'ZeroAddress',
         });
       });
@@ -71,6 +71,44 @@ contract('DCAHubCompanionSwapHandler', () => {
       then('ZRX is set correctly', async () => {
         expect(await DCAHubCompanionSwapHandler.ZRX()).to.equal(ZRX);
       });
+      then('ZRX is not initially suppored', async () => {
+        expect(await DCAHubCompanionSwapHandler.isDexSupported(ZRX)).to.be.false;
+      });
+    });
+  });
+  describe('defineDexSupport', () => {
+    const DEX = wallet.generateRandomAddress();
+    when('called with zero address', () => {
+      then('reverts with message', async () => {
+        await behaviours.txShouldRevertWithMessage({
+          contract: DCAHubCompanionSwapHandler.connect(governor),
+          func: 'defineDexSupport',
+          args: [constants.ZERO_ADDRESS, true],
+          message: 'ZeroAddress',
+        });
+      });
+    });
+    when('support is added', () => {
+      given(async () => await DCAHubCompanionSwapHandler.connect(governor).defineDexSupport(DEX, true));
+      then('it is reflected correctly', async () => {
+        expect(await DCAHubCompanionSwapHandler.isDexSupported(DEX)).to.be.true;
+      });
+    });
+    when('support is removed', () => {
+      given(async () => {
+        const contractWithGovernor = DCAHubCompanionSwapHandler.connect(governor);
+        await contractWithGovernor.defineDexSupport(DEX, true);
+        await contractWithGovernor.defineDexSupport(DEX, false);
+      });
+      then('it is reflected correctly', async () => {
+        expect(await DCAHubCompanionSwapHandler.isDexSupported(DEX)).to.be.false;
+      });
+    });
+    behaviours.shouldBeExecutableOnlyByGovernor({
+      contract: () => DCAHubCompanionSwapHandler,
+      funcAndSignature: 'defineDexSupport',
+      params: () => [DEX, true],
+      governor: () => governor,
     });
   });
   describe('swapForCaller', () => {
@@ -211,7 +249,7 @@ contract('DCAHubCompanionSwapHandler', () => {
         { token: wToken.address, toProvide: wToken.asUnits(AMOUNT_TO_PROVIDE_OF_WTOKEN), reward: 0, platformFee: 0 },
         { token: tokenA.address, toProvide: tokenA.asUnits(100), reward: 0, platformFee: 0 },
       ];
-      DCAHubCompanionSwapHandler = await DCAHubCompanionSwapHandlerFactory.deploy(hub.address, wToken.address, ZRX);
+      DCAHubCompanionSwapHandler = await DCAHubCompanionSwapHandlerFactory.deploy(hub.address, wToken.address, ZRX, governor.address);
     });
     when('caller is not the hub', () => {
       then('reverts with message', async () => {

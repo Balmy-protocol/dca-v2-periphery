@@ -11,8 +11,9 @@ contract DCAHubCompanionSwapHandlerMock is DCAHubCompanionSwapHandler, DCAHubCom
     IDCAHub _hub,
     IWrappedProtocolToken _wToken,
     // solhint-disable-next-line var-name-mixedcase
-    address _ZRX
-  ) DCAHubCompanionParametersMock(_hub, _wToken) DCAHubCompanionSwapHandler(_ZRX) {}
+    address _ZRX,
+    address _governor
+  ) DCAHubCompanionParametersMock(_hub, _wToken, _governor) DCAHubCompanionSwapHandler(_ZRX) {}
 
   function _call0x(address, bytes memory _data) internal override {
     zrxCalledWith.push(_data);

@@ -21,5 +21,5 @@ contract DCAHubCompanion is
     address _governor,
     // solhint-disable-next-line var-name-mixedcase
     address _ZRX
-  ) DCAHubCompanionParameters(_hub, _wToken) DCAHubCompanionDustHandler(_governor) DCAHubCompanionSwapHandler(_ZRX) {}
+  ) DCAHubCompanionParameters(_hub, _wToken, _governor) DCAHubCompanionSwapHandler(_ZRX) {}
 }

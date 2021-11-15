@@ -9,7 +9,7 @@ import './utils/ICollectableDust.sol';
 import './utils/IGovernable.sol';
 import './ISharedTypes.sol';
 
-interface IDCAHubCompanionParameters {
+interface IDCAHubCompanionParameters is IGovernable {
   /// @notice Returns the DCA Hub's address
   /// @dev This value cannot be modified
   /// @return The DCA Hub contract
@@ -213,7 +213,7 @@ interface IDCAHubCompanionWTokenPositionHandler {
   function approveWTokenForHub() external;
 }
 
-interface IDCAHubCompanionDustHandler is ICollectableDust, IGovernable {}
+interface IDCAHubCompanionDustHandler is ICollectableDust {}
 
 interface IDCAHubCompanionLibrariesHandler {
   /// @notice Takes a list of pairs and returns how it would look like to execute a swap for all of them

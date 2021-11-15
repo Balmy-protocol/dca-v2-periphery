@@ -1,6 +1,6 @@
 import chai, { expect } from 'chai';
 import { ethers } from 'hardhat';
-import { constants, wallet } from '@test-utils';
+import { behaviours, constants, wallet } from '@test-utils';
 import { contract, given, then, when } from '@test-utils/bdd';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signers';
 import { snapshot } from '@test-utils/evm';
@@ -33,24 +33,11 @@ contract('DCAHubCompanionDustHandler', () => {
   });
 
   describe('sendDust', () => {
-    when('not called from governor', () => {
-      let onlyGovernorAllowedTx: Promise<TransactionResponse>;
-      given(async () => {
-        const notGovernor = await wallet.generateRandom();
-        onlyGovernorAllowedTx = DCAHubCompanionDustHandler.connect(notGovernor).sendDust(constants.NOT_ZERO_ADDRESS, token.address, 2000);
-      });
-      then('tx is reverted with reason', async () => {
-        await expect(onlyGovernorAllowedTx).to.be.revertedWith('Governable: only governor');
-      });
-    });
-    when('called from governor', () => {
-      let onlyGovernorAllowedTx: Promise<TransactionResponse>;
-      given(async () => {
-        onlyGovernorAllowedTx = DCAHubCompanionDustHandler.connect(governor).sendDust(constants.NOT_ZERO_ADDRESS, token.address, 2000);
-      });
-      then('tx is not reverted or not reverted with reason only governor', async () => {
-        await expect(onlyGovernorAllowedTx).to.not.be.reverted;
-      });
+    behaviours.shouldBeExecutableOnlyByGovernor({
+      contract: () => DCAHubCompanionDustHandler,
+      funcAndSignature: 'sendDust',
+      params: () => [constants.NOT_ZERO_ADDRESS, token.address, 2000],
+      governor: () => governor,
     });
   });
 });
