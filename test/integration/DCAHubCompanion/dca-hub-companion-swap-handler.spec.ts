@@ -39,8 +39,8 @@ contract('DCAHubCompanionSwapHandler', () => {
     });
     [cindy, recipient] = await ethers.getSigners();
 
-    DCAHub = await ethers.getContract('DCAHub');
     await deployments.fixture('DCAHubCompanion', { keepExistingDeployments: false });
+    DCAHub = await ethers.getContract('DCAHub');
     DCAHubCompanion = await ethers.getContract('DCAHubCompanion');
     oracle = await ethers.getContractAt(IPRICE_ORACLE_ABI, await DCAHub.oracle());
 
