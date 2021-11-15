@@ -133,8 +133,8 @@ abstract contract DCAHubCompanionSwapHandler is DeadlineValidation, DCAHubCompan
     // Approve ZRX
     for (uint256 i; i < _tokens.length; i++) {
       IDCAHub.TokenInSwap memory _tokenInSwap = _tokens[i];
-      if (_tokenInSwap.toProvide > 0) {
-        IERC20(_tokenInSwap.token).approve(ZRX, _tokenInSwap.toProvide);
+      if (_tokenInSwap.reward > 0) {
+        IERC20(_tokenInSwap.token).approve(ZRX, _tokenInSwap.reward);
       }
     }
 

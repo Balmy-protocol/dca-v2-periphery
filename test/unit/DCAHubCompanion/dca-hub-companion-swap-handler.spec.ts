@@ -344,11 +344,12 @@ contract('DCAHubCompanionSwapHandler', () => {
       when('swap with 0x plan is executed', () => {
         const BYTES = [ethers.utils.randomBytes(10), ethers.utils.randomBytes(20)];
         const AMOUNT_TO_PROVIDE_TOKEN_A = 2000000;
+        const REWARD_AMOUNT_TOKEN_B = 3000000;
         let tokensInSwap: { token: string; toProvide: BigNumberish; reward: BigNumberish; platformFee: BigNumberish }[];
         given(async () => {
           tokensInSwap = [
             { token: tokenA.address, toProvide: AMOUNT_TO_PROVIDE_TOKEN_A, reward: 0, platformFee: 0 },
-            { token: tokenB.address, toProvide: 0, reward: 0, platformFee: 0 },
+            { token: tokenB.address, toProvide: 0, reward: REWARD_AMOUNT_TOKEN_B, platformFee: 0 },
           ];
           await DCAHubCompanionSwapHandler.connect(hub).DCAHubSwapCall(
             DCAHubCompanionSwapHandler.address,
@@ -357,12 +358,12 @@ contract('DCAHubCompanionSwapHandler', () => {
             swapData({ callsTo0x: BYTES, sendToHubFlag: true })
           );
         });
-        then('tokens that needs to be provided are approved', () => {
-          expect(tokenA.approve).to.have.been.calledOnce;
-          expect(tokenA.approve).to.have.been.calledWith(ZRX, AMOUNT_TO_PROVIDE_TOKEN_A);
+        then('reward tokens are approved', () => {
+          expect(tokenB.approve).to.have.been.calledOnce;
+          expect(tokenB.approve).to.have.been.calledWith(ZRX, REWARD_AMOUNT_TOKEN_B);
         });
-        then('tokens that do not need to be approvided are not approved', () => {
-          expect(tokenB.approve).to.not.have.been.called;
+        then('tokens that are not reward are not approved', () => {
+          expect(tokenA.approve).to.not.have.been.called;
         });
         then('0x calls are executed', async () => {
           for (let i = 0; i < BYTES.length; i++) {
