@@ -63,39 +63,39 @@ jobs:
   #       run: yarn test:e2e
   #       timeout-minutes: 10
 
-  # integration:
-  #   runs-on: ubuntu-latest
-  #   steps:
-  #     - name: Check out github repository
-  #       uses: actions/checkout@v2
-  #       with:
-  #         fetch-depth: 1
+  integration:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out github repository
+        uses: actions/checkout@v2
+        with:
+          fetch-depth: 1
 
-  #     - name: Cache node modules
-  #       uses: actions/cache@v2
-  #       env:
-  #         cache-name: cache-node-modules
-  #       with:
-  #         path: "**/node_modules"
-  #         key: ${{ runner.os }}-build-${{ env.cache-name }}-${{ hashFiles('**/yarn.lock') }}
+      - name: Cache node modules
+        uses: actions/cache@v2
+        env:
+          cache-name: cache-node-modules
+        with:
+          path: "**/node_modules"
+          key: ${{ runner.os }}-build-${{ env.cache-name }}-${{ hashFiles('**/yarn.lock') }}
 
-  #     - name: Cache hardhat network fork
-  #       uses: actions/cache@v2
-  #       env:
-  #         cache-name: cache-hardhat-network-fork
-  #       with:
-  #         path: cache/hardhat-network-fork
-  #         key: ${{ runner.os }}-build-${{ env.cache-name }}-${{ hashFiles('test/integration/fork-block-numbers.ts') }}
+      - name: Cache hardhat network fork
+        uses: actions/cache@v2
+        env:
+          cache-name: cache-hardhat-network-fork
+        with:
+          path: cache/hardhat-network-fork
+          key: ${{ runner.os }}-build-${{ env.cache-name }}-${{ hashFiles('test/integration/fork-block-numbers.ts') }}
 
-  #     - name: Install node
-  #       uses: actions/setup-node@v1
-  #       with:
-  #         node-version: "12.x"
+      - name: Install node
+        uses: actions/setup-node@v1
+        with:
+          node-version: "12.x"
 
-  #     - name: Install dependencies
-  #       run: yarn --frozen-lockfile
+      - name: Install dependencies
+        run: yarn --frozen-lockfile
 
-  #     - name: Run integration tests
-  #       run: yarn test:integration
-  #       env:
-  #         ETH_NODE_URI_MAINNET: https://eth-mainnet.alchemyapi.io/v2/${{ secrets.ALCHEMY_API_KEY }}
+      - name: Run integration tests
+        run: yarn test:integration
+        env:
+          ETH_NODE_URI_MAINNET: https://eth-mainnet.alchemyapi.io/v2/${{ secrets.ALCHEMY_API_KEY }}

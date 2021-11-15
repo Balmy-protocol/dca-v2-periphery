@@ -132,18 +132,8 @@ contract('DCAHubCompanionSwapHandler', () => {
     return { reward, toProvide, receivedFromAgg, sentToAgg };
   }
 
-  async function getSwappedEvent(tx: TransactionResponse): Promise<utils.LogDescription> {
-    const txReceipt = await tx.wait();
-    let hubInterface = new utils.Interface(DCA_HUB_ABI);
-    const logs = txReceipt.logs;
-    for (let i = 0; i < logs.length; i++) {
-      for (let x = 0; x < logs[i].topics.length; x++) {
-        if (logs[i].topics[x] === hubInterface.getEventTopic('Swapped')) {
-          return hubInterface.parseLog(logs[i]);
-        }
-      }
-    }
-    return Promise.reject();
+  function getSwappedEvent(tx: TransactionResponse): Promise<utils.LogDescription> {
+    return findLogs(tx, new utils.Interface(DCA_HUB_ABI), 'Swapped');
   }
 
   async function findTransferValue(
