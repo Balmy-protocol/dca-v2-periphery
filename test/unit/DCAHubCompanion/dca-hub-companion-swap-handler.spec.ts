@@ -71,7 +71,7 @@ contract('DCAHubCompanionSwapHandler', () => {
       then('ZRX is set correctly', async () => {
         expect(await DCAHubCompanionSwapHandler.ZRX()).to.equal(ZRX);
       });
-      then('ZRX is not initially suppored', async () => {
+      then('no DEX is initially supported', async () => {
         expect(await DCAHubCompanionSwapHandler.isDexSupported(ZRX)).to.be.false;
       });
     });
