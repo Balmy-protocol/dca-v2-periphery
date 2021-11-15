@@ -77,7 +77,7 @@ contract('DCAHubCompanionSwapHandler', () => {
     const SOME_RANDOM_ADDRESS = wallet.generateRandomAddress();
     whenDeadlineHasExpiredThenTxReverts({
       func: 'swapForCaller',
-      args: () => [tokens, INDEXES, [], [], SOME_RANDOM_ADDRESS, moment().unix() - 1],
+      args: () => [tokens, INDEXES, [], [], SOME_RANDOM_ADDRESS, moment().unix() - 10000],
     });
     when('hub returns less than minimum output', () => {
       const MIN_OUTPUT = 200000;
@@ -167,7 +167,7 @@ contract('DCAHubCompanionSwapHandler', () => {
     const BYTES = ethers.utils.randomBytes(10);
     whenDeadlineHasExpiredThenTxReverts({
       func: 'swapWith0x',
-      args: () => [tokens, INDEXES, [], constants.NOT_ZERO_ADDRESS, moment().unix() - 1],
+      args: () => [tokens, INDEXES, [], constants.NOT_ZERO_ADDRESS, moment().unix() - 10000],
     });
     when('swap is executed', () => {
       given(async () => {
@@ -183,7 +183,7 @@ contract('DCAHubCompanionSwapHandler', () => {
     const BYTES = ethers.utils.randomBytes(10);
     whenDeadlineHasExpiredThenTxReverts({
       func: 'swapWith0xAndShareLeftoverWithHub',
-      args: () => [tokens, INDEXES, [], constants.NOT_ZERO_ADDRESS, moment().unix() - 1],
+      args: () => [tokens, INDEXES, [], constants.NOT_ZERO_ADDRESS, moment().unix() - 10000],
     });
     when('swap is executed', () => {
       given(async () => {
