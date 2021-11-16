@@ -70,7 +70,7 @@ interface IDCAHubCompanionSwapHandler is IDCAHubSwapCallee {
   ) external payable returns (IDCAHub.SwapInfo memory);
 
   /// @notice Executes a swap with the given DEX, and sends all unspent tokens to the given recipient
-  /// @param _dex The that will be used in the swap
+  /// @param _dex The DEX that will be used in the swap
   /// @param _tokens The tokens involved in the swap
   /// @param _pairsToSwap The pairs to swap
   /// @param _callsToDex The bytes to send to the DEX to execute swaps
@@ -91,7 +91,7 @@ interface IDCAHubCompanionSwapHandler is IDCAHubSwapCallee {
 
   /// @notice Executes a swap with the given DEX and sends all `reward` unspent tokens to the given recipient.
   /// All positive slippage for tokens that need to be returned to the hub is also sent to the hub
-  /// @param _dex The that will be used in the swap
+  /// @param _dex The DEX that will be used in the swap
   /// @param _tokens The tokens involved in the swap
   /// @param _pairsToSwap The pairs to swap
   /// @param _callsToDex The bytes to send to the DEX to execute swaps

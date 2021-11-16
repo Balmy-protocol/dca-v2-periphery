@@ -137,7 +137,7 @@ abstract contract DCAHubCompanionSwapHandler is DeadlineValidation, DCAHubCompan
     // This flag is just a way to make transactions cheaper. If Mean Finance is executing the swap, then it's the same for us
     // if the leftover tokens go to the hub, or to another address. But, it's cheaper in terms of gas to send them to the hub
     bool sendToProvideLeftoverToHub;
-    // This flag will let us know if the dex will send the tokens to the hub by itself, or it it will be returned to the companion
+    // This flag will let us know if the dex will send the tokens to the hub by itself, or they will be returned to the companion
     bool doDexSwapsIncludeTransferToHub;
     // Address where to send any leftover tokens
     address leftoverRecipient;
@@ -175,7 +175,7 @@ abstract contract DCAHubCompanionSwapHandler is DeadlineValidation, DCAHubCompan
             _erc20.safeTransfer(_recipient, _balance);
           } else {
             // Since the DEX was not a swap & transfer, we assume that the amount to provide was sent back to the companion.
-            // We now need to figure out if we sent the whole thing to the hub, or if we slipt it
+            // We now need to figure out if we sent the whole thing to the hub, or if we split it
             if (_callbackData.sendToProvideLeftoverToHub || _balance == _toProvide) {
               // Send everything
               _erc20.safeTransfer(address(hub), _balance);
