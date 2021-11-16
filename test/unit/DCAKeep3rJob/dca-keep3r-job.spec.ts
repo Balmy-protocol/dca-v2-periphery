@@ -6,6 +6,7 @@ import { snapshot } from '@test-utils/evm';
 import { DCAKeep3rJob, DCAKeep3rJob__factory, IDCAHubCompanion } from '@typechained';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signers';
 import { FakeContract, smock } from '@defi-wonderland/smock';
+import { TransactionResponse } from '@ethersproject/abstract-provider';
 
 contract('DCAKeep3rJob', () => {
   let governor: SignerWithAddress;
@@ -55,8 +56,16 @@ contract('DCAKeep3rJob', () => {
     });
     when('a valid address is sent', () => {
       const COMPANION = wallet.generateRandomAddress();
-      given(async () => await DCAKeep3rJob.connect(governor).setCompanion(COMPANION));
-      then('it is set correctly', async () => expect(await DCAKeep3rJob.companion()).to.equal(COMPANION));
+      let tx: TransactionResponse;
+      given(async () => {
+        tx = await DCAKeep3rJob.connect(governor).setCompanion(COMPANION);
+      });
+      then('it is set correctly', async () => {
+        expect(await DCAKeep3rJob.companion()).to.equal(COMPANION);
+      });
+      then('event is emitted', async () => {
+        await expect(tx).to.emit(DCAKeep3rJob, 'NewCompanionSet').withArgs(COMPANION);
+      });
     });
     behaviours.shouldBeExecutableOnlyByGovernor({
       contract: () => DCAKeep3rJob,
