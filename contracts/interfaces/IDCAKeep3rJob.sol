@@ -2,6 +2,7 @@
 pragma solidity >=0.8.7 <0.9.0;
 
 import './IDCAHubCompanion.sol';
+import './IKeep3rJobs.sol';
 import './utils/IGovernable.sol';
 
 interface IDCAKeep3rJob is IGovernable {
@@ -47,6 +48,10 @@ interface IDCAKeep3rJob is IGovernable {
   /// @notice Returns the companion address
   /// @return The companion address
   function companion() external returns (IDCAHubCompanion);
+
+  /// @notice Returns the Keep3r address
+  /// @return The Keep3r address address
+  function keep3r() external returns (IKeep3rJobs);
 
   /// @notice Returns whether the given address can sign work or not
   /// @return If it can sign work or not

@@ -2,7 +2,6 @@
 pragma solidity >=0.8.7 <0.9.0;
 
 import '@openzeppelin/contracts/utils/cryptography/ECDSA.sol';
-import '../interfaces/IKeep3rJobs.sol';
 import '../interfaces/IDCAKeep3rJob.sol';
 import '../utils/Governable.sol';
 
