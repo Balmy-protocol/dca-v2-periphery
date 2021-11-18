@@ -2,19 +2,26 @@
 pragma solidity >=0.8.7 <0.9.0;
 
 import '@openzeppelin/contracts/utils/cryptography/ECDSA.sol';
+import '../interfaces/IKeep3rJobs.sol';
 import '../interfaces/IDCAKeep3rJob.sol';
 import '../utils/Governable.sol';
 
 contract DCAKeep3rJob is Governable, IDCAKeep3rJob {
   using ECDSA for bytes32;
 
+  IKeep3rJobs public immutable keep3r;
   uint256 public nonce;
   IDCAHubCompanion public companion;
   mapping(address => bool) public canAddressSignWork;
 
-  constructor(IDCAHubCompanion _companion, address _governor) Governable(_governor) {
-    if (address(_companion) == address(0)) revert ZeroAddress();
+  constructor(
+    IDCAHubCompanion _companion,
+    IKeep3rJobs _keep3r,
+    address _governor
+  ) Governable(_governor) {
+    if (address(_companion) == address(0) || address(_keep3r) == address(0)) revert ZeroAddress();
     companion = _companion;
+    keep3r = _keep3r;
   }
 
   function setCompanion(IDCAHubCompanion _companion) external onlyGovernor {
@@ -30,7 +37,7 @@ contract DCAKeep3rJob is Governable, IDCAKeep3rJob {
   }
 
   function work(bytes calldata _bytes, bytes calldata _signature) external {
-    // TODO: check that msg.sender is a keeper
+    if (!keep3r.isKeeper(msg.sender)) revert NotAKeeper();
 
     address _signer = keccak256(_bytes).toEthSignedMessageHash().recover(_signature);
     if (!canAddressSignWork[_signer]) revert SignerCannotSignWork();
@@ -42,7 +49,7 @@ contract DCAKeep3rJob is Governable, IDCAKeep3rJob {
 
     _callCompanion(_call.companionCall);
 
-    // TODO: call keep3r.worked
+    keep3r.worked(msg.sender);
     // TODO: emit event?
   }
 

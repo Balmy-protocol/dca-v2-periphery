@@ -32,6 +32,9 @@ interface IDCAKeep3rJob is IGovernable {
   /// @notice Thrown when a user tries to execute work but the call to the companion fails
   error CompanionCallFailed();
 
+  /// @notice Thrown when a non keep3r address tries to execute work
+  error NotAKeeper();
+
   /// @notice Emitted when a new companion is set
   /// @param newCompanion The new companion
   event NewCompanionSet(IDCAHubCompanion newCompanion);
@@ -66,6 +69,7 @@ interface IDCAKeep3rJob is IGovernable {
 
   /// @notice Takes an encoded call to execute against the companion contract, and executes it
   /// @dev Will revert with:
+  /// NotAKeeper if the caller is not a keep3r
   /// SignerCannotSignWork if the address who signed the message cannot sign work
   /// InvalidNonce if the nonce is invalid
   /// DeadlineExpired if the deadline has expired

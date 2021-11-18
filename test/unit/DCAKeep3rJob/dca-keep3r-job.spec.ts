@@ -1,34 +1,40 @@
-import { expect } from 'chai';
+import chai, { expect } from 'chai';
 import { ethers } from 'hardhat';
 import { behaviours, constants, wallet } from '@test-utils';
 import { contract, given, then, when } from '@test-utils/bdd';
 import { snapshot } from '@test-utils/evm';
-import { DCAKeep3rJobMock, DCAKeep3rJobMock__factory, IDCAHubCompanion } from '@typechained';
+import { DCAKeep3rJobMock, DCAKeep3rJobMock__factory, IDCAHubCompanion, IKeep3rJobs } from '@typechained';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signers';
 import { FakeContract, smock } from '@defi-wonderland/smock';
 import { TransactionResponse } from '@ethersproject/abstract-provider';
-import { BigNumber, BigNumberish, BytesLike, utils } from 'ethers';
+import { BigNumber, BigNumberish, BytesLike, utils, Wallet } from 'ethers';
 import moment from 'moment';
+
+chai.use(smock.matchers);
 
 contract('DCAKeep3rJob', () => {
   let governor: SignerWithAddress, signer: SignerWithAddress, random: SignerWithAddress;
   let DCAKeep3rJob: DCAKeep3rJobMock;
   let DCAKeep3rJobFactory: DCAKeep3rJobMock__factory;
   let DCAHubCompanion: FakeContract<IDCAHubCompanion>;
+  let keep3r: FakeContract<IKeep3rJobs>;
   let chainId: BigNumber;
   let snapshotId: string;
 
   before('Setup accounts and contracts', async () => {
     [, governor, signer, random] = await ethers.getSigners();
     DCAHubCompanion = await smock.fake('IDCAHubCompanion');
+    keep3r = await smock.fake('IKeep3rJobs');
     DCAKeep3rJobFactory = await ethers.getContractFactory('contracts/mocks/DCAKeep3rJob/DCAKeep3rJob.sol:DCAKeep3rJobMock');
-    DCAKeep3rJob = await DCAKeep3rJobFactory.deploy(DCAHubCompanion.address, governor.address);
+    DCAKeep3rJob = await DCAKeep3rJobFactory.deploy(DCAHubCompanion.address, keep3r.address, governor.address);
     chainId = BigNumber.from((await ethers.provider.getNetwork()).chainId);
     snapshotId = await snapshot.take();
   });
 
   beforeEach('Deploy and configure', async () => {
     await snapshot.revert(snapshotId);
+    keep3r.isKeeper.reset();
+    keep3r.worked.reset();
   });
 
   describe('constructor', () => {
@@ -36,7 +42,16 @@ contract('DCAKeep3rJob', () => {
       then('deployment is reverted with reason', async () => {
         await behaviours.deployShouldRevertWithMessage({
           contract: DCAKeep3rJobFactory,
-          args: [constants.ZERO_ADDRESS, governor.address],
+          args: [constants.ZERO_ADDRESS, keep3r.address, governor.address],
+          message: 'ZeroAddress',
+        });
+      });
+    });
+    when('keep3r is zero address', () => {
+      then('deployment is reverted with reason', async () => {
+        await behaviours.deployShouldRevertWithMessage({
+          contract: DCAKeep3rJobFactory,
+          args: [DCAHubCompanion.address, constants.ZERO_ADDRESS, governor.address],
           message: 'ZeroAddress',
         });
       });
@@ -44,6 +59,9 @@ contract('DCAKeep3rJob', () => {
     when('contract is initiated', () => {
       then('companion is set correctly', async () => {
         expect(await DCAKeep3rJob.companion()).to.equal(DCAHubCompanion.address);
+      });
+      then('keep3r is set correctly', async () => {
+        expect(await DCAKeep3rJob.keep3r()).to.equal(keep3r.address);
       });
       then('no address can sign work', async () => {
         expect(await DCAKeep3rJob.canAddressSignWork(signer.address)).to.be.false;
@@ -133,6 +151,12 @@ contract('DCAKeep3rJob', () => {
     });
 
     workFailsTest({
+      when: 'caller is not a keep3r',
+      signer: () => signer,
+      callerIsNotAKeeper: true,
+      txFailsWith: 'NotAKeeper',
+    });
+    workFailsTest({
       when: 'signer is not allowed to sign',
       signer: () => random,
       txFailsWith: 'SignerCannotSignWork',
@@ -158,9 +182,12 @@ contract('DCAKeep3rJob', () => {
 
     when('work is called correctly', () => {
       const CALL: WorkCall = { call: utils.hexlify(utils.randomBytes(10)), nonce: 0, chainId, deadline: constants.MAX_UINT_256 };
+      let caller: Wallet;
       given(async () => {
+        caller = await wallet.generateRandom();
         const { bytes, signature } = await sign(signer, CALL);
-        await DCAKeep3rJob.work(bytes, signature);
+        keep3r.isKeeper.returns(true);
+        await DCAKeep3rJob.connect(caller).work(bytes, signature);
       });
       then('nonce is increased', async () => {
         expect(await DCAKeep3rJob.nonce()).to.equal(1);
@@ -168,15 +195,20 @@ contract('DCAKeep3rJob', () => {
       then('companion is called correctly', async () => {
         expect(await DCAKeep3rJob.companionCalledWith()).to.equal(CALL.call);
       });
+      then('worked is called', () => {
+        expect(keep3r.worked).to.have.been.calledOnceWith(caller.address);
+      });
     });
 
     function workFailsTest({
       when: title,
       signer,
       txFailsWith,
+      callerIsNotAKeeper,
       ...call
-    }: { when: string; signer: () => SignerWithAddress; txFailsWith: string } & Partial<WorkCall>) {
+    }: { when: string; signer: () => SignerWithAddress; callerIsNotAKeeper?: boolean; txFailsWith: string } & Partial<WorkCall>) {
       when(title, () => {
+        given(() => keep3r.isKeeper.returns(!callerIsNotAKeeper));
         then('reverts with message', async () => {
           const { bytes, signature } = await sign(signer(), call);
           await behaviours.txShouldRevertWithMessage({
