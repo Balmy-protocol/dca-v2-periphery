@@ -89,4 +89,35 @@ contract('DCAKeep3rJob', () => {
       governor: () => governor,
     });
   });
+  describe('setCompanion', () => {
+    when('zero address is sent', () => {
+      then('reverts with message', async () => {
+        await behaviours.txShouldRevertWithMessage({
+          contract: DCAKeep3rJob.connect(governor),
+          func: 'setCompanion',
+          args: [constants.ZERO_ADDRESS],
+          message: 'ZeroAddress',
+        });
+      });
+    });
+    when('a valid address is sent', () => {
+      const COMPANION = wallet.generateRandomAddress();
+      let tx: TransactionResponse;
+      given(async () => {
+        tx = await DCAKeep3rJob.connect(governor).setCompanion(COMPANION);
+      });
+      then('it is set correctly', async () => {
+        expect(await DCAKeep3rJob.companion()).to.equal(COMPANION);
+      });
+      then('event is emitted', async () => {
+        await expect(tx).to.emit(DCAKeep3rJob, 'NewCompanionSet').withArgs(COMPANION);
+      });
+    });
+    behaviours.shouldBeExecutableOnlyByGovernor({
+      contract: () => DCAKeep3rJob,
+      funcAndSignature: 'setCompanion',
+      params: () => [constants.NOT_ZERO_ADDRESS],
+      governor: () => governor,
+    });
+  });
 });
