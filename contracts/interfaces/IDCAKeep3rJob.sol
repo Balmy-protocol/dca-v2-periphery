@@ -2,6 +2,7 @@
 pragma solidity >=0.8.7 <0.9.0;
 
 import './IDCAHubCompanion.sol';
+import './IKeep3rJobs.sol';
 import './utils/IGovernable.sol';
 
 interface IDCAKeep3rJob is IGovernable {
@@ -32,6 +33,9 @@ interface IDCAKeep3rJob is IGovernable {
   /// @notice Thrown when a user tries to execute work but the call to the companion fails
   error CompanionCallFailed();
 
+  /// @notice Thrown when a non keep3r address tries to execute work
+  error NotAKeeper();
+
   /// @notice Emitted when a new companion is set
   /// @param newCompanion The new companion
   event NewCompanionSet(IDCAHubCompanion newCompanion);
@@ -44,6 +48,10 @@ interface IDCAKeep3rJob is IGovernable {
   /// @notice Returns the companion address
   /// @return The companion address
   function companion() external returns (IDCAHubCompanion);
+
+  /// @notice Returns the Keep3r address
+  /// @return The Keep3r address address
+  function keep3r() external returns (IKeep3rJobs);
 
   /// @notice Returns whether the given address can sign work or not
   /// @return If it can sign work or not
@@ -66,6 +74,7 @@ interface IDCAKeep3rJob is IGovernable {
 
   /// @notice Takes an encoded call to execute against the companion contract, and executes it
   /// @dev Will revert with:
+  /// NotAKeeper if the caller is not a keep3r
   /// SignerCannotSignWork if the address who signed the message cannot sign work
   /// InvalidNonce if the nonce is invalid
   /// DeadlineExpired if the deadline has expired

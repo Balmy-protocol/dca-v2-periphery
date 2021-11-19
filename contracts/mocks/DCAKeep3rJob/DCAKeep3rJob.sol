@@ -6,7 +6,11 @@ import '../../DCAKeep3rJob/DCAKeep3rJob.sol';
 contract DCAKeep3rJobMock is DCAKeep3rJob {
   bytes public companionCalledWith;
 
-  constructor(IDCAHubCompanion _companion, address _governor) DCAKeep3rJob(_companion, _governor) {}
+  constructor(
+    IDCAHubCompanion _companion,
+    IKeep3rJobs _keep3r,
+    address _governor
+  ) DCAKeep3rJob(_companion, _keep3r, _governor) {}
 
   function _callCompanion(bytes memory _data) internal override {
     companionCalledWith = _data;
