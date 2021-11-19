@@ -16,7 +16,7 @@ contract('DCAHubCompanionParameters', () => {
     DCAHubCompanionParametersFactory = await ethers.getContractFactory(
       'contracts/mocks/DCAHubCompanion/DCAHubCompanionParameters.sol:DCAHubCompanionParametersMock'
     );
-    DCAHubCompanionParameters = await DCAHubCompanionParametersFactory.deploy(HUB, WRAPPED_TOKEN);
+    DCAHubCompanionParameters = await DCAHubCompanionParametersFactory.deploy(HUB, WRAPPED_TOKEN, constants.NOT_ZERO_ADDRESS);
     snapshotId = await snapshot.take();
   });
 
@@ -29,7 +29,7 @@ contract('DCAHubCompanionParameters', () => {
       then('deployment is reverted with reason', async () => {
         await behaviours.deployShouldRevertWithMessage({
           contract: DCAHubCompanionParametersFactory,
-          args: [constants.ZERO_ADDRESS, WRAPPED_TOKEN],
+          args: [constants.ZERO_ADDRESS, WRAPPED_TOKEN, constants.NOT_ZERO_ADDRESS],
           message: 'ZeroAddress',
         });
       });
@@ -38,7 +38,7 @@ contract('DCAHubCompanionParameters', () => {
       then('deployment is reverted with reason', async () => {
         await behaviours.deployShouldRevertWithMessage({
           contract: DCAHubCompanionParametersFactory,
-          args: [HUB, constants.ZERO_ADDRESS],
+          args: [HUB, constants.ZERO_ADDRESS, constants.NOT_ZERO_ADDRESS],
           message: 'ZeroAddress',
         });
       });

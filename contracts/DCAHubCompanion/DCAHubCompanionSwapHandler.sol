@@ -10,7 +10,7 @@ abstract contract DCAHubCompanionSwapHandler is DeadlineValidation, DCAHubCompan
   enum SwapPlan {
     NONE,
     SWAP_FOR_CALLER,
-    SWAP_WITH_0X
+    SWAP_WITH_DEX
   }
 
   struct SwapData {
@@ -20,14 +20,7 @@ abstract contract DCAHubCompanionSwapHandler is DeadlineValidation, DCAHubCompan
 
   using SafeERC20 for IERC20;
 
-  // solhint-disable-next-line var-name-mixedcase
-  address public immutable ZRX;
-
-  // solhint-disable-next-line var-name-mixedcase
-  constructor(address _ZRX) {
-    if (_ZRX == address(0)) revert IDCAHubCompanion.ZeroAddress();
-    ZRX = _ZRX;
-  }
+  mapping(address => bool) public isDexSupported;
 
   function swapForCaller(
     address[] calldata _tokens,
@@ -57,45 +50,59 @@ abstract contract DCAHubCompanionSwapHandler is DeadlineValidation, DCAHubCompan
     }
   }
 
-  function swapWith0x(
+  function swapWithDex(
+    address _dex,
     address[] calldata _tokens,
     IDCAHub.PairIndexes[] calldata _pairsToSwap,
-    bytes[] calldata _callsTo0x,
+    bytes[] calldata _callsToDex,
+    bool _doDexSwapsIncludeTransferToHub,
     address _leftoverRecipient,
     uint256 _deadline
   ) external returns (IDCAHub.SwapInfo memory) {
-    return _swapWith0x(_tokens, _pairsToSwap, _callsTo0x, _leftoverRecipient, false, _deadline);
+    CallbackDataDex memory _callbackData = CallbackDataDex({
+      dex: _dex,
+      leftoverRecipient: _leftoverRecipient,
+      doDexSwapsIncludeTransferToHub: _doDexSwapsIncludeTransferToHub,
+      callsToDex: _callsToDex,
+      sendToProvideLeftoverToHub: false
+    });
+    return _swapWithDex(_tokens, _pairsToSwap, _callbackData, _deadline);
   }
 
-  function swapWith0xAndShareLeftoverWithHub(
+  function swapWithDexAndShareLeftoverWithHub(
+    address _dex,
     address[] calldata _tokens,
     IDCAHub.PairIndexes[] calldata _pairsToSwap,
-    bytes[] calldata _callsTo0x,
+    bytes[] calldata _callsToDex,
+    bool _doDexSwapsIncludeTransferToHub,
     address _leftoverRecipient,
     uint256 _deadline
   ) external returns (IDCAHub.SwapInfo memory) {
-    return _swapWith0x(_tokens, _pairsToSwap, _callsTo0x, _leftoverRecipient, true, _deadline);
+    CallbackDataDex memory _callbackData = CallbackDataDex({
+      dex: _dex,
+      leftoverRecipient: _leftoverRecipient,
+      doDexSwapsIncludeTransferToHub: _doDexSwapsIncludeTransferToHub,
+      callsToDex: _callsToDex,
+      sendToProvideLeftoverToHub: true
+    });
+    return _swapWithDex(_tokens, _pairsToSwap, _callbackData, _deadline);
   }
 
-  function _swapWith0x(
+  function _swapWithDex(
     address[] calldata _tokens,
     IDCAHub.PairIndexes[] calldata _pairsToSwap,
-    bytes[] calldata _callsTo0x,
-    address _leftoverRecipient,
-    bool _sendToProvideLeftoverToHub,
+    CallbackDataDex memory _callbackData,
     uint256 _deadline
   ) internal checkDeadline(_deadline) returns (IDCAHub.SwapInfo memory _swapInfo) {
+    if (!isDexSupported[_callbackData.dex]) revert UnsupportedDex();
     uint256[] memory _borrow = new uint256[](_tokens.length);
-    bytes memory _swapData = abi.encode(
-      CallbackData0x({leftoverRecipient: _leftoverRecipient, callsTo0x: _callsTo0x, sendToProvideLeftoverToHub: _sendToProvideLeftoverToHub})
-    );
     _swapInfo = hub.swap(
       _tokens,
       _pairsToSwap,
       address(this),
       address(this),
       _borrow,
-      abi.encode(SwapData({plan: SwapPlan.SWAP_WITH_0X, data: _swapData}))
+      abi.encode(SwapData({plan: SwapPlan.SWAP_WITH_DEX, data: abi.encode(_callbackData)}))
     );
   }
 
@@ -112,35 +119,46 @@ abstract contract DCAHubCompanionSwapHandler is DeadlineValidation, DCAHubCompan
     SwapData memory _swapData = abi.decode(_data, (SwapData));
     if (_swapData.plan == SwapPlan.SWAP_FOR_CALLER) {
       _handleSwapForCallerCallback(_tokens, _swapData.data);
-    } else if (_swapData.plan == SwapPlan.SWAP_WITH_0X) {
-      _handleSwapWith0xCallback(_tokens, _swapData.data);
+    } else if (_swapData.plan == SwapPlan.SWAP_WITH_DEX) {
+      _handleSwapWithDexCallback(_tokens, _swapData.data);
     } else {
       revert UnexpectedSwapPlan();
     }
   }
 
-  struct CallbackData0x {
-    address leftoverRecipient;
-    bytes[] callsTo0x;
+  function defineDexSupport(address _dex, bool _support) external onlyGovernor {
+    if (_dex == address(0)) revert IDCAHubCompanion.ZeroAddress();
+    isDexSupported[_dex] = _support;
+  }
+
+  struct CallbackDataDex {
+    // DEX's address
+    address dex;
     // This flag is just a way to make transactions cheaper. If Mean Finance is executing the swap, then it's the same for us
     // if the leftover tokens go to the hub, or to another address. But, it's cheaper in terms of gas to send them to the hub
     bool sendToProvideLeftoverToHub;
+    // This flag will let us know if the dex will send the tokens to the hub by itself, or they will be returned to the companion
+    bool doDexSwapsIncludeTransferToHub;
+    // Address where to send any leftover tokens
+    address leftoverRecipient;
+    // Different calls to make to the dex
+    bytes[] callsToDex;
   }
 
-  function _handleSwapWith0xCallback(IDCAHub.TokenInSwap[] calldata _tokens, bytes memory _data) internal {
-    CallbackData0x memory _callbackData = abi.decode(_data, (CallbackData0x));
+  function _handleSwapWithDexCallback(IDCAHub.TokenInSwap[] calldata _tokens, bytes memory _data) internal {
+    CallbackDataDex memory _callbackData = abi.decode(_data, (CallbackDataDex));
 
-    // Approve ZRX
+    // Approve DEX
     for (uint256 i; i < _tokens.length; i++) {
       IDCAHub.TokenInSwap memory _tokenInSwap = _tokens[i];
-      if (_tokenInSwap.toProvide > 0) {
-        IERC20(_tokenInSwap.token).approve(ZRX, _tokenInSwap.toProvide);
+      if (_tokenInSwap.reward > 0) {
+        IERC20(_tokenInSwap.token).approve(_callbackData.dex, _tokenInSwap.reward);
       }
     }
 
     // Execute swaps
-    for (uint256 i; i < _callbackData.callsTo0x.length; i++) {
-      _call0x(ZRX, _callbackData.callsTo0x[i]);
+    for (uint256 i; i < _callbackData.callsToDex.length; i++) {
+      _callDex(_callbackData.dex, _callbackData.callsToDex[i]);
     }
 
     // Send remaining tokens to either hub, or leftover recipient
@@ -150,14 +168,22 @@ abstract contract DCAHubCompanionSwapHandler is DeadlineValidation, DCAHubCompan
       if (_balance > 0) {
         uint256 _toProvide = _tokens[i].toProvide;
         if (_toProvide > 0) {
-          // If the hub expects some tokens in return, check if we want to send the whole balance or just the necessary amount
-          if (_callbackData.sendToProvideLeftoverToHub || _balance == _toProvide) {
-            // Send everything
-            _erc20.safeTransfer(address(hub), _balance);
+          if (_callbackData.doDexSwapsIncludeTransferToHub) {
+            // Since the DEX executed a swap & transfer, we assume that the amount to provide was already sent to the hub.
+            // We now need to figure out where we send the rest
+            address _recipient = _callbackData.sendToProvideLeftoverToHub ? address(hub) : _callbackData.leftoverRecipient;
+            _erc20.safeTransfer(_recipient, _balance);
           } else {
-            // Send necessary to hub, and the rest to the leftover recipient
-            _erc20.safeTransfer(address(hub), _toProvide);
-            _erc20.safeTransfer(_callbackData.leftoverRecipient, _balance - _toProvide);
+            // Since the DEX was not a swap & transfer, we assume that the amount to provide was sent back to the companion.
+            // We now need to figure out if we sent the whole thing to the hub, or if we split it
+            if (_callbackData.sendToProvideLeftoverToHub || _balance == _toProvide) {
+              // Send everything
+              _erc20.safeTransfer(address(hub), _balance);
+            } else {
+              // Send necessary to hub, and the rest to the leftover recipient
+              _erc20.safeTransfer(address(hub), _toProvide);
+              _erc20.safeTransfer(_callbackData.leftoverRecipient, _balance - _toProvide);
+            }
           }
         } else {
           // Since the hub doesn't expect any amount of this token, send everything to the leftover recipient
@@ -167,10 +193,10 @@ abstract contract DCAHubCompanionSwapHandler is DeadlineValidation, DCAHubCompan
     }
   }
 
-  function _call0x(address _zrx, bytes memory _data) internal virtual {
+  function _callDex(address _dex, bytes memory _data) internal virtual {
     // solhint-disable-next-line avoid-low-level-calls
-    (bool success, ) = _zrx.call{value: 0}(_data);
-    if (!success) revert ZRXFailed();
+    (bool success, ) = _dex.call{value: 0}(_data);
+    if (!success) revert CallToDexFailed();
   }
 
   struct CallbackDataCaller {
