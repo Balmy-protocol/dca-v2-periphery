@@ -28,7 +28,7 @@ const deployFunction: DeployFunction = async function (hre: HardhatRuntimeEnviro
   await hre.deployments.deploy('DCAHubCompanion', {
     contract: 'contracts/DCAHubCompanion/DCAHubCompanion.sol:DCAHubCompanion',
     from: deployer,
-    args: [hub.address, weth, governor, zrx],
+    args: [hub.address, weth, governor],
   });
 };
 
