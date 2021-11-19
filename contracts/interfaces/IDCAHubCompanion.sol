@@ -9,7 +9,7 @@ import './utils/ICollectableDust.sol';
 import './utils/IGovernable.sol';
 import './ISharedTypes.sol';
 
-interface IDCAHubCompanionParameters {
+interface IDCAHubCompanionParameters is IGovernable {
   /// @notice Returns the DCA Hub's address
   /// @dev This value cannot be modified
   /// @return The DCA Hub contract
@@ -43,8 +43,11 @@ interface IDCAHubCompanionSwapHandler is IDCAHubSwapCallee {
   /// @notice Thrown when the callback is executed with an unexpected swap plan
   error UnexpectedSwapPlan();
 
-  /// @notice Thrown when a call to ZRX fails
-  error ZRXFailed();
+  /// @notice Thrown when a swap is executed with a DEX that is not supported
+  error UnsupportedDex();
+
+  /// @notice Thrown when a call to the given DEX fails
+  error CallToDexFailed();
 
   /// @notice Executes a swap for the caller, by sending them the reward, and taking from them the needed tokens
   /// @dev Will revert:
@@ -66,33 +69,43 @@ interface IDCAHubCompanionSwapHandler is IDCAHubSwapCallee {
     uint256 _deadline
   ) external payable returns (IDCAHub.SwapInfo memory);
 
-  /// @notice Executes a swap against 0x, and sends all unspent tokens to the given recipient
+  /// @notice Executes a swap with the given DEX, and sends all unspent tokens to the given recipient
+  /// @param _dex The DEX that will be used in the swap
   /// @param _tokens The tokens involved in the swap
   /// @param _pairsToSwap The pairs to swap
-  /// @param _callsTo0x The bytes to send to 0x to execute swaps
+  /// @param _callsToDex The bytes to send to the DEX to execute swaps
+  /// @param _doDexSwapsIncludeTransferToHub Some DEXes support swap & transfer, which would be cheaper in terms of gas
+  /// If this feature is used, then the flag should be true
   /// @param _leftoverRecipient Address that will receive all unspent tokens
   /// @param _deadline Deadline when the swap becomes invalid
   /// @return The information about the executed swap
-  function swapWith0x(
+  function swapWithDex(
+    address _dex,
     address[] calldata _tokens,
     IDCAHub.PairIndexes[] calldata _pairsToSwap,
-    bytes[] calldata _callsTo0x,
+    bytes[] calldata _callsToDex,
+    bool _doDexSwapsIncludeTransferToHub,
     address _leftoverRecipient,
     uint256 _deadline
   ) external returns (IDCAHub.SwapInfo memory);
 
-  /// @notice Executes a swap against 0x and sends all `reward` unspent tokens to the given recipient.
+  /// @notice Executes a swap with the given DEX and sends all `reward` unspent tokens to the given recipient.
   /// All positive slippage for tokens that need to be returned to the hub is also sent to the hub
+  /// @param _dex The DEX that will be used in the swap
   /// @param _tokens The tokens involved in the swap
   /// @param _pairsToSwap The pairs to swap
-  /// @param _callsTo0x The bytes to send to 0x to execute swaps
+  /// @param _callsToDex The bytes to send to the DEX to execute swaps
+  /// @param _doDexSwapsIncludeTransferToHub Some DEXes support swap & transfer, which would be cheaper in terms of gas
+  /// If this feature is used, then the flag should be true
   /// @param _leftoverRecipient Address that will receive `reward` unspent tokens
   /// @param _deadline Deadline when the swap becomes invalid
   /// @return The information about the executed swap
-  function swapWith0xAndShareLeftoverWithHub(
+  function swapWithDexAndShareLeftoverWithHub(
+    address _dex,
     address[] calldata _tokens,
     IDCAHub.PairIndexes[] calldata _pairsToSwap,
-    bytes[] calldata _callsTo0x,
+    bytes[] calldata _callsToDex,
+    bool _doDexSwapsIncludeTransferToHub,
     address _leftoverRecipient,
     uint256 _deadline
   ) external returns (IDCAHub.SwapInfo memory);
@@ -213,7 +226,7 @@ interface IDCAHubCompanionWTokenPositionHandler {
   function approveWTokenForHub() external;
 }
 
-interface IDCAHubCompanionDustHandler is ICollectableDust, IGovernable {}
+interface IDCAHubCompanionDustHandler is ICollectableDust {}
 
 interface IDCAHubCompanionLibrariesHandler {
   /// @notice Takes a list of pairs and returns how it would look like to execute a swap for all of them
