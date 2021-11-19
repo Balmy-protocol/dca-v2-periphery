@@ -10,23 +10,23 @@ contract DCAKeep3rJob is Governable, IDCAKeep3rJob {
 
   IKeep3rJobs public immutable keep3r;
   uint256 public nonce;
-  IDCAHubCompanion public companion;
+  address public swapper;
   mapping(address => bool) public canAddressSignWork;
 
   constructor(
-    IDCAHubCompanion _companion,
+    address _swapper,
     IKeep3rJobs _keep3r,
     address _governor
   ) Governable(_governor) {
-    if (address(_companion) == address(0) || address(_keep3r) == address(0)) revert ZeroAddress();
-    companion = _companion;
+    if (address(_swapper) == address(0) || address(_keep3r) == address(0)) revert ZeroAddress();
+    swapper = _swapper;
     keep3r = _keep3r;
   }
 
-  function setCompanion(IDCAHubCompanion _companion) external onlyGovernor {
-    if (address(_companion) == address(0)) revert ZeroAddress();
-    companion = _companion;
-    emit NewCompanionSet(_companion);
+  function setSwapper(address _swapper) external onlyGovernor {
+    if (address(_swapper) == address(0)) revert ZeroAddress();
+    swapper = _swapper;
+    emit NewSwapperSet(_swapper);
   }
 
   function setIfAddressCanSign(address _address, bool _canSign) external onlyGovernor {
@@ -46,15 +46,14 @@ contract DCAKeep3rJob is Governable, IDCAKeep3rJob {
     if (_call.deadline < block.timestamp) revert DeadlineExpired();
     if (_call.chainId != block.chainid) revert InvalidChainId();
 
-    _callCompanion(_call.companionCall);
+    _callSwapper(_call.swapperCall);
 
     keep3r.worked(msg.sender);
-    // TODO: emit event?
   }
 
-  function _callCompanion(bytes memory _call) internal virtual {
+  function _callSwapper(bytes memory _call) internal virtual {
     // solhint-disable-next-line avoid-low-level-calls
-    (bool _success, ) = address(companion).call(_call);
-    if (!_success) revert CompanionCallFailed();
+    (bool _success, ) = swapper.call(_call);
+    if (!_success) revert SwapperCallFailed();
   }
 }

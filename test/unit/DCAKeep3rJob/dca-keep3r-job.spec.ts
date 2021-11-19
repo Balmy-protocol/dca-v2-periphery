@@ -3,7 +3,7 @@ import { ethers } from 'hardhat';
 import { behaviours, constants, wallet } from '@test-utils';
 import { contract, given, then, when } from '@test-utils/bdd';
 import { snapshot } from '@test-utils/evm';
-import { DCAKeep3rJobMock, DCAKeep3rJobMock__factory, IDCAHubCompanion, IKeep3rJobs } from '@typechained';
+import { DCAKeep3rJobMock, DCAKeep3rJobMock__factory, IKeep3rJobs } from '@typechained';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signers';
 import { FakeContract, smock } from '@defi-wonderland/smock';
 import { TransactionResponse } from '@ethersproject/abstract-provider';
@@ -13,20 +13,19 @@ import moment from 'moment';
 chai.use(smock.matchers);
 
 contract('DCAKeep3rJob', () => {
+  const SWAPPER = wallet.generateRandomAddress();
   let governor: SignerWithAddress, signer: SignerWithAddress, random: SignerWithAddress;
   let DCAKeep3rJob: DCAKeep3rJobMock;
   let DCAKeep3rJobFactory: DCAKeep3rJobMock__factory;
-  let DCAHubCompanion: FakeContract<IDCAHubCompanion>;
   let keep3r: FakeContract<IKeep3rJobs>;
   let chainId: BigNumber;
   let snapshotId: string;
 
   before('Setup accounts and contracts', async () => {
     [, governor, signer, random] = await ethers.getSigners();
-    DCAHubCompanion = await smock.fake('IDCAHubCompanion');
     keep3r = await smock.fake('IKeep3rJobs');
     DCAKeep3rJobFactory = await ethers.getContractFactory('contracts/mocks/DCAKeep3rJob/DCAKeep3rJob.sol:DCAKeep3rJobMock');
-    DCAKeep3rJob = await DCAKeep3rJobFactory.deploy(DCAHubCompanion.address, keep3r.address, governor.address);
+    DCAKeep3rJob = await DCAKeep3rJobFactory.deploy(SWAPPER, keep3r.address, governor.address);
     chainId = BigNumber.from((await ethers.provider.getNetwork()).chainId);
     snapshotId = await snapshot.take();
   });
@@ -38,7 +37,7 @@ contract('DCAKeep3rJob', () => {
   });
 
   describe('constructor', () => {
-    when('companion is zero address', () => {
+    when('swapper is zero address', () => {
       then('deployment is reverted with reason', async () => {
         await behaviours.deployShouldRevertWithMessage({
           contract: DCAKeep3rJobFactory,
@@ -51,14 +50,14 @@ contract('DCAKeep3rJob', () => {
       then('deployment is reverted with reason', async () => {
         await behaviours.deployShouldRevertWithMessage({
           contract: DCAKeep3rJobFactory,
-          args: [DCAHubCompanion.address, constants.ZERO_ADDRESS, governor.address],
+          args: [SWAPPER, constants.ZERO_ADDRESS, governor.address],
           message: 'ZeroAddress',
         });
       });
     });
     when('contract is initiated', () => {
-      then('companion is set correctly', async () => {
-        expect(await DCAKeep3rJob.companion()).to.equal(DCAHubCompanion.address);
+      then('swapper is set correctly', async () => {
+        expect(await DCAKeep3rJob.swapper()).to.equal(SWAPPER);
       });
       then('keep3r is set correctly', async () => {
         expect(await DCAKeep3rJob.keep3r()).to.equal(keep3r.address);
@@ -114,33 +113,33 @@ contract('DCAKeep3rJob', () => {
       governor: () => governor,
     });
   });
-  describe('setCompanion', () => {
+  describe('setSwapper', () => {
     when('zero address is sent', () => {
       then('reverts with message', async () => {
         await behaviours.txShouldRevertWithMessage({
           contract: DCAKeep3rJob.connect(governor),
-          func: 'setCompanion',
+          func: 'setSwapper',
           args: [constants.ZERO_ADDRESS],
           message: 'ZeroAddress',
         });
       });
     });
     when('a valid address is sent', () => {
-      const COMPANION = wallet.generateRandomAddress();
+      const NEW_SWAPPER = constants.NOT_ZERO_ADDRESS;
       let tx: TransactionResponse;
       given(async () => {
-        tx = await DCAKeep3rJob.connect(governor).setCompanion(COMPANION);
+        tx = await DCAKeep3rJob.connect(governor).setSwapper(NEW_SWAPPER);
       });
       then('it is set correctly', async () => {
-        expect(await DCAKeep3rJob.companion()).to.equal(COMPANION);
+        expect(await DCAKeep3rJob.swapper()).to.equal(NEW_SWAPPER);
       });
       then('event is emitted', async () => {
-        await expect(tx).to.emit(DCAKeep3rJob, 'NewCompanionSet').withArgs(COMPANION);
+        await expect(tx).to.emit(DCAKeep3rJob, 'NewSwapperSet').withArgs(NEW_SWAPPER);
       });
     });
     behaviours.shouldBeExecutableOnlyByGovernor({
       contract: () => DCAKeep3rJob,
-      funcAndSignature: 'setCompanion',
+      funcAndSignature: 'setSwapper',
       params: () => [constants.NOT_ZERO_ADDRESS],
       governor: () => governor,
     });
@@ -192,8 +191,8 @@ contract('DCAKeep3rJob', () => {
       then('nonce is increased', async () => {
         expect(await DCAKeep3rJob.nonce()).to.equal(1);
       });
-      then('companion is called correctly', async () => {
-        expect(await DCAKeep3rJob.companionCalledWith()).to.equal(CALL.call);
+      then('swapper is called correctly', async () => {
+        expect(await DCAKeep3rJob.swapperCalledWith()).to.equal(CALL.call);
       });
       then('worked is called', () => {
         expect(keep3r.worked).to.have.been.calledOnceWith(caller.address);
