@@ -13,6 +13,7 @@ import { BigNumber, utils } from 'ethers';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signers';
 import { SwapInterval } from '@test-utils/interval-utils';
 import zrx from '@test-utils/zrx';
+import forkBlockNumber from '@integration/fork-block-numbers';
 
 const WETH_ADDRESS = '0xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2';
 const USDC_ADDRESS = '0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48';
@@ -22,7 +23,6 @@ describe('Single pair swap with DEX', () => {
   let WETH: IERC20;
   let USDC: IERC20;
   let governor: JsonRpcSigner;
-  let wethWhale: JsonRpcSigner;
   let cindy: SignerWithAddress, recipient: SignerWithAddress;
   let DCAHubCompanion: DCAHubCompanion;
   let DCAHub: DCAHub;
@@ -35,6 +35,7 @@ describe('Single pair swap with DEX', () => {
   before(async () => {
     await evm.reset({
       jsonRpcUrl: getNodeUrl('mainnet'),
+      blockNumber: forkBlockNumber['single-pair-swap-with-dex'],
     });
     [cindy, recipient] = await ethers.getSigners();
 
@@ -53,7 +54,7 @@ describe('Single pair swap with DEX', () => {
 
     WETH = await ethers.getContractAt(IERC20_ABI, WETH_ADDRESS);
     USDC = await ethers.getContractAt(IERC20_ABI, USDC_ADDRESS);
-    wethWhale = await wallet.impersonate(WETH_WHALE_ADDRESS);
+    const wethWhale = await wallet.impersonate(WETH_WHALE_ADDRESS);
     await ethers.provider.send('hardhat_setBalance', [WETH_WHALE_ADDRESS, '0xffffffffffffffff']);
 
     const depositAmount = RATE.mul(AMOUNT_OF_SWAPS);
@@ -141,7 +142,7 @@ describe('Single pair swap with DEX', () => {
       then('swap is executed', async () => {
         expect(await performedSwaps()).to.equal(initialPerformedSwaps + 1);
       });
-      then('pair balance is correct', async () => {
+      then('hub balance is correct', async () => {
         const hubWETHBalance = await WETH.balanceOf(DCAHub.address);
         const hubUSDCBalance = await USDC.balanceOf(DCAHub.address);
         expect(hubWETHBalance).to.equal(RATE.mul(AMOUNT_OF_SWAPS - 1));
