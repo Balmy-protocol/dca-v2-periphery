@@ -169,7 +169,7 @@ contract('DCAKeep3rJob', () => {
     workFailsTest({
       when: 'deadline has expired',
       signer: () => signer,
-      deadline: moment().unix() - 200000,
+      deadline: 0,
       txFailsWith: 'DeadlineExpired',
     });
     workFailsTest({
