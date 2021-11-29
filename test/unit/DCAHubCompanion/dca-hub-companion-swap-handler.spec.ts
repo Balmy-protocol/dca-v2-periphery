@@ -103,7 +103,7 @@ contract('DCAHubCompanionSwapHandler', () => {
     const SOME_RANDOM_ADDRESS = wallet.generateRandomAddress();
     whenDeadlineHasExpiredThenTxReverts({
       func: 'swapForCaller',
-      args: () => [tokens, INDEXES, [], [], SOME_RANDOM_ADDRESS, moment().unix() - 10000],
+      args: () => [tokens, INDEXES, [], [], SOME_RANDOM_ADDRESS, 0],
     });
     when('hub returns less than minimum output', () => {
       const MIN_OUTPUT = 200000;
@@ -194,7 +194,7 @@ contract('DCAHubCompanionSwapHandler', () => {
     given(async () => await DCAHubCompanionSwapHandler.connect(governor).defineDexSupport(DEX, true));
     whenDeadlineHasExpiredThenTxReverts({
       func: 'swapWithDex',
-      args: () => [DEX, tokens, INDEXES, [], false, constants.NOT_ZERO_ADDRESS, moment().unix() - 10000],
+      args: () => [DEX, tokens, INDEXES, [], false, constants.NOT_ZERO_ADDRESS, 0],
     });
     whenUnsupportedDexIsUsedThenTxReverts({
       func: 'swapWithDex',
@@ -248,7 +248,7 @@ contract('DCAHubCompanionSwapHandler', () => {
     given(async () => await DCAHubCompanionSwapHandler.connect(governor).defineDexSupport(DEX, true));
     whenDeadlineHasExpiredThenTxReverts({
       func: 'swapWithDexAndShareLeftoverWithHub',
-      args: () => [DEX, tokens, INDEXES, [], false, constants.NOT_ZERO_ADDRESS, moment().unix() - 10000],
+      args: () => [DEX, tokens, INDEXES, [], false, constants.NOT_ZERO_ADDRESS, 0],
     });
     whenUnsupportedDexIsUsedThenTxReverts({
       func: 'swapWithDexAndShareLeftoverWithHub',
