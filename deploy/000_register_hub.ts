@@ -12,9 +12,10 @@ import { DeployFunction } from 'hardhat-deploy/types';
 
 const deployFunction: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
   // TODO: Use address from npm package when exposed
-  const HUB_ADDRESS = '0x09AdE44D2E60fCa2270fF32Af5a189f40D29837b';
+  const HUB_ADDRESS = '0xA9DFAe8b08eCA017E4f33C0C580b7B5b97974567';
 
   const isDeployed = (await hre.ethers.provider.getCode(HUB_ADDRESS)) !== '0x';
+  console.log(isDeployed ? 'Found hub deployed' : 'Hub is not deployed');
 
   if (isDeployed) {
     await hre.deployments.save('DCAHub', { abi: DCA_HUB_ABI, address: HUB_ADDRESS });
