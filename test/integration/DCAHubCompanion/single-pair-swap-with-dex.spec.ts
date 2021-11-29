@@ -13,7 +13,6 @@ import { BigNumber, utils } from 'ethers';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signers';
 import { SwapInterval } from '@test-utils/interval-utils';
 import zrx from '@test-utils/zrx';
-import forkBlockNumber from '@integration/fork-block-numbers';
 
 const WETH_ADDRESS = '0xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2';
 const USDC_ADDRESS = '0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48';
@@ -35,7 +34,6 @@ describe('Single pair swap with DEX', () => {
   before(async () => {
     await evm.reset({
       jsonRpcUrl: getNodeUrl('mainnet'),
-      blockNumber: forkBlockNumber['single-pair-swap-with-dex'],
     });
     [cindy, recipient] = await ethers.getSigners();
 
