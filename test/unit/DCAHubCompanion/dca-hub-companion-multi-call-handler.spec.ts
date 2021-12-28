@@ -12,6 +12,7 @@ import {
 } from '@typechained';
 import { FakeContract, smock } from '@defi-wonderland/smock';
 import { TransactionResponse } from '@ethersproject/abstract-provider';
+import { utils } from 'ethers';
 
 chai.use(smock.matchers);
 
@@ -64,6 +65,30 @@ contract('DCAHubCompanionMulticallHandler', () => {
     WITHDRAW,
     TERMINATE,
   }
+
+  describe('permissionPermitProxy', () => {
+    const PERMISSIONS = [{ operator: constants.NOT_ZERO_ADDRESS, permissions: [Permission.INCREASE] }];
+    const R = utils.formatBytes32String('r');
+    const S = utils.formatBytes32String('s');
+
+    when('method is executed', () => {
+      given(async () => {
+        await DCAHubCompanionMulticallHandler.permissionPermitProxy(PERMISSIONS, 10, 20, 30, R, S);
+      });
+      then('hub is called', () => {
+        expect(DCAPermissionManager.permissionPermit).to.have.been.calledOnce;
+        const [permissions, tokenId, deadline, v, r, s] = DCAPermissionManager.permissionPermit.getCall(0).args;
+        expect((permissions as any).length).to.equal(PERMISSIONS.length);
+        expect((permissions as any)[0].operator).to.equal(PERMISSIONS[0].operator);
+        expect((permissions as any)[0].permissions).to.eql(PERMISSIONS[0].permissions);
+        expect(tokenId).to.equal(10);
+        expect(deadline).to.equal(20);
+        expect(v).to.equal(30);
+        expect(r).to.equal(R);
+        expect(s).to.equal(S);
+      });
+    });
+  });
 
   proxyTest({
     method: 'withdrawSwappedProxy',

@@ -7,6 +7,17 @@ import './DCAHubCompanionParameters.sol';
 abstract contract DCAHubCompanionMulticallHandler is DCAHubCompanionParameters, IDCAHubCompanionMulticallHandler {
   using SafeERC20 for IERC20Metadata;
 
+  function permissionPermitProxy(
+    IDCAPermissionManager.PermissionSet[] calldata _permissions,
+    uint256 _tokenId,
+    uint256 _deadline,
+    uint8 _v,
+    bytes32 _r,
+    bytes32 _s
+  ) external {
+    permissionManager.permissionPermit(_permissions, _tokenId, _deadline, _v, _r, _s);
+  }
+
   function withdrawSwappedProxy(uint256 _positionId, address _recipient) external returns (uint256 _swapped) {
     if (!permissionManager.hasPermission(_positionId, msg.sender, IDCAPermissionManager.Permission.WITHDRAW))
       revert IDCAHubCompanion.UnauthorizedCaller();

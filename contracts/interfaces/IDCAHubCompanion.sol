@@ -294,6 +294,22 @@ interface IDCAHubCompanionMulticallHandler {
     address _recipientUnswapped,
     address _recipientSwapped
   ) external returns (uint256 _unswapped, uint256 _swapped);
+
+  /// @notice Calls the permission manager and sets permissions via signature
+  /// @param _permissions The permissions to set
+  /// @param _tokenId The token's id
+  /// @param _deadline The deadline timestamp by which the call must be mined for the approve to work
+  /// @param _v Must produce valid secp256k1 signature from the holder along with `r` and `s`
+  /// @param _r Must produce valid secp256k1 signature from the holder along with `v` and `s`
+  /// @param _s Must produce valid secp256k1 signature from the holder along with `r` and `v`
+  function permissionPermitProxy(
+    IDCAPermissionManager.PermissionSet[] calldata _permissions,
+    uint256 _tokenId,
+    uint256 _deadline,
+    uint8 _v,
+    bytes32 _r,
+    bytes32 _s
+  ) external;
 }
 
 interface IDCAHubCompanion is
