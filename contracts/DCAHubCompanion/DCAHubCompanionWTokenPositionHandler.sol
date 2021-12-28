@@ -49,7 +49,8 @@ abstract contract DCAHubCompanionWTokenPositionHandler is DCAHubCompanionParamet
   }
 
   function withdrawSwappedUsingProtocolToken(uint256 _positionId, address payable _recipient) external returns (uint256 _swapped) {
-    if (!permissionManager.hasPermission(_positionId, msg.sender, IDCAPermissionManager.Permission.WITHDRAW)) revert UnauthorizedCaller();
+    if (!permissionManager.hasPermission(_positionId, msg.sender, IDCAPermissionManager.Permission.WITHDRAW))
+      revert IDCAHubCompanion.UnauthorizedCaller();
     _swapped = hub.withdrawSwapped(_positionId, address(this));
     _unwrapAndSend(_swapped, _recipient);
   }
@@ -59,7 +60,8 @@ abstract contract DCAHubCompanionWTokenPositionHandler is DCAHubCompanionParamet
     returns (uint256 _swapped)
   {
     for (uint256 i; i < _positionIds.length; i++) {
-      if (!permissionManager.hasPermission(_positionIds[i], msg.sender, IDCAPermissionManager.Permission.WITHDRAW)) revert UnauthorizedCaller();
+      if (!permissionManager.hasPermission(_positionIds[i], msg.sender, IDCAPermissionManager.Permission.WITHDRAW))
+        revert IDCAHubCompanion.UnauthorizedCaller();
     }
     IDCAHub.PositionSet[] memory _positionSets = new IDCAHub.PositionSet[](1);
     _positionSets[0].token = address(wToken);
@@ -74,7 +76,8 @@ abstract contract DCAHubCompanionWTokenPositionHandler is DCAHubCompanionParamet
     uint256 _amount,
     uint32 _newSwaps
   ) external payable {
-    if (!permissionManager.hasPermission(_positionId, msg.sender, IDCAPermissionManager.Permission.INCREASE)) revert UnauthorizedCaller();
+    if (!permissionManager.hasPermission(_positionId, msg.sender, IDCAPermissionManager.Permission.INCREASE))
+      revert IDCAHubCompanion.UnauthorizedCaller();
     _wrap(_amount);
     hub.increasePosition(_positionId, _amount, _newSwaps);
   }
@@ -85,7 +88,8 @@ abstract contract DCAHubCompanionWTokenPositionHandler is DCAHubCompanionParamet
     uint32 _newSwaps,
     address payable _recipient
   ) external {
-    if (!permissionManager.hasPermission(_positionId, msg.sender, IDCAPermissionManager.Permission.REDUCE)) revert UnauthorizedCaller();
+    if (!permissionManager.hasPermission(_positionId, msg.sender, IDCAPermissionManager.Permission.REDUCE))
+      revert IDCAHubCompanion.UnauthorizedCaller();
     hub.reducePosition(_positionId, _amount, _newSwaps, address(this));
     _unwrapAndSend(_amount, _recipient);
   }
@@ -95,7 +99,8 @@ abstract contract DCAHubCompanionWTokenPositionHandler is DCAHubCompanionParamet
     address payable _recipientUnswapped,
     address _recipientSwapped
   ) external returns (uint256 _unswapped, uint256 _swapped) {
-    if (!permissionManager.hasPermission(_positionId, msg.sender, IDCAPermissionManager.Permission.TERMINATE)) revert UnauthorizedCaller();
+    if (!permissionManager.hasPermission(_positionId, msg.sender, IDCAPermissionManager.Permission.TERMINATE))
+      revert IDCAHubCompanion.UnauthorizedCaller();
     (_unswapped, _swapped) = hub.terminate(_positionId, address(this), _recipientSwapped);
     _unwrapAndSend(_unswapped, _recipientUnswapped);
   }
@@ -105,7 +110,8 @@ abstract contract DCAHubCompanionWTokenPositionHandler is DCAHubCompanionParamet
     address _recipientUnswapped,
     address payable _recipientSwapped
   ) external returns (uint256 _unswapped, uint256 _swapped) {
-    if (!permissionManager.hasPermission(_positionId, msg.sender, IDCAPermissionManager.Permission.TERMINATE)) revert UnauthorizedCaller();
+    if (!permissionManager.hasPermission(_positionId, msg.sender, IDCAPermissionManager.Permission.TERMINATE))
+      revert IDCAHubCompanion.UnauthorizedCaller();
     (_unswapped, _swapped) = hub.terminate(_positionId, _recipientUnswapped, address(this));
     _unwrapAndSend(_swapped, _recipientSwapped);
   }

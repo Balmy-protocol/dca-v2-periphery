@@ -133,9 +133,6 @@ interface IDCAHubCompanionWTokenPositionHandler {
   /// @notice Thrown when the user tries to make a deposit where neither or both of the tokens are the protocol token
   error InvalidTokens();
 
-  /// @notice Thrown when a user tries operate on a position that they don't have access to
-  error UnauthorizedCaller();
-
   /// @notice Thrown when the user sends more or less of the protocol token than is actually necessary
   error InvalidAmountOfProtocolTokenReceived();
 
@@ -242,6 +239,63 @@ interface IDCAHubCompanionLibrariesHandler {
   function secondsUntilNextSwap(Pair[] calldata _pairs) external view returns (uint256[] memory);
 }
 
+interface IDCAHubCompanionMulticallHandler {
+  /// @notice Call the hub and withdraws all swapped tokens from a position to a recipient
+  /// @dev Meant to be used as part of a multicall
+  /// @param _positionId The position's id
+  /// @param _recipient The address to withdraw swapped tokens to
+  /// @return _swapped How much was withdrawn
+  function withdrawSwappedProxy(uint256 _positionId, address _recipient) external returns (uint256 _swapped);
+
+  /// @notice Call the hub and withdraws all swapped tokens from multiple positions
+  /// @dev Meant to be used as part of a multicall
+  /// @param _positions A list positions, grouped by `to` token
+  /// @param _recipient The address to withdraw swapped tokens to
+  /// @return _withdrawn How much was withdrawn for each token
+  function withdrawSwappedManyProxy(IDCAHub.PositionSet[] calldata _positions, address _recipient)
+    external
+    returns (uint256[] memory _withdrawn);
+
+  /// @notice Call the hub and takes the unswapped balance, adds the new deposited funds and modifies the position so that
+  /// it is executed in _newSwaps swaps
+  /// @dev Meant to be used as part of a multicall
+  /// @param _positionId The position's id
+  /// @param _amount Amount of funds to add to the position
+  /// @param _newSwaps The new amount of swaps
+  function increasePositionProxy(
+    uint256 _positionId,
+    uint256 _amount,
+    uint32 _newSwaps
+  ) external;
+
+  /// @notice Call the hub and withdraws the specified amount from the unswapped balance and modifies the position so that
+  /// it is executed in _newSwaps swaps
+  /// @dev Meant to be used as part of a multicall
+  /// @param _positionId The position's id
+  /// @param _amount Amount of funds to withdraw from the position
+  /// @param _newSwaps The new amount of swaps
+  /// @param _recipient The address to send tokens to
+  function reducePositionProxy(
+    uint256 _positionId,
+    uint256 _amount,
+    uint32 _newSwaps,
+    address _recipient
+  ) external;
+
+  /// @notice Calls the hub and terminates the position and sends all unswapped and swapped balance to the specified recipients
+  /// @dev Meant to be used as part of a multicall
+  /// @param _positionId The position's id
+  /// @param _recipientUnswapped The address to withdraw unswapped tokens to
+  /// @param _recipientSwapped The address to withdraw swapped tokens to
+  /// @return _unswapped The unswapped balance sent to `_recipientUnswapped`
+  /// @return _swapped The swapped balance sent to `_recipientSwapped`
+  function terminateProxy(
+    uint256 _positionId,
+    address _recipientUnswapped,
+    address _recipientSwapped
+  ) external returns (uint256 _unswapped, uint256 _swapped);
+}
+
 interface IDCAHubCompanion is
   IDCAHubCompanionParameters,
   IDCAHubCompanionSwapHandler,
@@ -251,4 +305,7 @@ interface IDCAHubCompanion is
 {
   /// @notice Thrown when one of the parameters is a zero address
   error ZeroAddress();
+
+  /// @notice Thrown when a user tries operate on a position that they don't have access to
+  error UnauthorizedCaller();
 }

@@ -45,7 +45,6 @@ contract('DCAHubCompanionWTokenPositionHandler', () => {
     wToken = await wTokenFactory.deploy('WETH', 'WETH', 18);
     DCAPermissionManager = await smock.fake('IDCAPermissionManager');
     DCAHub = await smock.fake('IDCAHub');
-    DCAHub.permissionManager.returns(DCAPermissionManager.address);
     erc20Token = await smock.fake('IERC20');
     DCAHubCompanionWTokenPositionHandler = await DCAHubCompanionWTokenPositionHandlerFactory.deploy(
       DCAHub.address,
