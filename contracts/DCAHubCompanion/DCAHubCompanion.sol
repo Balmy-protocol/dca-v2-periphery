@@ -19,5 +19,5 @@ contract DCAHubCompanion is
     IDCAHub _hub,
     IWrappedProtocolToken _wToken,
     address _governor
-  ) DCAHubCompanionParameters(_hub, _wToken, _governor) {}
+  ) DCAHubCompanionParameters(_hub, _hub.permissionManager(), _wToken, _governor) {}
 }

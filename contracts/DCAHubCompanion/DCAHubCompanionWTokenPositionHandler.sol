@@ -8,10 +8,7 @@ import './DCAHubCompanionParameters.sol';
 abstract contract DCAHubCompanionWTokenPositionHandler is DCAHubCompanionParameters, IDCAHubCompanionWTokenPositionHandler {
   using SafeERC20 for IERC20;
 
-  IDCAPermissionManager public immutable permissionManager;
-
   constructor() {
-    permissionManager = hub.permissionManager();
     approveWTokenForHub();
   }
 

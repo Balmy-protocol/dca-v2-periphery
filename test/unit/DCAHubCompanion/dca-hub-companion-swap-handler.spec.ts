@@ -14,7 +14,6 @@ import {
 } from '@typechained';
 import { FakeContract, smock } from '@defi-wonderland/smock';
 import { addExtra, ERC20TokenContract, TokenContract } from '@test-utils/erc20';
-import moment from 'moment';
 import { TransactionResponse } from '@ethersproject/abstract-provider';
 import { BigNumber, BigNumberish } from '@ethersproject/bignumber';
 import { BytesLike } from '@ethersproject/bytes';

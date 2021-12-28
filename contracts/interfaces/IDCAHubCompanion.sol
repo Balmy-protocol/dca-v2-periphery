@@ -25,6 +25,10 @@ interface IDCAHubCompanionParameters is IGovernable {
   /// @return The protocol token
   // solhint-disable-next-line func-name-mixedcase
   function PROTOCOL_TOKEN() external view returns (address);
+
+  /// @notice Returns the permission manager contract
+  /// @return The contract itself
+  function permissionManager() external view returns (IDCAPermissionManager);
 }
 
 interface IDCAHubCompanionSwapHandler is IDCAHubSwapCallee {
@@ -131,10 +135,6 @@ interface IDCAHubCompanionWTokenPositionHandler {
 
   /// @notice Thrown when a user tries operate on a position that they don't have access to
   error UnauthorizedCaller();
-
-  /// @notice Returns the permission manager contract
-  /// @return The contract itself
-  function permissionManager() external view returns (IDCAPermissionManager);
 
   /// @notice Thrown when the user sends more or less of the protocol token than is actually necessary
   error InvalidAmountOfProtocolTokenReceived();

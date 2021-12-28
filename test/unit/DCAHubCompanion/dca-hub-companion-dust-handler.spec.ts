@@ -1,12 +1,11 @@
-import chai, { expect } from 'chai';
+import chai from 'chai';
 import { ethers } from 'hardhat';
-import { behaviours, constants, wallet } from '@test-utils';
-import { contract, given, then, when } from '@test-utils/bdd';
+import { behaviours, constants } from '@test-utils';
+import { contract } from '@test-utils/bdd';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signers';
 import { snapshot } from '@test-utils/evm';
 import { DCAHubCompanionDustHandlerMock, DCAHubCompanionDustHandlerMock__factory, IERC20 } from '@typechained';
 import { FakeContract, smock } from '@defi-wonderland/smock';
-import { TransactionResponse } from '@ethersproject/abstract-provider';
 
 chai.use(smock.matchers);
 

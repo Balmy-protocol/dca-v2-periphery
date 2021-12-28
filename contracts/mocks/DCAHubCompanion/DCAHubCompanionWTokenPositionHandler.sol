@@ -5,5 +5,9 @@ import '../../DCAHubCompanion/DCAHubCompanionWTokenPositionHandler.sol';
 import './DCAHubCompanionParameters.sol';
 
 contract DCAHubCompanionWTokenPositionHandlerMock is DCAHubCompanionWTokenPositionHandler, DCAHubCompanionParametersMock {
-  constructor(IDCAHub _hub, IWrappedProtocolToken _wToken) DCAHubCompanionParametersMock(_hub, _wToken, address(1)) {}
+  constructor(
+    IDCAHub _hub,
+    IDCAPermissionManager _permissionManager,
+    IWrappedProtocolToken _wToken
+  ) DCAHubCompanionParametersMock(_hub, _permissionManager, _wToken, address(1)) {}
 }

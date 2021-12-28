@@ -11,7 +11,7 @@ contract DCAHubCompanionSwapHandlerMock is DCAHubCompanionSwapHandler, DCAHubCom
     IDCAHub _hub,
     IWrappedProtocolToken _wToken,
     address _governor
-  ) DCAHubCompanionParametersMock(_hub, _wToken, _governor) {}
+  ) DCAHubCompanionParametersMock(_hub, IDCAPermissionManager(address(1)), _wToken, _governor) {}
 
   function _callDex(address _dex, bytes memory _data) internal override {
     _dexCalledWith[_dex].push(_data);

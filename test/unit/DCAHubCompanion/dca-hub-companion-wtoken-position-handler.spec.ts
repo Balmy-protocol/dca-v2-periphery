@@ -47,7 +47,11 @@ contract('DCAHubCompanionWTokenPositionHandler', () => {
     DCAHub = await smock.fake('IDCAHub');
     DCAHub.permissionManager.returns(DCAPermissionManager.address);
     erc20Token = await smock.fake('IERC20');
-    DCAHubCompanionWTokenPositionHandler = await DCAHubCompanionWTokenPositionHandlerFactory.deploy(DCAHub.address, wToken.address);
+    DCAHubCompanionWTokenPositionHandler = await DCAHubCompanionWTokenPositionHandlerFactory.deploy(
+      DCAHub.address,
+      DCAPermissionManager.address,
+      wToken.address
+    );
     initialRecipientPlatformBalance = await getPlatformBalance(recipient);
     await setPlatformTokenBalance(wToken, INITIAL_WTOKEN_AND_PLATFORM_BALANCE);
     await setPlatformTokenBalance(DCAHubCompanionWTokenPositionHandler, INITIAL_WTOKEN_AND_PLATFORM_BALANCE);
@@ -70,9 +74,6 @@ contract('DCAHubCompanionWTokenPositionHandler', () => {
 
   describe('constructor', () => {
     when('contract is deployed', () => {
-      then('permission manager is set correctly', async () => {
-        expect(await DCAHubCompanionWTokenPositionHandler.permissionManager()).to.equal(DCAPermissionManager.address);
-      });
       then('hub is approved for wToken', async () => {
         expect(await wToken.allowance(DCAHubCompanionWTokenPositionHandler.address, DCAHub.address)).to.equal(constants.MAX_UINT_256);
       });
