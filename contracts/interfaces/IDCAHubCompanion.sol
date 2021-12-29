@@ -240,6 +240,27 @@ interface IDCAHubCompanionLibrariesHandler {
 }
 
 interface IDCAHubCompanionMulticallHandler {
+  /// @notice Creates a new position
+  /// @dev Meant to be used as part of a multicall
+  /// @param _from The address of the "from" token
+  /// @param _to The address of the "to" token
+  /// @param _amount How many "from" tokens will be swapped in total
+  /// @param _amountOfSwaps How many swaps to execute for this position
+  /// @param _swapInterval How frequently the position's swaps should be executed
+  /// @param _owner The address of the owner of the position being created
+  /// @param _transferFromCaller Determines if the funds should be transfered from the caller
+  /// @return _positionId The id of the created position
+  function depositProxy(
+    address _from,
+    address _to,
+    uint256 _amount,
+    uint32 _amountOfSwaps,
+    uint32 _swapInterval,
+    address _owner,
+    IDCAPermissionManager.PermissionSet[] calldata _permissions,
+    bool _transferFromCaller
+  ) external returns (uint256 _positionId);
+
   /// @notice Call the hub and withdraws all swapped tokens from a position to a recipient
   /// @dev Meant to be used as part of a multicall
   /// @param _positionId The position's id
@@ -262,10 +283,12 @@ interface IDCAHubCompanionMulticallHandler {
   /// @param _positionId The position's id
   /// @param _amount Amount of funds to add to the position
   /// @param _newSwaps The new amount of swaps
+  /// @param _transferFromCaller Determines if the funds should be transfered from the caller
   function increasePositionProxy(
     uint256 _positionId,
     uint256 _amount,
-    uint32 _newSwaps
+    uint32 _newSwaps,
+    bool _transferFromCaller
   ) external;
 
   /// @notice Call the hub and withdraws the specified amount from the unswapped balance and modifies the position so that

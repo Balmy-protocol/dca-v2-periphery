@@ -19,6 +19,23 @@ abstract contract DCAHubCompanionMulticallHandler is Multicall, DCAHubCompanionP
     permissionManager.permissionPermit(_permissions, _tokenId, _deadline, _v, _r, _s);
   }
 
+  function depositProxy(
+    address _from,
+    address _to,
+    uint256 _amount,
+    uint32 _amountOfSwaps,
+    uint32 _swapInterval,
+    address _owner,
+    IDCAPermissionManager.PermissionSet[] calldata _permissions,
+    bool _transferFromCaller
+  ) external returns (uint256 _positionId) {
+    if (_transferFromCaller) {
+      IERC20Metadata(_from).safeTransferFrom(msg.sender, address(this), _amount);
+    }
+    IERC20Metadata(_from).approve(address(hub), _amount);
+    _positionId = hub.deposit(_from, _to, _amount, _amountOfSwaps, _swapInterval, _owner, _permissions);
+  }
+
   function withdrawSwappedProxy(uint256 _positionId, address _recipient) external returns (uint256 _swapped) {
     if (!permissionManager.hasPermission(_positionId, msg.sender, IDCAPermissionManager.Permission.WITHDRAW))
       revert IDCAHubCompanion.UnauthorizedCaller();
@@ -41,12 +58,15 @@ abstract contract DCAHubCompanionMulticallHandler is Multicall, DCAHubCompanionP
   function increasePositionProxy(
     uint256 _positionId,
     uint256 _amount,
-    uint32 _newSwaps
+    uint32 _newSwaps,
+    bool _transferFromCaller
   ) external {
     if (!permissionManager.hasPermission(_positionId, msg.sender, IDCAPermissionManager.Permission.INCREASE))
       revert IDCAHubCompanion.UnauthorizedCaller();
     IERC20Metadata _from = hub.userPosition(_positionId).from;
-    _from.safeTransferFrom(msg.sender, address(this), _amount);
+    if (_transferFromCaller) {
+      _from.safeTransferFrom(msg.sender, address(this), _amount);
+    }
     _from.approve(address(hub), _amount);
     hub.increasePosition(_positionId, _amount, _newSwaps);
   }
