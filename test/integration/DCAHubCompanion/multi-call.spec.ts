@@ -20,13 +20,13 @@ const USDC_ADDRESS = '0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48';
 const WETH_WHALE_ADDRESS = '0xf04a5cc80b1e94c69b48f5ee68a08cd2f09a7c3e';
 const USDC_WHALE_ADDRESS = '0x0a59649758aa4d66e25f08dd01271e891fe52199';
 
-describe.only('Multicall', () => {
+describe('Multicall', () => {
   let WETH: IERC20, USDC: IERC20;
   let positionOwner: SignerWithAddress, swapper: SignerWithAddress, recipient: SignerWithAddress;
   let DCAHubCompanion: DCAHubCompanion;
   let DCAPermissionManager: string;
   let DCAHub: DCAHub;
-  let initialHubWTokenBalance: BigNumber, initialRecipientProtocolBalance: BigNumber;
+  let initialRecipientProtocolBalance: BigNumber;
   let chainId: BigNumber;
   let snapshotId: string;
 
@@ -59,7 +59,6 @@ describe.only('Multicall', () => {
     // Send tokens from whales, to our users
     await distributeTokensToUsers();
 
-    initialHubWTokenBalance = await WETH.balanceOf(DCAHub.address);
     initialRecipientProtocolBalance = await ethers.provider.getBalance(recipient.address);
     chainId = BigNumber.from((await ethers.provider.getNetwork()).chainId);
     snapshotId = await snapshot.take();
