@@ -1,10 +1,11 @@
 // SPDX-License-Identifier: GPL-2.0-or-later
 pragma solidity >=0.8.7 <0.9.0;
 
+import '@openzeppelin/contracts/utils/Multicall.sol';
 import '@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol';
 import './DCAHubCompanionParameters.sol';
 
-abstract contract DCAHubCompanionMulticallHandler is DCAHubCompanionParameters, IDCAHubCompanionMulticallHandler {
+abstract contract DCAHubCompanionMulticallHandler is Multicall, DCAHubCompanionParameters, IDCAHubCompanionMulticallHandler {
   using SafeERC20 for IERC20Metadata;
 
   function permissionPermitProxy(

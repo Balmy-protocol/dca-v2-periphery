@@ -6,6 +6,7 @@ import './DCAHubCompanionSwapHandler.sol';
 import './DCAHubCompanionWTokenPositionHandler.sol';
 import './DCAHubCompanionDustHandler.sol';
 import './DCAHubCompanionLibrariesHandler.sol';
+import './DCAHubCompanionMulticallHandler.sol';
 
 contract DCAHubCompanion is
   DCAHubCompanionParameters,
@@ -13,6 +14,7 @@ contract DCAHubCompanion is
   DCAHubCompanionWTokenPositionHandler,
   DCAHubCompanionDustHandler,
   DCAHubCompanionLibrariesHandler,
+  DCAHubCompanionMulticallHandler,
   IDCAHubCompanion
 {
   constructor(

@@ -317,7 +317,8 @@ interface IDCAHubCompanion is
   IDCAHubCompanionSwapHandler,
   IDCAHubCompanionWTokenPositionHandler,
   IDCAHubCompanionDustHandler,
-  IDCAHubCompanionLibrariesHandler
+  IDCAHubCompanionLibrariesHandler,
+  IDCAHubCompanionMulticallHandler
 {
   /// @notice Thrown when one of the parameters is a zero address
   error ZeroAddress();
