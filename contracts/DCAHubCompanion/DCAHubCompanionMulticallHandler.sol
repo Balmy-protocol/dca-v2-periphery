@@ -32,7 +32,9 @@ abstract contract DCAHubCompanionMulticallHandler is Multicall, DCAHubCompanionP
     if (_transferFromCaller) {
       IERC20Metadata(_from).safeTransferFrom(msg.sender, address(this), _amount);
     }
-    IERC20Metadata(_from).approve(address(hub), _amount);
+    // If the token we are going to approve doesn't have the approval issue we see in USDT, we will approve 1 extra.
+    // We are doing that so that the allowance isn't fully spent, and the next approve is cheaper.
+    IERC20Metadata(_from).approve(address(hub), tokenHasApprovalIssue[_from] ? _amount : _amount + 1);
     _positionId = hub.deposit(_from, _to, _amount, _amountOfSwaps, _swapInterval, _owner, _permissions);
   }
 
@@ -67,7 +69,9 @@ abstract contract DCAHubCompanionMulticallHandler is Multicall, DCAHubCompanionP
     if (_transferFromCaller) {
       _from.safeTransferFrom(msg.sender, address(this), _amount);
     }
-    _from.approve(address(hub), _amount);
+    // If the token we are going to approve doesn't have the approval issue we see in USDT, we will approve 1 extra.
+    // We are doing that so that the allowance isn't fully spent, and the next approve is cheaper.
+    _from.approve(address(hub), tokenHasApprovalIssue[address(_from)] ? _amount : _amount + 1);
     hub.increasePosition(_positionId, _amount, _newSwaps);
   }
 

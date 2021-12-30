@@ -152,7 +152,22 @@ abstract contract DCAHubCompanionSwapHandler is DeadlineValidation, DCAHubCompan
     for (uint256 i; i < _tokens.length; i++) {
       IDCAHub.TokenInSwap memory _tokenInSwap = _tokens[i];
       if (_tokenInSwap.reward > 0) {
-        IERC20(_tokenInSwap.token).approve(_callbackData.dex, _tokenInSwap.reward);
+        IERC20 _token = IERC20(_tokenInSwap.token);
+        bool _tokenHasIssue = tokenHasApprovalIssue[_tokenInSwap.token];
+        if (!_tokenHasIssue) {
+          // If the token we are going to approve doesn't have the approval issue we see in USDT, we will approve 1 extra.
+          // We are doing that so that the allowance isn't fully spent, and the next approve is cheaper.
+          _token.approve(_callbackData.dex, _tokenInSwap.reward + 1);
+        } else {
+          // Note: I hope USDT burns in hell
+          uint256 _allowance = _token.allowance(address(this), _callbackData.dex);
+          if (_allowance < _tokenInSwap.reward) {
+            if (_allowance > 0) {
+              _token.approve(_callbackData.dex, 0);
+            }
+            _token.approve(_callbackData.dex, _tokenInSwap.reward);
+          }
+        }
       }
     }
 

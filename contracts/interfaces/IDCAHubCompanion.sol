@@ -10,6 +10,14 @@ import './utils/IGovernable.sol';
 import './ISharedTypes.sol';
 
 interface IDCAHubCompanionParameters is IGovernable {
+  /// @notice Thrown when the given parameters are invalid
+  error InvalidTokenApprovalParams();
+
+  /// @notice Emitted when tokens with approval issues are set
+  /// @param addresses The addresses of the tokens
+  /// @param hasIssue Whether they have issues or not
+  event TokenWithApprovalIssuesSet(address[] addresses, bool[] hasIssue);
+
   /// @notice Returns the DCA Hub's address
   /// @dev This value cannot be modified
   /// @return The DCA Hub contract
@@ -29,6 +37,17 @@ interface IDCAHubCompanionParameters is IGovernable {
   /// @notice Returns the permission manager contract
   /// @return The contract itself
   function permissionManager() external view returns (IDCAPermissionManager);
+
+  /// @notice Returns whether the given address has issues with approvals, like USDT
+  /// @param _tokenAddress The address of the token to check
+  /// @return Whether it has issues or not
+  function tokenHasApprovalIssue(address _tokenAddress) external view returns (bool);
+
+  /// @notice Sets whether specific addresses have issues with approvals, like USDT
+  /// @dev Will revert with `InvalidTokenApprovalParams` if the length of the given arrays differ
+  /// @param _addresses The addresses of the tokens
+  /// @param _hasIssue Wether they have issues or not
+  function setTokensWithApprovalIssues(address[] calldata _addresses, bool[] calldata _hasIssue) external;
 }
 
 interface IDCAHubCompanionSwapHandler is IDCAHubSwapCallee {

@@ -30,7 +30,9 @@ abstract contract DCAHubCompanionWTokenPositionHandler is DCAHubCompanionParamet
       _convertedFrom = address(wToken);
     } else {
       IERC20(_from).safeTransferFrom(msg.sender, address(this), _amount);
-      IERC20(_from).approve(address(hub), _amount);
+      // If the token we are going to approve doesn't have the approval issue we see in USDT, we will approve 1 extra.
+      // We are doing that so that the allowance isn't fully spent, and the next approve is cheaper.
+      IERC20(_from).approve(address(hub), tokenHasApprovalIssue[_from] ? _amount : _amount + 1);
       _convertedTo = address(wToken);
     }
 

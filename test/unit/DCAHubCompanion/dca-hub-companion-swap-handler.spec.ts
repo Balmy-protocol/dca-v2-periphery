@@ -466,7 +466,7 @@ contract('DCAHubCompanionSwapHandler', () => {
         });
         then('reward tokens are approved', () => {
           expect(tokenB.approve).to.have.been.calledOnce;
-          expect(tokenB.approve).to.have.been.calledWith(DEX, REWARD_AMOUNT_TOKEN_B);
+          expect(tokenB.approve).to.have.been.calledWith(DEX, REWARD_AMOUNT_TOKEN_B + 1);
         });
         then('tokens that are not reward are not approved', () => {
           expect(tokenA.approve).to.not.have.been.called;
@@ -477,6 +477,47 @@ contract('DCAHubCompanionSwapHandler', () => {
             expect(calls[i]).to.equal(ethers.utils.hexlify(BYTES[i]));
           }
         });
+      });
+
+      approveWhenHandlingSwapWithDex({
+        when: 'token has no issue with approvals',
+        then: '1 extra is approved',
+        hasIssue: false,
+        reward: 100,
+        assertion: (token) => expect(token.approve).to.have.been.calledWith(DEX, 100 + 1),
+      });
+
+      approveWhenHandlingSwapWithDex({
+        when: 'token has issues with approvals but allowance is more than reward',
+        then: 'nothing is approved',
+        hasIssue: true,
+        reward: 100,
+        allowance: 101,
+        assertion: (token) => expect(token.approve).to.not.have.been.called,
+      });
+
+      approveWhenHandlingSwapWithDex({
+        when: 'token has issues with approvals but is not zero',
+        then: 'approve is called twice',
+        hasIssue: true,
+        reward: 100,
+        allowance: 1,
+        assertion: (token) => {
+          expect(token.approve).to.have.been.called.calledTwice;
+          expect(token.approve).to.have.been.calledWith(DEX, 0);
+          expect(token.approve).to.have.been.calledWith(DEX, 100);
+        },
+      });
+
+      approveWhenHandlingSwapWithDex({
+        when: 'token has issues with approvals but is zero',
+        then: 'approve is called only once',
+        hasIssue: true,
+        reward: 100,
+        allowance: 0,
+        assertion: (token) => {
+          expect(token.approve).to.have.been.calledOnceWith(DEX, 100);
+        },
       });
 
       handleSwapWithDex({
@@ -544,6 +585,33 @@ contract('DCAHubCompanionSwapHandler', () => {
         swapAndTransfer: true,
         assertion: (token, recipient) => expect(token.transfer).to.have.been.calledOnceWith(recipient, 100),
       });
+
+      function approveWhenHandlingSwapWithDex({
+        when: title,
+        then: thenTitle,
+        allowance,
+        reward,
+        hasIssue,
+        assertion,
+      }: {
+        when: string;
+        then: string;
+        allowance?: BigNumberish;
+        reward: BigNumberish;
+        hasIssue: boolean;
+        assertion: (_: FakeContract<IERC20>, recipient: string) => void;
+      }) {
+        when(title, () => {
+          given(async () => {
+            const tokensInSwap = [{ token: tokenA.address, reward: reward ?? 0, toProvide: 0, platformFee: 0 }];
+            tokenA.allowance.returns(allowance ?? 0);
+            await DCAHubCompanionSwapHandler.connect(governor).setTokensWithApprovalIssues([tokenA.address], [hasIssue ?? false]);
+            const data = swapData({ callsToDex: [], sendToHubFlag: true, swapAndTransfer: false });
+            await DCAHubCompanionSwapHandler.connect(hub).DCAHubSwapCall(DCAHubCompanionSwapHandler.address, tokensInSwap, [], data);
+          });
+          then(thenTitle, () => assertion(tokenA, swapper.address));
+        });
+      }
 
       function handleSwapWithDex({
         when: title,

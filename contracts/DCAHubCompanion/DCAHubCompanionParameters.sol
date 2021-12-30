@@ -9,6 +9,7 @@ abstract contract DCAHubCompanionParameters is Governable, IDCAHubCompanionParam
   IDCAPermissionManager public immutable permissionManager;
   IWrappedProtocolToken public immutable wToken;
   address public constant PROTOCOL_TOKEN = 0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE;
+  mapping(address => bool) public tokenHasApprovalIssue;
 
   constructor(
     IDCAHub _hub,
@@ -21,5 +22,13 @@ abstract contract DCAHubCompanionParameters is Governable, IDCAHubCompanionParam
     hub = _hub;
     wToken = _wToken;
     permissionManager = _permissionManager;
+  }
+
+  function setTokensWithApprovalIssues(address[] calldata _addresses, bool[] calldata _hasIssue) external onlyGovernor {
+    if (_addresses.length != _hasIssue.length) revert InvalidTokenApprovalParams();
+    for (uint256 i; i < _addresses.length; i++) {
+      tokenHasApprovalIssue[_addresses[i]] = _hasIssue[i];
+    }
+    emit TokenWithApprovalIssuesSet(_addresses, _hasIssue);
   }
 }
