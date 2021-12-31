@@ -31,4 +31,19 @@ abstract contract DCAHubCompanionParameters is Governable, IDCAHubCompanionParam
     }
     emit TokenWithApprovalIssuesSet(_addresses, _hasIssue);
   }
+
+  function _checkPermissionOrFail(uint256 _positionId, IDCAPermissionManager.Permission _permission) internal view {
+    if (!permissionManager.hasPermission(_positionId, msg.sender, _permission)) revert IDCAHubCompanion.UnauthorizedCaller();
+  }
+
+  function _approveHub(address _from, uint256 _amount) internal {
+    // If the token we are going to approve doesn't have the approval issue we see in USDT, we will approve 1 extra.
+    // We are doing that so that the allowance isn't fully spent, and the next approve is cheaper.
+    IERC20(_from).approve(address(hub), tokenHasApprovalIssue[_from] ? _amount : _amount + 1);
+  }
+
+  modifier checkPermission(uint256 _positionId, IDCAPermissionManager.Permission _permission) {
+    _checkPermissionOrFail(_positionId, _permission);
+    _;
+  }
 }
