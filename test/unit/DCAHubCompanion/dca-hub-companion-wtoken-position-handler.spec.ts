@@ -49,7 +49,8 @@ contract('DCAHubCompanionWTokenPositionHandler', () => {
     DCAHubCompanionWTokenPositionHandler = await DCAHubCompanionWTokenPositionHandlerFactory.deploy(
       DCAHub.address,
       DCAPermissionManager.address,
-      wToken.address
+      wToken.address,
+      signer.address
     );
     initialRecipientPlatformBalance = await getPlatformBalance(recipient);
     await setPlatformTokenBalance(wToken, INITIAL_WTOKEN_AND_PLATFORM_BALANCE);
@@ -227,7 +228,7 @@ contract('DCAHubCompanionWTokenPositionHandler', () => {
         expect(erc20Token.transferFrom).to.have.been.calledWith(signer.address, DCAHubCompanionWTokenPositionHandler.address, AMOUNT);
       });
       then('from token is approved for the hub', () => {
-        expect(erc20Token.approve).to.have.been.calledOnceWith(DCAHub.address, AMOUNT);
+        expect(erc20Token.approve).to.have.been.calledOnceWith(DCAHub.address, AMOUNT + 1);
       });
       then('deposit is executed', () => {
         expect(DCAHub.deposit).to.have.been.calledOnce;
@@ -252,6 +253,30 @@ contract('DCAHubCompanionWTokenPositionHandler', () => {
         await expect(tx)
           .to.emit(DCAHubCompanionWTokenPositionHandler, 'ConvertedDeposit')
           .withArgs(POSITION_ID, erc20Token.address, erc20Token.address, PROTOCOL_TOKEN, wToken.address);
+      });
+    });
+    when('to is protocol token and from has approval issues', () => {
+      const POSITION_ID = 10;
+      let tx: TransactionResponse;
+      given(async () => {
+        erc20Token.transferFrom.returns(true);
+        DCAHub.deposit.returns(POSITION_ID);
+        await DCAHubCompanionWTokenPositionHandler.setTokensWithApprovalIssues([erc20Token.address], [true]);
+        tx = await DCAHubCompanionWTokenPositionHandler.depositUsingProtocolToken(
+          erc20Token.address,
+          PROTOCOL_TOKEN,
+          AMOUNT,
+          AMOUNT_OF_SWAPS,
+          SWAP_INTERVAL,
+          OWNER,
+          [PERMISSIONS],
+          {
+            value: AMOUNT,
+          }
+        );
+      });
+      then('from token is approved for the hub with the exact amount', () => {
+        expect(erc20Token.approve).to.have.been.calledOnceWith(DCAHub.address, AMOUNT);
       });
     });
   });
