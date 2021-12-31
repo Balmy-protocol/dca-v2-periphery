@@ -8,6 +8,7 @@ contract DCAHubCompanionWTokenPositionHandlerMock is DCAHubCompanionWTokenPositi
   constructor(
     IDCAHub _hub,
     IDCAPermissionManager _permissionManager,
-    IWrappedProtocolToken _wToken
-  ) DCAHubCompanionParametersMock(_hub, _permissionManager, _wToken, address(1)) {}
+    IWrappedProtocolToken _wToken,
+    address _governor
+  ) DCAHubCompanionParametersMock(_hub, _permissionManager, _wToken, _governor) {}
 }

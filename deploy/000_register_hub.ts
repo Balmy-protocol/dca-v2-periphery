@@ -9,6 +9,7 @@ import {
 } from '@mean-finance/dca-v2-core/artifacts/contracts/oracles/ChainlinkOracle.sol/ChainlinkOracle.json';
 import { HardhatRuntimeEnvironment } from 'hardhat/types';
 import { DeployFunction } from 'hardhat-deploy/types';
+import { BigNumber } from 'ethers/lib/ethers';
 
 const deployFunction: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
   // TODO: Use address from npm package when exposed
@@ -28,7 +29,7 @@ const deployFunction: DeployFunction = async function (hre: HardhatRuntimeEnviro
     const chainlinkDeployment = await hre.deployments.deploy('Oracle', {
       from: deployer,
       contract: { abi: CHAINLINK_ABI, bytecode: CHAINLINK_BYTECODE },
-      args: [WETH, CHAINLINK_REGISTRY, governor],
+      args: [WETH, CHAINLINK_REGISTRY, BigNumber.from(2).pow(32).sub(1), governor],
     });
     const permissionsManagerDeployment = await hre.deployments.deploy('PermissionsManager', {
       from: deployer,
