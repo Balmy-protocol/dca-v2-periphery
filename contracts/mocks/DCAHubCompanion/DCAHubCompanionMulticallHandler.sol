@@ -5,7 +5,9 @@ import '../../DCAHubCompanion/DCAHubCompanionMulticallHandler.sol';
 import './DCAHubCompanionParameters.sol';
 
 contract DCAHubCompanionMulticallHandlerMock is DCAHubCompanionMulticallHandler, DCAHubCompanionParametersMock {
-  constructor(IDCAHub _hub, IDCAPermissionManager _permissionManager)
-    DCAHubCompanionParametersMock(_hub, _permissionManager, IWrappedProtocolToken(address(1)), address(1))
-  {}
+  constructor(
+    IDCAHub _hub,
+    IDCAPermissionManager _permissionManager,
+    address _governor
+  ) DCAHubCompanionParametersMock(_hub, _permissionManager, IWrappedProtocolToken(address(1)), _governor) {}
 }
