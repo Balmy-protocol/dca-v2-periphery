@@ -30,7 +30,7 @@ abstract contract DCAHubCompanionWTokenPositionHandler is DCAHubCompanionParamet
       _convertedFrom = address(wToken);
     } else {
       IERC20(_from).safeTransferFrom(msg.sender, address(this), _amount);
-      IERC20(_from).approve(address(hub), _amount);
+      _approveHub(_from, _amount);
       _convertedTo = address(wToken);
     }
 
@@ -48,8 +48,11 @@ abstract contract DCAHubCompanionWTokenPositionHandler is DCAHubCompanionParamet
     emit ConvertedDeposit(_positionId, _from, _convertedFrom, _to, _convertedTo);
   }
 
-  function withdrawSwappedUsingProtocolToken(uint256 _positionId, address payable _recipient) external returns (uint256 _swapped) {
-    if (!permissionManager.hasPermission(_positionId, msg.sender, IDCAPermissionManager.Permission.WITHDRAW)) revert UnauthorizedCaller();
+  function withdrawSwappedUsingProtocolToken(uint256 _positionId, address payable _recipient)
+    external
+    checkPermission(_positionId, IDCAPermissionManager.Permission.WITHDRAW)
+    returns (uint256 _swapped)
+  {
     _swapped = hub.withdrawSwapped(_positionId, address(this));
     _unwrapAndSend(_swapped, _recipient);
   }
@@ -59,7 +62,7 @@ abstract contract DCAHubCompanionWTokenPositionHandler is DCAHubCompanionParamet
     returns (uint256 _swapped)
   {
     for (uint256 i; i < _positionIds.length; i++) {
-      if (!permissionManager.hasPermission(_positionIds[i], msg.sender, IDCAPermissionManager.Permission.WITHDRAW)) revert UnauthorizedCaller();
+      _checkPermissionOrFail(_positionIds[i], IDCAPermissionManager.Permission.WITHDRAW);
     }
     IDCAHub.PositionSet[] memory _positionSets = new IDCAHub.PositionSet[](1);
     _positionSets[0].token = address(wToken);
@@ -73,8 +76,7 @@ abstract contract DCAHubCompanionWTokenPositionHandler is DCAHubCompanionParamet
     uint256 _positionId,
     uint256 _amount,
     uint32 _newSwaps
-  ) external payable {
-    if (!permissionManager.hasPermission(_positionId, msg.sender, IDCAPermissionManager.Permission.INCREASE)) revert UnauthorizedCaller();
+  ) external payable checkPermission(_positionId, IDCAPermissionManager.Permission.INCREASE) {
     _wrap(_amount);
     hub.increasePosition(_positionId, _amount, _newSwaps);
   }
@@ -84,8 +86,7 @@ abstract contract DCAHubCompanionWTokenPositionHandler is DCAHubCompanionParamet
     uint256 _amount,
     uint32 _newSwaps,
     address payable _recipient
-  ) external {
-    if (!permissionManager.hasPermission(_positionId, msg.sender, IDCAPermissionManager.Permission.REDUCE)) revert UnauthorizedCaller();
+  ) external checkPermission(_positionId, IDCAPermissionManager.Permission.REDUCE) {
     hub.reducePosition(_positionId, _amount, _newSwaps, address(this));
     _unwrapAndSend(_amount, _recipient);
   }
@@ -94,8 +95,7 @@ abstract contract DCAHubCompanionWTokenPositionHandler is DCAHubCompanionParamet
     uint256 _positionId,
     address payable _recipientUnswapped,
     address _recipientSwapped
-  ) external returns (uint256 _unswapped, uint256 _swapped) {
-    if (!permissionManager.hasPermission(_positionId, msg.sender, IDCAPermissionManager.Permission.TERMINATE)) revert UnauthorizedCaller();
+  ) external checkPermission(_positionId, IDCAPermissionManager.Permission.TERMINATE) returns (uint256 _unswapped, uint256 _swapped) {
     (_unswapped, _swapped) = hub.terminate(_positionId, address(this), _recipientSwapped);
     _unwrapAndSend(_unswapped, _recipientUnswapped);
   }
@@ -104,8 +104,7 @@ abstract contract DCAHubCompanionWTokenPositionHandler is DCAHubCompanionParamet
     uint256 _positionId,
     address _recipientUnswapped,
     address payable _recipientSwapped
-  ) external returns (uint256 _unswapped, uint256 _swapped) {
-    if (!permissionManager.hasPermission(_positionId, msg.sender, IDCAPermissionManager.Permission.TERMINATE)) revert UnauthorizedCaller();
+  ) external checkPermission(_positionId, IDCAPermissionManager.Permission.TERMINATE) returns (uint256 _unswapped, uint256 _swapped) {
     (_unswapped, _swapped) = hub.terminate(_positionId, _recipientUnswapped, address(this));
     _unwrapAndSend(_swapped, _recipientSwapped);
   }

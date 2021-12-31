@@ -10,6 +10,14 @@ import './utils/IGovernable.sol';
 import './ISharedTypes.sol';
 
 interface IDCAHubCompanionParameters is IGovernable {
+  /// @notice Thrown when the given parameters are invalid
+  error InvalidTokenApprovalParams();
+
+  /// @notice Emitted when tokens with approval issues are set
+  /// @param addresses The addresses of the tokens
+  /// @param hasIssue Whether they have issues or not
+  event TokenWithApprovalIssuesSet(address[] addresses, bool[] hasIssue);
+
   /// @notice Returns the DCA Hub's address
   /// @dev This value cannot be modified
   /// @return The DCA Hub contract
@@ -29,6 +37,17 @@ interface IDCAHubCompanionParameters is IGovernable {
   /// @notice Returns the permission manager contract
   /// @return The contract itself
   function permissionManager() external view returns (IDCAPermissionManager);
+
+  /// @notice Returns whether the given address has issues with approvals, like USDT
+  /// @param _tokenAddress The address of the token to check
+  /// @return Whether it has issues or not
+  function tokenHasApprovalIssue(address _tokenAddress) external view returns (bool);
+
+  /// @notice Sets whether specific addresses have issues with approvals, like USDT
+  /// @dev Will revert with `InvalidTokenApprovalParams` if the length of the given arrays differ
+  /// @param _addresses The addresses of the tokens
+  /// @param _hasIssue Wether they have issues or not
+  function setTokensWithApprovalIssues(address[] calldata _addresses, bool[] calldata _hasIssue) external;
 }
 
 interface IDCAHubCompanionSwapHandler is IDCAHubSwapCallee {
@@ -132,9 +151,6 @@ interface IDCAHubCompanionWTokenPositionHandler {
 
   /// @notice Thrown when the user tries to make a deposit where neither or both of the tokens are the protocol token
   error InvalidTokens();
-
-  /// @notice Thrown when a user tries operate on a position that they don't have access to
-  error UnauthorizedCaller();
 
   /// @notice Thrown when the user sends more or less of the protocol token than is actually necessary
   error InvalidAmountOfProtocolTokenReceived();
@@ -242,13 +258,113 @@ interface IDCAHubCompanionLibrariesHandler {
   function secondsUntilNextSwap(Pair[] calldata _pairs) external view returns (uint256[] memory);
 }
 
+interface IDCAHubCompanionMulticallHandler {
+  /// @notice Creates a new position
+  /// @dev Meant to be used as part of a multicall
+  /// @param _from The address of the "from" token
+  /// @param _to The address of the "to" token
+  /// @param _amount How many "from" tokens will be swapped in total
+  /// @param _amountOfSwaps How many swaps to execute for this position
+  /// @param _swapInterval How frequently the position's swaps should be executed
+  /// @param _owner The address of the owner of the position being created
+  /// @param _transferFromCaller Determines if the funds should be transfered from the caller
+  /// @return _positionId The id of the created position
+  function depositProxy(
+    address _from,
+    address _to,
+    uint256 _amount,
+    uint32 _amountOfSwaps,
+    uint32 _swapInterval,
+    address _owner,
+    IDCAPermissionManager.PermissionSet[] calldata _permissions,
+    bool _transferFromCaller
+  ) external returns (uint256 _positionId);
+
+  /// @notice Call the hub and withdraws all swapped tokens from a position to a recipient
+  /// @dev Meant to be used as part of a multicall
+  /// @param _positionId The position's id
+  /// @param _recipient The address to withdraw swapped tokens to
+  /// @return _swapped How much was withdrawn
+  function withdrawSwappedProxy(uint256 _positionId, address _recipient) external returns (uint256 _swapped);
+
+  /// @notice Call the hub and withdraws all swapped tokens from multiple positions
+  /// @dev Meant to be used as part of a multicall
+  /// @param _positions A list positions, grouped by `to` token
+  /// @param _recipient The address to withdraw swapped tokens to
+  /// @return _withdrawn How much was withdrawn for each token
+  function withdrawSwappedManyProxy(IDCAHub.PositionSet[] calldata _positions, address _recipient)
+    external
+    returns (uint256[] memory _withdrawn);
+
+  /// @notice Call the hub and takes the unswapped balance, adds the new deposited funds and modifies the position so that
+  /// it is executed in _newSwaps swaps
+  /// @dev Meant to be used as part of a multicall
+  /// @param _positionId The position's id
+  /// @param _amount Amount of funds to add to the position
+  /// @param _newSwaps The new amount of swaps
+  /// @param _transferFromCaller Determines if the funds should be transfered from the caller
+  function increasePositionProxy(
+    uint256 _positionId,
+    uint256 _amount,
+    uint32 _newSwaps,
+    bool _transferFromCaller
+  ) external;
+
+  /// @notice Call the hub and withdraws the specified amount from the unswapped balance and modifies the position so that
+  /// it is executed in _newSwaps swaps
+  /// @dev Meant to be used as part of a multicall
+  /// @param _positionId The position's id
+  /// @param _amount Amount of funds to withdraw from the position
+  /// @param _newSwaps The new amount of swaps
+  /// @param _recipient The address to send tokens to
+  function reducePositionProxy(
+    uint256 _positionId,
+    uint256 _amount,
+    uint32 _newSwaps,
+    address _recipient
+  ) external;
+
+  /// @notice Calls the hub and terminates the position and sends all unswapped and swapped balance to the specified recipients
+  /// @dev Meant to be used as part of a multicall
+  /// @param _positionId The position's id
+  /// @param _recipientUnswapped The address to withdraw unswapped tokens to
+  /// @param _recipientSwapped The address to withdraw swapped tokens to
+  /// @return _unswapped The unswapped balance sent to `_recipientUnswapped`
+  /// @return _swapped The swapped balance sent to `_recipientSwapped`
+  function terminateProxy(
+    uint256 _positionId,
+    address _recipientUnswapped,
+    address _recipientSwapped
+  ) external returns (uint256 _unswapped, uint256 _swapped);
+
+  /// @notice Calls the permission manager and sets permissions via signature
+  /// @param _permissions The permissions to set
+  /// @param _tokenId The token's id
+  /// @param _deadline The deadline timestamp by which the call must be mined for the approve to work
+  /// @param _v Must produce valid secp256k1 signature from the holder along with `r` and `s`
+  /// @param _r Must produce valid secp256k1 signature from the holder along with `v` and `s`
+  /// @param _s Must produce valid secp256k1 signature from the holder along with `r` and `v`
+  function permissionPermitProxy(
+    IDCAPermissionManager.PermissionSet[] calldata _permissions,
+    uint256 _tokenId,
+    uint256 _deadline,
+    uint8 _v,
+    bytes32 _r,
+    bytes32 _s
+  ) external;
+}
+
 interface IDCAHubCompanion is
   IDCAHubCompanionParameters,
   IDCAHubCompanionSwapHandler,
   IDCAHubCompanionWTokenPositionHandler,
   IDCAHubCompanionDustHandler,
-  IDCAHubCompanionLibrariesHandler
+  IDCAHubCompanionLibrariesHandler,
+  IDCAHubCompanionMulticallHandler
 {
   /// @notice Thrown when one of the parameters is a zero address
   error ZeroAddress();
+
+  /// @notice Thrown when a user tries operate on a position that they don't have access to
+  error UnauthorizedCaller();
 }
