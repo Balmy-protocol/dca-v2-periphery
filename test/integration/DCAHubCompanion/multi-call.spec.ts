@@ -1,7 +1,7 @@
 import { expect } from 'chai';
 import { deployments, ethers, getNamedAccounts } from 'hardhat';
 import { TransactionResponse } from '@ethersproject/providers';
-import { constants, wallet } from '@test-utils';
+import { behaviours, constants, wallet } from '@test-utils';
 import { given, then, when } from '@test-utils/bdd';
 import evm, { snapshot } from '@test-utils/evm';
 import { DCAHubCompanion, IERC20 } from '@typechained';
@@ -77,7 +77,7 @@ describe('Multicall', () => {
         positionId = await depositWithWTokenAsFrom();
         hubWTokenBalanceAfterDeposit = await WETH.balanceOf(DCAHub.address);
 
-        const permissionData = await addPermissionToCompanionData(positionId, Permission.REDUCE);
+        const permissionData = await addPermissionToCompanionData(positionOwner, positionId, Permission.REDUCE);
         const { data: reduceData } = await DCAHubCompanion.populateTransaction.reducePositionUsingProtocolToken(
           positionId,
           AMOUNT_TO_REDUCE,
@@ -110,7 +110,7 @@ describe('Multicall', () => {
       given(async () => {
         positionId = await depositWithWTokenAsFrom();
         hubWTokenBalanceAfterDeposit = await WETH.balanceOf(DCAHub.address);
-        const permissionData = await addPermissionToCompanionData(positionId, Permission.TERMINATE);
+        const permissionData = await addPermissionToCompanionData(positionOwner, positionId, Permission.TERMINATE);
         const { data: terminateData } = await DCAHubCompanion.populateTransaction.terminateUsingProtocolTokenAsFrom(
           positionId,
           recipient.address,
@@ -132,21 +132,6 @@ describe('Multicall', () => {
       });
       thenCompanionRemainsWithoutAnyBalance();
     });
-
-    async function depositWithWTokenAsFrom() {
-      await WETH.connect(positionOwner).approve(DCAHub.address, RATE.mul(AMOUNT_OF_SWAPS));
-      const tx = await DCAHub.connect(positionOwner).deposit(
-        WETH.address,
-        USDC.address,
-        RATE.mul(AMOUNT_OF_SWAPS),
-        AMOUNT_OF_SWAPS,
-        SwapInterval.ONE_MINUTE.seconds,
-        positionOwner.address,
-        []
-      );
-      const event = await getHubEvent(tx, 'Deposited');
-      return event.args.positionId;
-    }
   });
 
   describe('protocol token as "to"', () => {
@@ -157,7 +142,7 @@ describe('Multicall', () => {
       given(async () => {
         ({ positionId, swappedBalance } = await depositWithWTokenAsToAndSwap());
         hubWTokenBalanceAfterSwap = await WETH.balanceOf(DCAHub.address);
-        const permissionData = await addPermissionToCompanionData(positionId, Permission.WITHDRAW);
+        const permissionData = await addPermissionToCompanionData(positionOwner, positionId, Permission.WITHDRAW);
         const { data: withdrawData } = await DCAHubCompanion.populateTransaction.withdrawSwappedUsingProtocolToken(
           positionId,
           recipient.address
@@ -186,7 +171,7 @@ describe('Multicall', () => {
       given(async () => {
         ({ positionId, swappedBalance } = await depositWithWTokenAsToAndSwap());
         hubWTokenBalanceAfterSwap = await WETH.balanceOf(DCAHub.address);
-        const permissionData = await addPermissionToCompanionData(positionId, Permission.WITHDRAW);
+        const permissionData = await addPermissionToCompanionData(positionOwner, positionId, Permission.WITHDRAW);
         const { data: withdrawData } = await DCAHubCompanion.populateTransaction.withdrawSwappedManyUsingProtocolToken(
           [positionId],
           recipient.address
@@ -215,7 +200,7 @@ describe('Multicall', () => {
       given(async () => {
         ({ positionId, swappedBalance } = await depositWithWTokenAsToAndSwap());
         hubWTokenBalanceAfterSwap = await WETH.balanceOf(DCAHub.address);
-        const permissionData = await addPermissionToCompanionData(positionId, Permission.TERMINATE);
+        const permissionData = await addPermissionToCompanionData(positionOwner, positionId, Permission.TERMINATE);
         const { data: terminateData } = await DCAHubCompanion.populateTransaction.terminateUsingProtocolTokenAsTo(
           positionId,
           recipient.address,
@@ -247,7 +232,7 @@ describe('Multicall', () => {
       ({ positionId, swappedBalance, unswappedBalance } = await depositWithWTokenAsToAndSwap());
       hubFromTokenBalanceAfterSwap = await USDC.balanceOf(DCAHub.address);
       hubToTokenBalanceAfterSwap = await WETH.balanceOf(DCAHub.address);
-      const permissionData = await addPermissionToCompanionData(positionId, Permission.REDUCE, Permission.WITHDRAW);
+      const permissionData = await addPermissionToCompanionData(positionOwner, positionId, Permission.REDUCE, Permission.WITHDRAW);
       const { data: reduceData } = await DCAHubCompanion.populateTransaction.reducePositionProxy(
         positionId,
         unswappedBalance,
@@ -283,7 +268,7 @@ describe('Multicall', () => {
     given(async () => {
       ({ positionId, swappedBalance } = await depositWithWTokenAsToAndSwap());
       hubWETHBalanceAfterSwap = await WETH.balanceOf(DCAHub.address);
-      const permissionData = await addPermissionToCompanionData(positionId, Permission.WITHDRAW);
+      const permissionData = await addPermissionToCompanionData(positionOwner, positionId, Permission.WITHDRAW);
       const { data: withdrawData } = await DCAHubCompanion.populateTransaction.withdrawSwappedProxy(positionId, DCAHubCompanion.address);
       const { data: depositData } = await DCAHubCompanion.populateTransaction.depositProxy(
         WETH.address,
@@ -319,6 +304,24 @@ describe('Multicall', () => {
     thenCompanionRemainsWithoutAnyBalance();
   });
 
+  when('trying to use an invalid permit through multicall', () => {
+    let tx: Promise<TransactionResponse>;
+    let permissionData: string;
+
+    given(async () => {
+      const positionId = await depositWithWTokenAsFrom();
+      permissionData = await addPermissionToCompanionData(recipient, positionId, Permission.REDUCE);
+    });
+    then('reverts with message', async () => {
+      await behaviours.txShouldRevertWithMessage({
+        contract: DCAHubCompanion,
+        func: 'multicall',
+        args: [[permissionData]],
+        message: 'VM Exception while processing transaction: reverted with an unrecognized custom error',
+      });
+    });
+  });
+
   function thenCompanionRemainsWithoutAnyBalance() {
     then('companion continues without wToken balance', async () => {
       const balance = await WETH.balanceOf(DCAHubCompanion.address);
@@ -339,6 +342,21 @@ describe('Multicall', () => {
     await WETH.connect(wethWhale).transfer(positionOwner.address, BigNumber.from(10).pow(23));
     await USDC.connect(usdcWhale).transfer(positionOwner.address, BigNumber.from(10).pow(12));
     await USDC.connect(usdcWhale).transfer(swapper.address, BigNumber.from(10).pow(12));
+  }
+
+  async function depositWithWTokenAsFrom() {
+    await WETH.connect(positionOwner).approve(DCAHub.address, RATE.mul(AMOUNT_OF_SWAPS));
+    const tx = await DCAHub.connect(positionOwner).deposit(
+      WETH.address,
+      USDC.address,
+      RATE.mul(AMOUNT_OF_SWAPS),
+      AMOUNT_OF_SWAPS,
+      SwapInterval.ONE_MINUTE.seconds,
+      positionOwner.address,
+      []
+    );
+    const event = await getHubEvent(tx, 'Deposited');
+    return event.args.positionId;
   }
 
   async function depositWithWTokenAsToAndSwap() {
@@ -394,9 +412,9 @@ describe('Multicall', () => {
     return Promise.reject();
   }
 
-  async function addPermissionToCompanionData(tokenId: BigNumber, ...permissions: Permission[]) {
+  async function addPermissionToCompanionData(signer: SignerWithAddress, tokenId: BigNumber, ...permissions: Permission[]) {
     const permissionsStruct = [{ operator: DCAHubCompanion.address, permissions }];
-    const { v, r, s } = await getSignature(tokenId, permissionsStruct);
+    const { v, r, s } = await getSignature(signer, tokenId, permissionsStruct);
     const { data } = await DCAHubCompanion.populateTransaction.permissionPermitProxy(
       permissionsStruct,
       tokenId,
@@ -420,9 +438,9 @@ describe('Multicall', () => {
     { name: 'deadline', type: 'uint256' },
   ];
 
-  async function getSignature(tokenId: BigNumber, permissions: { operator: string; permissions: Permission[] }[]) {
+  async function getSignature(signer: SignerWithAddress, tokenId: BigNumber, permissions: { operator: string; permissions: Permission[] }[]) {
     const { domain, types, value } = buildPermitData(tokenId, permissions);
-    const signature = await positionOwner._signTypedData(domain, types, value);
+    const signature = await signer._signTypedData(domain, types, value);
     return fromRpcSig(signature);
   }
 
