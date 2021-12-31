@@ -19,9 +19,28 @@ abstract contract DCAHubCompanionMulticallHandler is Multicall, DCAHubCompanionP
     permissionManager.permissionPermit(_permissions, _tokenId, _deadline, _v, _r, _s);
   }
 
-  function withdrawSwappedProxy(uint256 _positionId, address _recipient) external returns (uint256 _swapped) {
-    if (!permissionManager.hasPermission(_positionId, msg.sender, IDCAPermissionManager.Permission.WITHDRAW))
-      revert IDCAHubCompanion.UnauthorizedCaller();
+  function depositProxy(
+    address _from,
+    address _to,
+    uint256 _amount,
+    uint32 _amountOfSwaps,
+    uint32 _swapInterval,
+    address _owner,
+    IDCAPermissionManager.PermissionSet[] calldata _permissions,
+    bool _transferFromCaller
+  ) external returns (uint256 _positionId) {
+    if (_transferFromCaller) {
+      IERC20Metadata(_from).safeTransferFrom(msg.sender, address(this), _amount);
+    }
+    _approveHub(_from, _amount);
+    _positionId = hub.deposit(_from, _to, _amount, _amountOfSwaps, _swapInterval, _owner, _permissions);
+  }
+
+  function withdrawSwappedProxy(uint256 _positionId, address _recipient)
+    external
+    checkPermission(_positionId, IDCAPermissionManager.Permission.WITHDRAW)
+    returns (uint256 _swapped)
+  {
     _swapped = hub.withdrawSwapped(_positionId, _recipient);
   }
 
@@ -31,8 +50,7 @@ abstract contract DCAHubCompanionMulticallHandler is Multicall, DCAHubCompanionP
   {
     for (uint256 i; i < _positions.length; i++) {
       for (uint256 j; j < _positions[i].positionIds.length; j++) {
-        if (!permissionManager.hasPermission(_positions[i].positionIds[j], msg.sender, IDCAPermissionManager.Permission.WITHDRAW))
-          revert IDCAHubCompanion.UnauthorizedCaller();
+        _checkPermissionOrFail(_positions[i].positionIds[j], IDCAPermissionManager.Permission.WITHDRAW);
       }
     }
     _withdrawn = hub.withdrawSwappedMany(_positions, _recipient);
@@ -41,13 +59,14 @@ abstract contract DCAHubCompanionMulticallHandler is Multicall, DCAHubCompanionP
   function increasePositionProxy(
     uint256 _positionId,
     uint256 _amount,
-    uint32 _newSwaps
-  ) external {
-    if (!permissionManager.hasPermission(_positionId, msg.sender, IDCAPermissionManager.Permission.INCREASE))
-      revert IDCAHubCompanion.UnauthorizedCaller();
+    uint32 _newSwaps,
+    bool _transferFromCaller
+  ) external checkPermission(_positionId, IDCAPermissionManager.Permission.INCREASE) {
     IERC20Metadata _from = hub.userPosition(_positionId).from;
-    _from.safeTransferFrom(msg.sender, address(this), _amount);
-    _from.approve(address(hub), _amount);
+    if (_transferFromCaller) {
+      _from.safeTransferFrom(msg.sender, address(this), _amount);
+    }
+    _approveHub(address(_from), _amount);
     hub.increasePosition(_positionId, _amount, _newSwaps);
   }
 
@@ -56,9 +75,7 @@ abstract contract DCAHubCompanionMulticallHandler is Multicall, DCAHubCompanionP
     uint256 _amount,
     uint32 _newSwaps,
     address _recipient
-  ) external {
-    if (!permissionManager.hasPermission(_positionId, msg.sender, IDCAPermissionManager.Permission.REDUCE))
-      revert IDCAHubCompanion.UnauthorizedCaller();
+  ) external checkPermission(_positionId, IDCAPermissionManager.Permission.REDUCE) {
     hub.reducePosition(_positionId, _amount, _newSwaps, _recipient);
   }
 
@@ -66,9 +83,7 @@ abstract contract DCAHubCompanionMulticallHandler is Multicall, DCAHubCompanionP
     uint256 _positionId,
     address _recipientUnswapped,
     address _recipientSwapped
-  ) external returns (uint256 _unswapped, uint256 _swapped) {
-    if (!permissionManager.hasPermission(_positionId, msg.sender, IDCAPermissionManager.Permission.TERMINATE))
-      revert IDCAHubCompanion.UnauthorizedCaller();
+  ) external checkPermission(_positionId, IDCAPermissionManager.Permission.TERMINATE) returns (uint256 _unswapped, uint256 _swapped) {
     (_unswapped, _swapped) = hub.terminate(_positionId, _recipientUnswapped, _recipientSwapped);
   }
 }

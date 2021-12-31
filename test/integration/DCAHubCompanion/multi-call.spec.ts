@@ -5,7 +5,7 @@ import { constants, wallet } from '@test-utils';
 import { given, then, when } from '@test-utils/bdd';
 import evm, { snapshot } from '@test-utils/evm';
 import { DCAHubCompanion, IERC20 } from '@typechained';
-import { DCAHub } from '@mean-finance/dca-v2-core/typechained';
+import { DCAHub, DCAPermissionsManager } from '@mean-finance/dca-v2-core/typechained';
 import { abi as DCA_HUB_ABI } from '@mean-finance/dca-v2-core/artifacts/contracts/DCAHub/DCAHub.sol/DCAHub.json';
 import { getNodeUrl } from '@utils/network';
 import { abi as IERC20_ABI } from '@openzeppelin/contracts/build/contracts/IERC20.json';
@@ -24,7 +24,7 @@ describe('Multicall', () => {
   let WETH: IERC20, USDC: IERC20;
   let positionOwner: SignerWithAddress, swapper: SignerWithAddress, recipient: SignerWithAddress;
   let DCAHubCompanion: DCAHubCompanion;
-  let DCAPermissionManager: string;
+  let DCAPermissionManager: DCAPermissionsManager;
   let DCAHub: DCAHub;
   let initialRecipientProtocolBalance: BigNumber;
   let chainId: BigNumber;
@@ -43,7 +43,7 @@ describe('Multicall', () => {
     await deployments.fixture('DCAHubCompanion', { keepExistingDeployments: false });
     DCAHub = await ethers.getContract('DCAHub');
     DCAHubCompanion = await ethers.getContract('DCAHubCompanion');
-    DCAPermissionManager = await DCAHub.permissionManager();
+    DCAPermissionManager = await ethers.getContract('PermissionsManager');
 
     const namedAccounts = await getNamedAccounts();
     const governorAddress = namedAccounts.governor;
@@ -276,6 +276,49 @@ describe('Multicall', () => {
     thenCompanionRemainsWithoutAnyBalance();
   });
 
+  when('trying to withdraw swapped and create a new position with it', () => {
+    let positionId: BigNumber;
+    let swappedBalance: BigNumber;
+    let hubWETHBalanceAfterSwap: BigNumber;
+    given(async () => {
+      ({ positionId, swappedBalance } = await depositWithWTokenAsToAndSwap());
+      hubWETHBalanceAfterSwap = await WETH.balanceOf(DCAHub.address);
+      const permissionData = await addPermissionToCompanionData(positionId, Permission.WITHDRAW);
+      const { data: withdrawData } = await DCAHubCompanion.populateTransaction.withdrawSwappedProxy(positionId, DCAHubCompanion.address);
+      const { data: depositData } = await DCAHubCompanion.populateTransaction.depositProxy(
+        WETH.address,
+        USDC.address,
+        swappedBalance,
+        1,
+        SwapInterval.ONE_MINUTE.seconds,
+        positionOwner.address,
+        [],
+        false
+      );
+
+      await DCAHubCompanion.multicall([permissionData, withdrawData!, depositData!]);
+    });
+    then(`hub's WETH balance stays the same`, async () => {
+      const balance = await WETH.balanceOf(DCAHub.address);
+      expect(balance).to.equal(hubWETHBalanceAfterSwap);
+    });
+    then(`original position has nothing left to withdraw`, async () => {
+      const { swapped } = await DCAHub.userPosition(positionId);
+      expect(swapped).to.equal(0);
+    });
+    then(`new position is created`, async () => {
+      const { from, to, swapsExecuted, remaining } = await DCAHub.userPosition(positionId.add(1));
+      expect(from.toLowerCase()).to.eql(WETH.address.toLowerCase());
+      expect(to.toLowerCase()).to.equal(USDC.address.toLowerCase());
+      expect(swapsExecuted).to.equal(0);
+      expect(remaining).to.equal(swappedBalance);
+    });
+    then(`owner is correctly assigned`, async () => {
+      expect(await DCAPermissionManager.ownerOf(positionId.add(1))).to.equal(positionOwner.address);
+    });
+    thenCompanionRemainsWithoutAnyBalance();
+  });
+
   function thenCompanionRemainsWithoutAnyBalance() {
     then('companion continues without wToken balance', async () => {
       const balance = await WETH.balanceOf(DCAHubCompanion.address);
@@ -387,7 +430,7 @@ describe('Multicall', () => {
     return {
       primaryType: 'PermissionPermit',
       types: { PermissionSet, PermissionPermit },
-      domain: { name: 'Mean Finance DCA', version: '1', chainId, verifyingContract: DCAPermissionManager },
+      domain: { name: 'Mean Finance DCA', version: '1', chainId, verifyingContract: DCAPermissionManager.address },
       value: { tokenId, permissions, nonce: 0, deadline: constants.MAX_UINT_256 },
     };
   }
