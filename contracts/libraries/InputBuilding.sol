@@ -80,8 +80,8 @@ library InputBuilding {
       while (_tokens[_tokenIndex] < _token && _tokens[_tokenIndex] != address(0)) _tokenIndex++;
 
       // Move everything one place back
-      for (uint256 j = _tokenIndex; j + 1 <= i; j++) {
-        _tokens[j + 1] = _tokens[j];
+      for (uint256 j = i; j > _tokenIndex; j--) {
+        _tokens[j] = _tokens[j - 1];
       }
 
       // Set token on the correct index

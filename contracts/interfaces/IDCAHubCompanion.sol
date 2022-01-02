@@ -164,6 +164,7 @@ interface IDCAHubCompanionWTokenPositionHandler {
   /// @param _amountOfSwaps How many swaps to execute for this position
   /// @param _swapInterval How frequently the position's swaps should be executed
   /// @param _owner The address of the owner of the position being created
+  /// @param _permissions Extra permissions to add to the position. Can be empty
   /// @return The id of the created position
   function depositUsingProtocolToken(
     address _from,
