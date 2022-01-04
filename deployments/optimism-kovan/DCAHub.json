@@ -1,5 +1,5 @@
 {
-  "address": "0x19BB8c1130649BD2a114c2f2d4C3a6AFa3Bd4944",
+  "address": "0x2aCb69a8f2Ab6b496D482073eB70573A345a3272",
   "abi": [
     {
       "inputs": [
@@ -173,6 +173,24 @@
           "internalType": "uint32",
           "name": "lastSwap",
           "type": "uint32"
+        },
+        {
+          "components": [
+            {
+              "internalType": "address",
+              "name": "operator",
+              "type": "address"
+            },
+            {
+              "internalType": "enum IDCAPermissionManager.Permission[]",
+              "name": "permissions",
+              "type": "uint8[]"
+            }
+          ],
+          "indexed": false,
+          "internalType": "struct IDCAPermissionManager.PermissionSet[]",
+          "name": "permissions",
+          "type": "tuple[]"
         }
       ],
       "name": "Deposited",
@@ -712,19 +730,6 @@
         }
       ],
       "stateMutability": "view",
-      "type": "function"
-    },
-    {
-      "inputs": [],
-      "name": "FEE_PRECISION",
-      "outputs": [
-        {
-          "internalType": "uint32",
-          "name": "",
-          "type": "uint32"
-        }
-      ],
-      "stateMutability": "pure",
       "type": "function"
     },
     {
@@ -1549,14 +1554,14 @@
         {
           "components": [
             {
-              "internalType": "int128",
+              "internalType": "uint128",
               "name": "swapDeltaAToB",
-              "type": "int128"
+              "type": "uint128"
             },
             {
-              "internalType": "int128",
+              "internalType": "uint128",
               "name": "swapDeltaBToA",
-              "type": "int128"
+              "type": "uint128"
             }
           ],
           "internalType": "struct IDCAHubParameters.SwapDelta",

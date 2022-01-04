@@ -12,15 +12,7 @@ import { DeployFunction } from 'hardhat-deploy/types';
 import { BigNumber } from 'ethers/lib/ethers';
 
 const deployFunction: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
-  // TODO: Use address from npm package when exposed
-  const HUB_ADDRESS = '0x24F85583FAa9F8BD0B8Aa7B1D1f4f53F0F450038';
-
-  const isDeployed = (await hre.ethers.provider.getCode(HUB_ADDRESS)) !== '0x';
-  console.log(isDeployed ? 'Found hub deployed' : 'Hub is not deployed');
-
-  if (isDeployed) {
-    await hre.deployments.save('DCAHub', { abi: DCA_HUB_ABI, address: HUB_ADDRESS });
-  } else {
+  if (hre.network.name === 'hardhat') {
     // TODO: Once the final version of the hub is deployed, remove all this
     const WETH = '0xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2';
     const CHAINLINK_REGISTRY = '0x47Fb2585D2C56Fe188D0E6ec628a38b74fCeeeDf';
@@ -42,7 +34,19 @@ const deployFunction: DeployFunction = async function (hre: HardhatRuntimeEnviro
       args: [governor, governor, chainlinkDeployment.address, permissionsManagerDeployment.address],
     });
     await hre.deployments.execute('PermissionsManager', { from: deployer }, 'setHub', hubDeployment.address);
+    return;
   }
+
+  let hub: string;
+  switch (hre.network.name) {
+    case 'optimism-kovan':
+      hub = '0x2aCb69a8f2Ab6b496D482073eB70573A345a3272';
+      break;
+    default:
+      throw new Error(`Unsupported chain '${hre.network.name}`);
+  }
+
+  await hre.deployments.save('DCAHub', { abi: DCA_HUB_ABI, address: hub });
 };
 deployFunction.tags = ['DCAHub'];
 export default deployFunction;

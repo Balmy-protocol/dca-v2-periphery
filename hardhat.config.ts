@@ -58,9 +58,9 @@ const networks: NetworksUserConfig = process.env.TEST
         accounts: accounts('mainnet'),
         tags: ['production'],
       },
-      optimismkovan: {
+      'optimism-kovan': {
         url: 'https://kovan.optimism.io',
-        accounts: accounts('optimistimkovan'),
+        accounts: accounts('optimism-kovan'),
         tags: ['staging'],
       },
       optimism: {
