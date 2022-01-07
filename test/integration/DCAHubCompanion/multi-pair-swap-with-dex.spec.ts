@@ -7,7 +7,6 @@ import evm, { snapshot } from '@test-utils/evm';
 import { DCAHubCompanion, IERC20 } from '@typechained';
 import { DCAHub } from '@mean-finance/dca-v2-core/typechained';
 import { abi as DCA_HUB_ABI } from '@mean-finance/dca-v2-core/artifacts/contracts/DCAHub/DCAHub.sol/DCAHub.json';
-import { getNodeUrl } from '@utils/network';
 import { abi as IERC20_ABI } from '@openzeppelin/contracts/build/contracts/IERC20.json';
 import { BigNumber, utils } from 'ethers';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signers';
@@ -92,10 +91,10 @@ describe('Multi pair swap with DEX', () => {
       let rewardWETH: BigNumber,
         toProvideUSDC: BigNumber,
         toProvideLINK: BigNumber,
-        sentToAgg: BigNumber[],
+        sentWETHToAgg: BigNumber[],
         receivedUSDCFromAgg: BigNumber,
         receivedLINKFromAgg: BigNumber,
-        receivedWETHFromAgg: BigNumber;
+        receivedWETHFromAgg: BigNumber[];
       let initialHubWETHBalance: BigNumber, initialHubUSDCBalance: BigNumber, initialHubLINKBalance: BigNumber;
       given(async () => {
         initialHubWETHBalance = await WETH.balanceOf(DCAHub.address);
@@ -139,7 +138,7 @@ describe('Multi pair swap with DEX', () => {
           recipient.address,
           constants.MAX_UINT_256
         );
-        ({ rewardWETH, toProvideUSDC, toProvideLINK, receivedUSDCFromAgg, receivedLINKFromAgg, sentToAgg, receivedWETHFromAgg } =
+        ({ rewardWETH, toProvideUSDC, toProvideLINK, receivedUSDCFromAgg, receivedLINKFromAgg, sentWETHToAgg, receivedWETHFromAgg } =
           await getTransfers(swapTx));
       });
       then('swap is executed', async () => {
@@ -154,7 +153,8 @@ describe('Multi pair swap with DEX', () => {
         expect(hubLINKBalance).to.equal(initialHubLINKBalance.add(toProvideLINK));
       });
       then('all reward surpluss is sent to leftover recipient', async () => {
-        const expected = sentToAgg.reduce((accum, curr) => accum.sub(curr), rewardWETH).add(receivedWETHFromAgg); // Sometimes, the aggregator might return unspent WETH to the Companion
+        const sent = sentWETHToAgg.reduce((accum, curr) => accum.sub(curr), rewardWETH);
+        const expected = receivedWETHFromAgg.reduce((accum, curr) => accum.add(curr), sent); // Sometimes, the aggregator might return unspent WETH to the Companion
         const recipientWETHBalance = await WETH.balanceOf(recipient.address);
         expect(recipientWETHBalance).to.equal(expected);
       });
@@ -181,9 +181,9 @@ describe('Multi pair swap with DEX', () => {
 
     const [receivedUSDCFromAgg] = await findTransferValue(tx, USDC_ADDRESS, { notFrom: DCAHub, to: DCAHubCompanion });
     const [receivedLINKFromAgg] = await findTransferValue(tx, LINK_ADDRESS, { notFrom: DCAHub, to: DCAHubCompanion });
-    const [receivedWETHFromAgg] = await findTransferValue(tx, WETH_ADDRESS, { notFrom: DCAHub, to: DCAHubCompanion });
-    const sentToAgg = await findTransferValue(tx, WETH_ADDRESS, { from: DCAHubCompanion, notTo: [DCAHub, recipient] });
-    return { rewardWETH, toProvideUSDC, toProvideLINK, receivedUSDCFromAgg, receivedLINKFromAgg, sentToAgg, receivedWETHFromAgg };
+    const receivedWETHFromAgg = await findTransferValue(tx, WETH_ADDRESS, { notFrom: DCAHub, to: DCAHubCompanion });
+    const sentWETHToAgg = await findTransferValue(tx, WETH_ADDRESS, { from: DCAHubCompanion, notTo: [DCAHub, recipient] });
+    return { rewardWETH, toProvideUSDC, toProvideLINK, receivedUSDCFromAgg, receivedLINKFromAgg, sentWETHToAgg, receivedWETHFromAgg };
   }
 
   async function getSwappedEvent(tx: TransactionResponse): Promise<utils.LogDescription> {
