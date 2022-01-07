@@ -1,12 +1,14 @@
 import { HardhatRuntimeEnvironment } from 'hardhat/types';
 import { DeployFunction } from 'hardhat-deploy/types';
+import { networkBeingForked } from '@test-utils/evm';
 
 const deployFunction: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
   const { deployer, governor } = await hre.getNamedAccounts();
 
   let weth: string;
 
-  switch (hre.network.name) {
+  const network = hre.network.name !== 'hardhat' ? hre.network.name : networkBeingForked ?? hre.network.name;
+  switch (network) {
     case 'mainnet':
       weth = '0xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2';
       break;
@@ -17,18 +19,10 @@ const deployFunction: DeployFunction = async function (hre: HardhatRuntimeEnviro
       weth = '0x4200000000000000000000000000000000000006';
       break;
     case 'optimism':
-    case 'hardhat':
       weth = '0x4200000000000000000000000000000000000006';
       break;
     default:
       throw new Error(`Unsupported chain '${hre.network.name}`);
-  }
-
-  const isDeployed = (await hre.ethers.provider.getCode(weth)) !== '0x';
-  if (!isDeployed) {
-    // TODO: Remove when deployed in all networks
-    // Default to mainnet WETH
-    weth = '0xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2';
   }
 
   const hub = await hre.deployments.get('DCAHub');

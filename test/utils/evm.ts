@@ -1,4 +1,7 @@
+import { getNodeUrl } from '@utils/network';
 import { network } from 'hardhat';
+
+export let networkBeingForked: string;
 
 const advanceTimeAndBlock = async (time: number): Promise<void> => {
   await advanceTime(time);
@@ -31,8 +34,17 @@ const advanceBlock = async () => {
   });
 };
 
-const reset = async (forking?: { [key: string]: any }) => {
-  const params = forking ? [{ forking }] : [];
+type ForkConfig = { network: string } & Record<string, any>;
+const reset = async (forkingConfig: ForkConfig) => {
+  networkBeingForked = forkingConfig.network;
+  const params = [
+    {
+      forking: {
+        ...forkingConfig,
+        jsonRpcUrl: getNodeUrl(forkingConfig.network),
+      },
+    },
+  ];
   await network.provider.request({
     method: 'hardhat_reset',
     params,

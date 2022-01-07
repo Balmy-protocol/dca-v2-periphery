@@ -2,7 +2,7 @@ import 'dotenv/config';
 
 export function getNodeUrl(networkName: string): string {
   if (networkName) {
-    const uri = process.env[`ETH_NODE_URI_${networkName.toUpperCase()}`];
+    const uri = process.env[`ETH_NODE_URI_${networkName.toUpperCase().replace('-', '_')}`];
     if (uri && uri !== '') {
       return uri;
     }

@@ -1,14 +1,13 @@
 import { expect } from 'chai';
 import { deployments, ethers, getNamedAccounts } from 'hardhat';
 import { TransactionResponse } from '@ethersproject/providers';
-import { behaviours, constants, wallet } from '@test-utils';
+import { constants, wallet } from '@test-utils';
 import { given, then, when } from '@test-utils/bdd';
 import evm, { snapshot } from '@test-utils/evm';
 import { DCAHubCompanion, IERC20 } from '@typechained';
 import { DCAHub, DCAPermissionsManager } from '@mean-finance/dca-v2-core/typechained';
 import { abi as DCA_HUB_ABI } from '@mean-finance/dca-v2-core/artifacts/contracts/DCAHub/DCAHub.sol/DCAHub.json';
 import { abi as PM_ABI } from '@mean-finance/dca-v2-core/artifacts/contracts/DCAPermissionsManager/DCAPermissionsManager.sol/DCAPermissionsManager.json';
-import { getNodeUrl } from '@utils/network';
 import { abi as IERC20_ABI } from '@openzeppelin/contracts/build/contracts/IERC20.json';
 import { BigNumber, utils } from 'ethers';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signers';
@@ -16,10 +15,10 @@ import { SwapInterval } from '@test-utils/interval-utils';
 import forkBlockNumber from '@integration/fork-block-numbers';
 import { fromRpcSig } from 'ethereumjs-util';
 
-const WETH_ADDRESS = '0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2';
-const USDC_ADDRESS = '0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48';
-const WETH_WHALE_ADDRESS = '0xf04a5cc80b1e94c69b48f5ee68a08cd2f09a7c3e';
-const USDC_WHALE_ADDRESS = '0x0a59649758aa4d66e25f08dd01271e891fe52199';
+const WETH_ADDRESS = '0x4200000000000000000000000000000000000006';
+const USDC_ADDRESS = '0x4bec326fe1bef34c4858a1de3906c7f52a95a682';
+const WETH_WHALE_ADDRESS = '0x03af20bdaaffb4cc0a521796a223f7d85e2aac31';
+const USDC_WHALE_ADDRESS = '0xc96495c314879586761d991a2b68ebeab12c03fe';
 
 describe('Multicall', () => {
   let WETH: IERC20, USDC: IERC20;
@@ -36,7 +35,7 @@ describe('Multicall', () => {
 
   before(async () => {
     await evm.reset({
-      jsonRpcUrl: getNodeUrl('mainnet'),
+      network: 'optimism-kovan', // We are using Kovan until the full deployment is made on Optimism
       blockNumber: forkBlockNumber['multicall'],
     });
     [positionOwner, swapper, recipient] = await ethers.getSigners();
@@ -335,8 +334,8 @@ describe('Multicall', () => {
     const usdcWhale = await wallet.impersonate(USDC_WHALE_ADDRESS);
     await ethers.provider.send('hardhat_setBalance', [WETH_WHALE_ADDRESS, '0xffffffffffffffff']);
     await ethers.provider.send('hardhat_setBalance', [USDC_WHALE_ADDRESS, '0xffffffffffffffff']);
-    await WETH.connect(wethWhale).transfer(swapper.address, BigNumber.from(10).pow(23));
-    await WETH.connect(wethWhale).transfer(positionOwner.address, BigNumber.from(10).pow(23));
+    await WETH.connect(wethWhale).transfer(swapper.address, BigNumber.from(10).pow(19));
+    await WETH.connect(wethWhale).transfer(positionOwner.address, BigNumber.from(10).pow(19));
     await USDC.connect(usdcWhale).transfer(positionOwner.address, BigNumber.from(10).pow(12));
     await USDC.connect(usdcWhale).transfer(swapper.address, BigNumber.from(10).pow(12));
   }
@@ -372,7 +371,7 @@ describe('Multicall', () => {
 
     await WETH.connect(swapper).approve(DCAHubCompanion.address, constants.MAX_UINT_256);
     await DCAHubCompanion.connect(swapper).swapForCaller(
-      [USDC_ADDRESS, WETH_ADDRESS],
+      [WETH_ADDRESS, USDC_ADDRESS],
       [{ indexTokenA: 0, indexTokenB: 1 }],
       [0, 0],
       [constants.MAX_UINT_256, constants.MAX_UINT_256],

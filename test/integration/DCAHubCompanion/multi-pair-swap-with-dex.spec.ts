@@ -14,13 +14,13 @@ import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signers';
 import { SwapInterval } from '@test-utils/interval-utils';
 import zrx from '@test-utils/zrx';
 
-const WETH_ADDRESS = '0xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2';
-const USDC_ADDRESS = '0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48';
-const MANA_ADDRESS = '0x0f5d2fb29fb7d3cfee444a200298f468908cc942';
-const WETH_WHALE_ADDRESS = '0xf04a5cc80b1e94c69b48f5ee68a08cd2f09a7c3e';
+const WETH_ADDRESS = '0x4200000000000000000000000000000000000006';
+const USDC_ADDRESS = '0x7f5c764cbc14f9669b88837ca1490cca17c31607';
+const LINK_ADDRESS = '0x350a791bfc2c21f9ed5d10980dad2e2638ffa7f6';
+const WETH_WHALE_ADDRESS = '0xaa30d6bba6285d0585722e2440ff89e23ef68864';
 
 describe('Multi pair swap with DEX', () => {
-  let WETH: IERC20, USDC: IERC20, MANA: IERC20;
+  let WETH: IERC20, USDC: IERC20, LINK: IERC20;
   let governor: JsonRpcSigner;
   let cindy: SignerWithAddress, recipient: SignerWithAddress;
   let DCAHubCompanion: DCAHubCompanion;
@@ -33,7 +33,7 @@ describe('Multi pair swap with DEX', () => {
 
   before(async () => {
     await evm.reset({
-      jsonRpcUrl: getNodeUrl('mainnet'),
+      network: 'optimism',
     });
     [cindy, recipient] = await ethers.getSigners();
 
@@ -44,16 +44,18 @@ describe('Multi pair swap with DEX', () => {
     const namedAccounts = await getNamedAccounts();
     const governorAddress = namedAccounts.governor;
     governor = await wallet.impersonate(governorAddress);
+    const timelock = await wallet.impersonate('0x19BB8c1130649BD2a114c2f2d4C3a6AFa3Bd4944');
     await ethers.provider.send('hardhat_setBalance', [governorAddress, '0xffffffffffffffff']);
+    await ethers.provider.send('hardhat_setBalance', [timelock._address, '0xffffffffffffffff']);
 
     // Allow one minute interval
     await DCAHub.connect(governor).addSwapIntervalsToAllowedList([SwapInterval.ONE_MINUTE.seconds]);
     //We are setting a very high fee, so that there is a surplus in both reward and toProvide tokens
-    await DCAHub.connect(governor).setSwapFee(20000); // 2%
+    await DCAHub.connect(timelock).setSwapFee(20000); // 2%
 
     WETH = await ethers.getContractAt(IERC20_ABI, WETH_ADDRESS);
     USDC = await ethers.getContractAt(IERC20_ABI, USDC_ADDRESS);
-    MANA = await ethers.getContractAt(IERC20_ABI, MANA_ADDRESS);
+    LINK = await ethers.getContractAt(IERC20_ABI, LINK_ADDRESS);
     const wethWhale = await wallet.impersonate(WETH_WHALE_ADDRESS);
     await ethers.provider.send('hardhat_setBalance', [WETH_WHALE_ADDRESS, '0xffffffffffffffff']);
 
@@ -71,7 +73,7 @@ describe('Multi pair swap with DEX', () => {
     );
     await DCAHub.connect(cindy).deposit(
       WETH.address,
-      MANA.address,
+      LINK.address,
       depositAmount,
       AMOUNT_OF_SWAPS,
       SwapInterval.ONE_MINUTE.seconds,
@@ -89,19 +91,45 @@ describe('Multi pair swap with DEX', () => {
     when('swapping multiple pairs with 0x', () => {
       let rewardWETH: BigNumber,
         toProvideUSDC: BigNumber,
-        toProvideMANA: BigNumber,
+        toProvideLINK: BigNumber,
         sentToAgg: BigNumber[],
         receivedUSDCFromAgg: BigNumber,
-        receivedMANAFromAgg: BigNumber;
+        receivedLINKFromAgg: BigNumber,
+        receivedWETHFromAgg: BigNumber;
+      let initialHubWETHBalance: BigNumber, initialHubUSDCBalance: BigNumber, initialHubLINKBalance: BigNumber;
       given(async () => {
-        const tokensInSwap = [MANA_ADDRESS, USDC_ADDRESS, WETH_ADDRESS];
-        const indexesInSwap = [
-          { indexTokenA: 0, indexTokenB: 2 },
-          { indexTokenA: 1, indexTokenB: 2 },
-        ];
-        const dexQuotes = await quotes();
+        initialHubWETHBalance = await WETH.balanceOf(DCAHub.address);
+        initialHubUSDCBalance = await USDC.balanceOf(DCAHub.address);
+        initialHubLINKBalance = await LINK.balanceOf(DCAHub.address);
+        const {
+          tokens: [link, , usdc],
+        } = await DCAHubCompanion.getNextSwapInfo([
+          { tokenA: WETH_ADDRESS, tokenB: USDC_ADDRESS },
+          { tokenA: WETH_ADDRESS, tokenB: LINK_ADDRESS },
+        ]);
+        const dexQuotes = await Promise.all([
+          zrx.quote({
+            chainId: 10,
+            sellToken: WETH_ADDRESS,
+            buyToken: USDC_ADDRESS,
+            buyAmount: usdc.toProvide,
+            sippagePercentage: 0.001,
+          }),
+          zrx.quote({
+            chainId: 10,
+            sellToken: WETH_ADDRESS,
+            buyToken: LINK_ADDRESS,
+            buyAmount: link.toProvide,
+            sippagePercentage: 0.001,
+          }),
+        ]);
         const dexAddress = dexQuotes[0].to;
         await DCAHubCompanion.connect(governor).defineDexSupport(dexAddress, true);
+        const tokensInSwap = [LINK_ADDRESS, WETH_ADDRESS, USDC_ADDRESS];
+        const indexesInSwap = [
+          { indexTokenA: 0, indexTokenB: 1 },
+          { indexTokenA: 1, indexTokenB: 2 },
+        ];
         const swapTx = await DCAHubCompanion.swapWithDex(
           dexAddress,
           tokensInSwap,
@@ -111,7 +139,8 @@ describe('Multi pair swap with DEX', () => {
           recipient.address,
           constants.MAX_UINT_256
         );
-        ({ rewardWETH, toProvideUSDC, toProvideMANA, receivedUSDCFromAgg, receivedMANAFromAgg, sentToAgg } = await getTransfers(swapTx));
+        ({ rewardWETH, toProvideUSDC, toProvideLINK, receivedUSDCFromAgg, receivedLINKFromAgg, sentToAgg, receivedWETHFromAgg } =
+          await getTransfers(swapTx));
       });
       then('swap is executed', async () => {
         expect(await performedSwaps()).to.equal(initialPerformedSwaps + 1);
@@ -119,43 +148,24 @@ describe('Multi pair swap with DEX', () => {
       then('hub balance is correct', async () => {
         const hubWETHBalance = await WETH.balanceOf(DCAHub.address);
         const hubUSDCBalance = await USDC.balanceOf(DCAHub.address);
-        const hubMANABalance = await MANA.balanceOf(DCAHub.address);
-        expect(hubWETHBalance).to.equal(RATE.mul(AMOUNT_OF_SWAPS - 1).mul(2));
-        expect(hubUSDCBalance).to.equal(toProvideUSDC);
-        expect(hubMANABalance).to.equal(toProvideMANA);
+        const hubLINKBalance = await LINK.balanceOf(DCAHub.address);
+        expect(hubWETHBalance).to.equal(initialHubWETHBalance.sub(rewardWETH));
+        expect(hubUSDCBalance).to.equal(initialHubUSDCBalance.add(toProvideUSDC));
+        expect(hubLINKBalance).to.equal(initialHubLINKBalance.add(toProvideLINK));
       });
       then('all reward surpluss is sent to leftover recipient', async () => {
-        const [sentToAgg1, sentToAgg2] = sentToAgg;
+        const expected = sentToAgg.reduce((accum, curr) => accum.sub(curr), rewardWETH).add(receivedWETHFromAgg); // Sometimes, the aggregator might return unspent WETH to the Companion
         const recipientWETHBalance = await WETH.balanceOf(recipient.address);
-        expect(recipientWETHBalance).to.equal(rewardWETH.sub(sentToAgg1).sub(sentToAgg2));
+        expect(recipientWETHBalance).to.equal(expected);
       });
       then('all "toProvide" surpluss is sent to leftover recipient', async () => {
         const recipientUSDCBalance = await USDC.balanceOf(recipient.address);
         expect(recipientUSDCBalance).to.equal(receivedUSDCFromAgg.sub(toProvideUSDC));
-        const recipientMANABalance = await MANA.balanceOf(recipient.address);
-        expect(recipientMANABalance).to.equal(receivedMANAFromAgg.sub(toProvideMANA));
+        const recipientLINKBalance = await LINK.balanceOf(recipient.address);
+        expect(recipientLINKBalance).to.equal(receivedLINKFromAgg.sub(toProvideLINK));
       });
     });
   });
-
-  function quotes() {
-    return Promise.all([
-      zrx.quote({
-        chainId: 1,
-        sellToken: WETH_ADDRESS,
-        buyToken: USDC_ADDRESS,
-        sellAmount: RATE.sub(100), // We sell a little less than necessary, so that we can test the leftover
-        sippagePercentage: 0.001,
-      }),
-      zrx.quote({
-        chainId: 1,
-        sellToken: WETH_ADDRESS,
-        buyToken: MANA_ADDRESS,
-        sellAmount: RATE.sub(100), // We sell a little less than necessary, so that we can test the leftover
-        sippagePercentage: 0.001,
-      }),
-    ]);
-  }
 
   async function performedSwaps(): Promise<number> {
     const { performedSwaps } = await DCAHub.swapData(USDC_ADDRESS, WETH_ADDRESS, SwapInterval.ONE_MINUTE.mask);
@@ -164,15 +174,16 @@ describe('Multi pair swap with DEX', () => {
 
   async function getTransfers(tx: TransactionResponse) {
     const swappedEvent = await getSwappedEvent(tx);
-    const [mana, usdc, weth] = swappedEvent.args.swapInformation.tokens;
+    const [link, weth, usdc] = swappedEvent.args.swapInformation.tokens;
     const rewardWETH = weth.reward;
     const toProvideUSDC = usdc.toProvide;
-    const toProvideMANA = mana.toProvide;
+    const toProvideLINK = link.toProvide;
 
     const [receivedUSDCFromAgg] = await findTransferValue(tx, USDC_ADDRESS, { notFrom: DCAHub, to: DCAHubCompanion });
-    const [receivedMANAFromAgg] = await findTransferValue(tx, MANA_ADDRESS, { notFrom: DCAHub, to: DCAHubCompanion });
-    const sentToAgg = await findTransferValue(tx, WETH_ADDRESS, { from: DCAHubCompanion, notTo: DCAHub });
-    return { rewardWETH, toProvideUSDC, toProvideMANA, receivedUSDCFromAgg, receivedMANAFromAgg, sentToAgg };
+    const [receivedLINKFromAgg] = await findTransferValue(tx, LINK_ADDRESS, { notFrom: DCAHub, to: DCAHubCompanion });
+    const [receivedWETHFromAgg] = await findTransferValue(tx, WETH_ADDRESS, { notFrom: DCAHub, to: DCAHubCompanion });
+    const sentToAgg = await findTransferValue(tx, WETH_ADDRESS, { from: DCAHubCompanion, notTo: [DCAHub, recipient] });
+    return { rewardWETH, toProvideUSDC, toProvideLINK, receivedUSDCFromAgg, receivedLINKFromAgg, sentToAgg, receivedWETHFromAgg };
   }
 
   async function getSwappedEvent(tx: TransactionResponse): Promise<utils.LogDescription> {
@@ -188,7 +199,7 @@ describe('Multi pair swap with DEX', () => {
       notFrom,
       to,
       notTo,
-    }: { from?: { address: string }; notFrom?: { address: string }; to?: { address: string }; notTo?: { address: string } }
+    }: { from?: { address: string }; notFrom?: { address: string }; to?: { address: string }; notTo?: { address: string }[] }
   ) {
     const logs = await findLogs(
       tx,
@@ -198,7 +209,7 @@ describe('Multi pair swap with DEX', () => {
         (!from || log.args.from === from.address) &&
         (!to || log.args.to === to.address) &&
         (!notFrom || log.args.from !== notFrom.address) &&
-        (!notTo || log.args.to !== notTo.address),
+        (!notTo || !notTo.some(({ address }) => address === log.args.to)),
       tokenAddress
     );
     return logs.map((log) => BigNumber.from(log.args.value));

@@ -7,7 +7,6 @@ import evm, { snapshot } from '@test-utils/evm';
 import { DCAHubCompanion, IERC20 } from '@typechained';
 import { DCAHub } from '@mean-finance/dca-v2-core/typechained';
 import { abi as DCA_HUB_ABI } from '@mean-finance/dca-v2-core/artifacts/contracts/DCAHub/DCAHub.sol/DCAHub.json';
-import { getNodeUrl } from '@utils/network';
 import { abi as IERC20_ABI } from '@openzeppelin/contracts/build/contracts/IERC20.json';
 import { BigNumber, utils } from 'ethers';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signers';
@@ -33,7 +32,7 @@ describe('Swap for caller', () => {
 
   before(async () => {
     await evm.reset({
-      jsonRpcUrl: getNodeUrl('optimism'),
+      network: 'optimism',
       blockNumber: forkBlockNumber['swap-for-caller'],
     });
     [cindy, swapper, recipient] = await ethers.getSigners();
