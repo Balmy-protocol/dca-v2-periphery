@@ -7,16 +7,15 @@ import evm, { snapshot } from '@test-utils/evm';
 import { DCAHubCompanion, IERC20 } from '@typechained';
 import { DCAHub } from '@mean-finance/dca-v2-core/typechained';
 import { abi as DCA_HUB_ABI } from '@mean-finance/dca-v2-core/artifacts/contracts/DCAHub/DCAHub.sol/DCAHub.json';
-import { getNodeUrl } from '@utils/network';
 import { abi as IERC20_ABI } from '@openzeppelin/contracts/build/contracts/IERC20.json';
 import { BigNumber, utils } from 'ethers';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signers';
 import { SwapInterval } from '@test-utils/interval-utils';
 import zrx from '@test-utils/zrx';
 
-const WETH_ADDRESS = '0xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2';
-const USDC_ADDRESS = '0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48';
-const WETH_WHALE_ADDRESS = '0xf04a5cc80b1e94c69b48f5ee68a08cd2f09a7c3e';
+const WETH_ADDRESS = '0x4200000000000000000000000000000000000006';
+const USDC_ADDRESS = '0x7f5c764cbc14f9669b88837ca1490cca17c31607';
+const WETH_WHALE_ADDRESS = '0xaa30d6bba6285d0585722e2440ff89e23ef68864';
 
 describe('Single pair swap with DEX', () => {
   let WETH: IERC20;
@@ -33,7 +32,7 @@ describe('Single pair swap with DEX', () => {
 
   before(async () => {
     await evm.reset({
-      jsonRpcUrl: getNodeUrl('mainnet'),
+      network: 'optimism',
     });
     [cindy, recipient] = await ethers.getSigners();
 
@@ -44,12 +43,14 @@ describe('Single pair swap with DEX', () => {
     const namedAccounts = await getNamedAccounts();
     const governorAddress = namedAccounts.governor;
     governor = await wallet.impersonate(governorAddress);
+    const timelock = await wallet.impersonate('0x19BB8c1130649BD2a114c2f2d4C3a6AFa3Bd4944');
     await ethers.provider.send('hardhat_setBalance', [governorAddress, '0xffffffffffffffff']);
+    await ethers.provider.send('hardhat_setBalance', [timelock._address, '0xffffffffffffffff']);
 
     // Allow one minute interval
     await DCAHub.connect(governor).addSwapIntervalsToAllowedList([SwapInterval.ONE_MINUTE.seconds]);
     //We are setting a very high fee, so that there is a surplus in both reward and toProvide tokens
-    await DCAHub.connect(governor).setSwapFee(20000); // 2%
+    await DCAHub.connect(timelock).setSwapFee(20000); // 2%
 
     WETH = await ethers.getContractAt(IERC20_ABI, WETH_ADDRESS);
     USDC = await ethers.getContractAt(IERC20_ABI, USDC_ADDRESS);
@@ -81,27 +82,11 @@ describe('Single pair swap with DEX', () => {
       dex: '0x',
       isSwapAndTransfer: false,
       sendLeftoverToHub: false,
-      quote: () =>
-        zrx.quote({
-          chainId: 1,
-          sellToken: WETH_ADDRESS,
-          buyToken: USDC_ADDRESS,
-          sellAmount: RATE.sub(100), // We sell a little less than necessary, so that we can test the leftover
-          sippagePercentage: 0.001,
-        }),
     });
     swapWithDexTest({
       dex: '0x',
       isSwapAndTransfer: false,
       sendLeftoverToHub: true,
-      quote: () =>
-        zrx.quote({
-          chainId: 1,
-          sellToken: WETH_ADDRESS,
-          buyToken: USDC_ADDRESS,
-          sellAmount: RATE.sub(100), // We sell a little less than necessary, so that we can test the leftover
-          sippagePercentage: 0.001,
-        }),
     });
   });
 
@@ -109,9 +94,7 @@ describe('Single pair swap with DEX', () => {
     dex,
     isSwapAndTransfer,
     sendLeftoverToHub,
-    quote,
   }: {
-    quote: () => Promise<{ to: string; data: string }>;
     dex: string;
     isSwapAndTransfer: boolean;
     sendLeftoverToHub: boolean;
@@ -120,13 +103,25 @@ describe('Single pair swap with DEX', () => {
       !sendLeftoverToHub ? 'without ' : ''
     }sending leftover to hub`;
     when(title, () => {
+      let initialHubWETHBalance: BigNumber, initialHubUSDCBalance: BigNumber;
       let reward: BigNumber, toProvide: BigNumber, sentToAgg: BigNumber, receivedFromAgg: BigNumber;
       given(async () => {
-        const tokensInSwap = [USDC_ADDRESS, WETH_ADDRESS];
-        const indexesInSwap = [{ indexTokenA: 0, indexTokenB: 1 }];
-        const dexQuote = await quote();
+        initialHubWETHBalance = await WETH.balanceOf(DCAHub.address);
+        initialHubUSDCBalance = await USDC.balanceOf(DCAHub.address);
+        const {
+          tokens: [weth],
+        } = await DCAHubCompanion.getNextSwapInfo([{ tokenA: WETH_ADDRESS, tokenB: USDC_ADDRESS }]);
+        const dexQuote = await zrx.quote({
+          chainId: 10,
+          sellToken: WETH_ADDRESS,
+          buyToken: USDC_ADDRESS,
+          sellAmount: weth.reward,
+          sippagePercentage: 0.001,
+        });
         await DCAHubCompanion.connect(governor).defineDexSupport(dexQuote.to, true);
         const dexFunction = sendLeftoverToHub ? 'swapWithDexAndShareLeftoverWithHub' : 'swapWithDex';
+        const tokensInSwap = [WETH_ADDRESS, USDC_ADDRESS];
+        const indexesInSwap = [{ indexTokenA: 0, indexTokenB: 1 }];
         const swapTx = await DCAHubCompanion[dexFunction](
           dexQuote.to,
           tokensInSwap,
@@ -144,11 +139,11 @@ describe('Single pair swap with DEX', () => {
       then('hub balance is correct', async () => {
         const hubWETHBalance = await WETH.balanceOf(DCAHub.address);
         const hubUSDCBalance = await USDC.balanceOf(DCAHub.address);
-        expect(hubWETHBalance).to.equal(RATE.mul(AMOUNT_OF_SWAPS - 1));
+        expect(hubWETHBalance).to.equal(initialHubWETHBalance.sub(reward));
         if (!sendLeftoverToHub) {
-          expect(hubUSDCBalance).to.equal(toProvide);
+          expect(hubUSDCBalance).to.equal(initialHubUSDCBalance.add(toProvide));
         } else {
-          expect(hubUSDCBalance).to.equal(receivedFromAgg);
+          expect(hubUSDCBalance).to.equal(initialHubUSDCBalance.add(receivedFromAgg));
         }
       });
       then('all reward surpluss is sent to leftover recipient', async () => {
