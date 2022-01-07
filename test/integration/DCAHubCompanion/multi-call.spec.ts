@@ -7,6 +7,7 @@ import evm, { snapshot } from '@test-utils/evm';
 import { DCAHubCompanion, IERC20 } from '@typechained';
 import { DCAHub, DCAPermissionsManager } from '@mean-finance/dca-v2-core/typechained';
 import { abi as DCA_HUB_ABI } from '@mean-finance/dca-v2-core/artifacts/contracts/DCAHub/DCAHub.sol/DCAHub.json';
+import { abi as PM_ABI } from '@mean-finance/dca-v2-core/artifacts/contracts/DCAPermissionsManager/DCAPermissionsManager.sol/DCAPermissionsManager.json';
 import { getNodeUrl } from '@utils/network';
 import { abi as IERC20_ABI } from '@openzeppelin/contracts/build/contracts/IERC20.json';
 import { BigNumber, utils } from 'ethers';
@@ -36,14 +37,14 @@ describe('Multicall', () => {
   before(async () => {
     await evm.reset({
       jsonRpcUrl: getNodeUrl('mainnet'),
-      blockNumber: forkBlockNumber['wtoken'],
+      blockNumber: forkBlockNumber['multicall'],
     });
     [positionOwner, swapper, recipient] = await ethers.getSigners();
 
     await deployments.fixture('DCAHubCompanion', { keepExistingDeployments: false });
     DCAHub = await ethers.getContract('DCAHub');
     DCAHubCompanion = await ethers.getContract('DCAHubCompanion');
-    DCAPermissionManager = await ethers.getContract('PermissionsManager');
+    DCAPermissionManager = await ethers.getContractAt(PM_ABI, await DCAHub.permissionManager());
 
     const namedAccounts = await getNamedAccounts();
     const governorAddress = namedAccounts.governor;
@@ -311,14 +312,10 @@ describe('Multicall', () => {
     given(async () => {
       const positionId = await depositWithWTokenAsFrom();
       permissionData = await addPermissionToCompanionData(recipient, positionId, Permission.REDUCE);
+      tx = DCAHubCompanion.multicall([permissionData]);
     });
     then('reverts with message', async () => {
-      await behaviours.txShouldRevertWithMessage({
-        contract: DCAHubCompanion,
-        func: 'multicall',
-        args: [[permissionData]],
-        message: 'VM Exception while processing transaction: reverted with an unrecognized custom error',
-      });
+      await expect(tx).to.be.reverted;
     });
   });
 

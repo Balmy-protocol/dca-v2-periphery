@@ -8,7 +8,6 @@ const deployFunction: DeployFunction = async function (hre: HardhatRuntimeEnviro
 
   switch (hre.network.name) {
     case 'mainnet':
-    case 'hardhat':
       weth = '0xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2';
       break;
     case 'kovan':
@@ -18,10 +17,18 @@ const deployFunction: DeployFunction = async function (hre: HardhatRuntimeEnviro
       weth = '0x4200000000000000000000000000000000000006';
       break;
     case 'optimism':
+    case 'hardhat':
       weth = '0x4200000000000000000000000000000000000006';
       break;
     default:
       throw new Error(`Unsupported chain '${hre.network.name}`);
+  }
+
+  const isDeployed = (await hre.ethers.provider.getCode(weth)) !== '0x';
+  if (!isDeployed) {
+    // TODO: Remove when deployed in all networks
+    // Default to mainnet WETH
+    weth = '0xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2';
   }
 
   const hub = await hre.deployments.get('DCAHub');

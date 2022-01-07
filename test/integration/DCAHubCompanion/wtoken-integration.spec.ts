@@ -14,10 +14,10 @@ import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signers';
 import { SwapInterval } from '@test-utils/interval-utils';
 import forkBlockNumber from '@integration/fork-block-numbers';
 
-const WETH_ADDRESS = '0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2';
-const USDC_ADDRESS = '0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48';
-const WETH_WHALE_ADDRESS = '0xf04a5cc80b1e94c69b48f5ee68a08cd2f09a7c3e';
-const USDC_WHALE_ADDRESS = '0x0a59649758aa4d66e25f08dd01271e891fe52199';
+const WETH_ADDRESS = '0x4200000000000000000000000000000000000006';
+const USDC_ADDRESS = '0x7f5c764cbc14f9669b88837ca1490cca17c31607';
+const WETH_WHALE_ADDRESS = '0xaa30d6bba6285d0585722e2440ff89e23ef68864';
+const USDC_WHALE_ADDRESS = '0xad7b4c162707e0b2b5f6fddbd3f8538a5fba0d60';
 
 describe('WToken', () => {
   let WETH: IERC20, USDC: IERC20;
@@ -33,7 +33,7 @@ describe('WToken', () => {
 
   before(async () => {
     await evm.reset({
-      jsonRpcUrl: getNodeUrl('mainnet'),
+      jsonRpcUrl: getNodeUrl('optimism'),
       blockNumber: forkBlockNumber['wtoken'],
     });
     [cindy, swapper, recipient] = await ethers.getSigners();
@@ -261,7 +261,7 @@ describe('WToken', () => {
 
       await WETH.connect(swapper).approve(DCAHubCompanion.address, constants.MAX_UINT_256);
       await DCAHubCompanion.connect(swapper).swapForCaller(
-        [USDC_ADDRESS, WETH_ADDRESS],
+        [WETH_ADDRESS, USDC_ADDRESS],
         [{ indexTokenA: 0, indexTokenB: 1 }],
         [0, 0],
         [constants.MAX_UINT_256, constants.MAX_UINT_256],
@@ -290,7 +290,7 @@ describe('WToken', () => {
     const usdcWhale = await wallet.impersonate(USDC_WHALE_ADDRESS);
     await ethers.provider.send('hardhat_setBalance', [WETH_WHALE_ADDRESS, '0xffffffffffffffff']);
     await ethers.provider.send('hardhat_setBalance', [USDC_WHALE_ADDRESS, '0xffffffffffffffff']);
-    await WETH.connect(wethWhale).transfer(swapper.address, BigNumber.from(10).pow(23));
+    await WETH.connect(wethWhale).transfer(swapper.address, BigNumber.from(10).pow(20));
     await USDC.connect(usdcWhale).transfer(cindy.address, BigNumber.from(10).pow(12));
     await USDC.connect(usdcWhale).transfer(swapper.address, BigNumber.from(10).pow(12));
   }
