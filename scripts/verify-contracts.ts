@@ -1,11 +1,20 @@
-import { deployments } from 'hardhat';
+import { deployments, network } from 'hardhat';
 import { run } from 'hardhat';
 
 async function main() {
+  const currentNetwork = network.name;
+
   await verify({
     name: 'DCAHubCompanion',
     path: 'contracts/DCAHubCompanion/DCAHubCompanion.sol:DCAHubCompanion',
   });
+
+  if (currentNetwork === 'optimism-kovan' || currentNetwork === 'optimism') {
+    await verify({
+      name: 'BetaMigrator',
+      path: 'contracts/V2Migration/BetaMigrator.sol:BetaMigrator',
+    });
+  }
 }
 
 async function verify({ name, path }: { name: string; path: string }) {
@@ -17,6 +26,7 @@ async function verify({ name, path }: { name: string; path: string }) {
       contract: path,
     });
   } catch (e: any) {
+    console.log(name, 'already verified');
     if (!e.message.toLowerCase().includes('already verified')) {
       throw e;
     }
