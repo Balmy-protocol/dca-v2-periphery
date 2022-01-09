@@ -75,7 +75,7 @@ contract('BetaMigrator', () => {
       const balance = await WETH.balanceOf(positionOwner.address);
       expect(balance).to.equal(swappedBalance);
     });
-    then('new position is created on the full version', async () => {
+    then('new position is created on the stable version', async () => {
       const { from, to, swapInterval, swapsExecuted, swapped, swapsLeft, remaining, rate } = await DCAHub.userPosition(1);
       expect(from.toLowerCase()).to.equal(USDC.address.toLowerCase());
       expect(to.toLowerCase()).to.equal(WETH.address.toLowerCase());

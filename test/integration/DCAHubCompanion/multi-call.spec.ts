@@ -35,7 +35,7 @@ describe('Multicall', () => {
 
   before(async () => {
     await evm.reset({
-      network: 'optimism-kovan', // We are using Kovan until the full deployment is made on Optimism
+      network: 'optimism-kovan', // We are using Kovan until the stable deployment is made on Optimism
       blockNumber: forkBlockNumber['multicall'],
     });
     [positionOwner, swapper, recipient] = await ethers.getSigners();
