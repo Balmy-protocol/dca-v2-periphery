@@ -20,12 +20,16 @@ const deployFunction: DeployFunction = async function (hre: HardhatRuntimeEnviro
 
   const companion = await hre.deployments.getOrNull('DCAHubCompanion');
 
-  await hre.deployments.deploy('DCAKeep3rJob', {
-    contract: 'contracts/DCAKeep3rJob/DCAKeep3rJob.sol:DCAKeep3rJob',
-    from: deployer,
-    args: [!!companion ? companion.address : constants.ZERO_ADDRESS, keep3r, governor],
-    log: true,
-  });
+  const keep3rJob = await hre.deployments.getOrNull('DCAKeep3rJob');
+
+  if (!keep3rJob) {
+    await hre.deployments.deploy('DCAKeep3rJob', {
+      contract: 'contracts/DCAKeep3rJob/DCAKeep3rJob.sol:DCAKeep3rJob',
+      from: deployer,
+      args: [!!companion ? companion.address : constants.ZERO_ADDRESS, keep3r, governor],
+      log: true,
+    });
+  }
 };
 
 deployFunction.tags = ['DCAKeep3rJob'];
