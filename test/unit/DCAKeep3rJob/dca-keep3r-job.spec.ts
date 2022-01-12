@@ -38,12 +38,9 @@ contract('DCAKeep3rJob', () => {
 
   describe('constructor', () => {
     when('swapper is zero address', () => {
-      then('deployment is reverted with reason', async () => {
-        await behaviours.deployShouldRevertWithMessage({
-          contract: DCAKeep3rJobFactory,
-          args: [constants.ZERO_ADDRESS, keep3r.address, governor.address],
-          message: 'ZeroAddress',
-        });
+      then('deployment should not revert', async () => {
+        const deploymentTx = DCAKeep3rJobFactory.getDeployTransaction(constants.ZERO_ADDRESS, keep3r.address, governor.address);
+        await expect(DCAKeep3rJobFactory.signer.sendTransaction(deploymentTx)).to.not.be.reverted;
       });
     });
     when('keep3r is zero address', () => {
