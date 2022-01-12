@@ -116,18 +116,22 @@ abstract contract DCAHubCompanionWTokenPositionHandler is DCAHubCompanionParamet
   receive() external payable {}
 
   function _unwrapAndSend(uint256 _amount, address payable _recipient) internal {
-    // Unwrap wToken
-    wToken.withdraw(_amount);
+    if (_amount > 0) {
+      // Unwrap wToken
+      wToken.withdraw(_amount);
 
-    // Send protocol token to recipient
-    _recipient.transfer(_amount);
+      // Send protocol token to recipient
+      _recipient.transfer(_amount);
+    }
   }
 
   function _wrap(uint256 _amount) internal {
     if (msg.value != _amount) revert InvalidAmountOfProtocolTokenReceived();
 
-    // Convert to wToken
-    wToken.deposit{value: _amount}();
+    if (_amount > 0) {
+      // Convert to wToken
+      wToken.deposit{value: _amount}();
+    }
   }
 
   function _addPermissionsToThisContract(IDCAPermissionManager.PermissionSet[] calldata _permissionSets)
