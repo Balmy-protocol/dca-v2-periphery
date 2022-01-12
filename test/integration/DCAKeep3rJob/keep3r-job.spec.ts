@@ -59,8 +59,6 @@ contract('DCAKeep3rJob', () => {
     const k3prWhale = await wallet.impersonate(K3PR_WHALE_ADDRESS);
     await ethers.provider.send('hardhat_setBalance', [K3PR_WHALE_ADDRESS, '0xffffffffffffffff']);
 
-    // Set companion as swapper
-    // await DCAKeep3rJob.connect(governor).setSwapper(DCAHubCompanion.address);
     // Allow one minute interval
     await DCAHub.connect(governor).addSwapIntervalsToAllowedList([SwapInterval.ONE_MINUTE.seconds]);
     // Allow signer to sign work
