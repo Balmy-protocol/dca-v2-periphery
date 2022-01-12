@@ -17,15 +17,13 @@ const deployFunction: DeployFunction = async function (hre: HardhatRuntimeEnviro
       return;
   }
 
-  const companion = await hre.deployments.get('DCAHubCompanion');
   await hre.deployments.deploy('DCAKeep3rJob', {
     contract: 'contracts/DCAKeep3rJob/DCAKeep3rJob.sol:DCAKeep3rJob',
     from: deployer,
-    args: [companion.address, keep3r, governor],
+    args: [keep3r, governor],
     log: true,
   });
 };
 
-deployFunction.dependencies = ['DCAHubCompanion'];
 deployFunction.tags = ['DCAKeep3rJob'];
 export default deployFunction;

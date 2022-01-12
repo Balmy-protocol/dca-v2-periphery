@@ -13,13 +13,8 @@ contract DCAKeep3rJob is Governable, IDCAKeep3rJob {
   address public swapper;
   mapping(address => bool) public canAddressSignWork;
 
-  constructor(
-    address _swapper,
-    IKeep3rJobs _keep3r,
-    address _governor
-  ) Governable(_governor) {
-    if (address(_swapper) == address(0) || address(_keep3r) == address(0)) revert ZeroAddress();
-    swapper = _swapper;
+  constructor(IKeep3rJobs _keep3r, address _governor) Governable(_governor) {
+    if (address(_keep3r) == address(0)) revert ZeroAddress();
     keep3r = _keep3r;
   }
 
