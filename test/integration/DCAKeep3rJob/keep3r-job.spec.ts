@@ -41,7 +41,7 @@ contract('DCAKeep3rJob', () => {
       network: 'mainnet',
     });
 
-    await deployments.fixture('DCAKeep3rJob', { keepExistingDeployments: false });
+    await deployments.fixture(['DCAHubCompanion', 'DCAKeep3rJob'], { keepExistingDeployments: false });
 
     DCAHub = await ethers.getContract('DCAHub');
     DCAHubCompanion = await ethers.getContract('DCAHubCompanion');

@@ -18,8 +18,8 @@ contract DCAKeep3rJob is Governable, IDCAKeep3rJob {
     IKeep3rJobs _keep3r,
     address _governor
   ) Governable(_governor) {
-    if (address(_swapper) == address(0) || address(_keep3r) == address(0)) revert ZeroAddress();
-    swapper = _swapper;
+    if (address(_keep3r) == address(0)) revert ZeroAddress();
+    if (address(_swapper) != address(0)) swapper = _swapper;
     keep3r = _keep3r;
   }
 
