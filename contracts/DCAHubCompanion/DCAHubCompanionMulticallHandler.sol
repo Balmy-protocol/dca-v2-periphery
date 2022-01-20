@@ -30,7 +30,7 @@ abstract contract DCAHubCompanionMulticallHandler is Multicall, DCAHubCompanionP
     bytes calldata _miscellaneous,
     bool _transferFromCaller
   ) external returns (uint256 _positionId) {
-    _transferFromAndApprove(address(_from), _amount, _transferFromCaller);
+    _transferFromAndApprove(_from, _amount, _transferFromCaller);
     _positionId = _miscellaneous.length > 0
       ? hub.deposit(_from, _to, _amount, _amountOfSwaps, _swapInterval, _owner, _permissions, _miscellaneous)
       : hub.deposit(_from, _to, _amount, _amountOfSwaps, _swapInterval, _owner, _permissions);
