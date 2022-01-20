@@ -5,8 +5,9 @@ import { constants, wallet } from '@test-utils';
 import { given, then, when } from '@test-utils/bdd';
 import evm, { snapshot } from '@test-utils/evm';
 import { DCAHubCompanion, IERC20 } from '@typechained';
-import { DCAHub } from '@mean-finance/dca-v2-core/typechained';
+import { DCAHub, DCAPermissionsManager } from '@mean-finance/dca-v2-core/typechained';
 import { abi as DCA_HUB_ABI } from '@mean-finance/dca-v2-core/artifacts/contracts/DCAHub/DCAHub.sol/DCAHub.json';
+import { abi as DCA_PERMISSION_MANAGER_ABI } from '@mean-finance/dca-v2-core/artifacts/contracts/DCAPermissionsManager/DCAPermissionsManager.sol/DCAPermissionsManager.json';
 import { abi as IERC20_ABI } from '@openzeppelin/contracts/build/contracts/IERC20.json';
 import { BigNumber, utils } from 'ethers';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signers';
@@ -22,7 +23,7 @@ describe('WToken', () => {
   let WETH: IERC20, USDC: IERC20;
   let cindy: SignerWithAddress, swapper: SignerWithAddress, recipient: SignerWithAddress;
   let DCAHubCompanion: DCAHubCompanion;
-  let DCAHub: DCAHub;
+  let DCAHub: DCAHub, DCAPermissionManager: DCAPermissionsManager;
   let initialHubWTokenBalance: BigNumber, initialRecipientProtocolBalance: BigNumber;
   let snapshotId: string;
 
@@ -40,6 +41,7 @@ describe('WToken', () => {
     await deployments.fixture('DCAHubCompanion', { keepExistingDeployments: false });
     DCAHub = await ethers.getContract('DCAHub');
     DCAHubCompanion = await ethers.getContract('DCAHubCompanion');
+    DCAPermissionManager = await ethers.getContractAt(DCA_PERMISSION_MANAGER_ABI, await DCAHub.permissionManager());
 
     const namedAccounts = await getNamedAccounts();
     const governorAddress = namedAccounts.governor;
@@ -164,6 +166,7 @@ describe('WToken', () => {
         SwapInterval.ONE_MINUTE.seconds,
         cindy.address,
         [],
+        ethers.utils.randomBytes(0),
         { value: RATE.mul(AMOUNT_OF_SWAPS) }
       );
       const event = await getHubEvent(tx, 'Deposited');
@@ -177,7 +180,7 @@ describe('WToken', () => {
       let swappedBalance: BigNumber;
       let hubWTokenBalanceAfterSwap: BigNumber;
       given(async () => {
-        ({ positionId, swappedBalance } = await depositWithProtocolTokenAsToAndSwap());
+        ({ positionId, swappedBalance } = await depositWithWTokenAsToAndSwap());
         hubWTokenBalanceAfterSwap = await WETH.balanceOf(DCAHub.address);
         await DCAHubCompanion.withdrawSwappedUsingProtocolToken(positionId, recipient.address);
       });
@@ -201,7 +204,7 @@ describe('WToken', () => {
       let swappedBalance: BigNumber;
       let hubWTokenBalanceAfterSwap: BigNumber;
       given(async () => {
-        ({ positionId, swappedBalance } = await depositWithProtocolTokenAsToAndSwap());
+        ({ positionId, swappedBalance } = await depositWithWTokenAsToAndSwap());
         hubWTokenBalanceAfterSwap = await WETH.balanceOf(DCAHub.address);
         await DCAHubCompanion.withdrawSwappedManyUsingProtocolToken([positionId], recipient.address);
       });
@@ -225,7 +228,7 @@ describe('WToken', () => {
       let swappedBalance: BigNumber;
       let hubWTokenBalanceAfterSwap: BigNumber;
       given(async () => {
-        ({ positionId, swappedBalance } = await depositWithProtocolTokenAsToAndSwap());
+        ({ positionId, swappedBalance } = await depositWithWTokenAsToAndSwap());
         hubWTokenBalanceAfterSwap = await WETH.balanceOf(DCAHub.address);
         await DCAHubCompanion.terminateUsingProtocolTokenAsTo(positionId, recipient.address, recipient.address);
       });
@@ -244,11 +247,11 @@ describe('WToken', () => {
       thenCompanionRemainsWithoutAnyBalance();
     });
 
-    async function depositWithProtocolTokenAsToAndSwap() {
-      await USDC.connect(cindy).approve(DCAHubCompanion.address, constants.MAX_UINT_256);
-      const tx = await DCAHubCompanion.connect(cindy).depositUsingProtocolToken(
+    async function depositWithWTokenAsToAndSwap() {
+      await USDC.connect(cindy).approve(DCAHub.address, constants.MAX_UINT_256);
+      const tx = await DCAHub.connect(cindy)['deposit(address,address,uint256,uint32,uint32,address,(address,uint8[])[])'](
         USDC.address,
-        PROTOCOL_TOKEN,
+        WETH.address,
         RATE.mul(AMOUNT_OF_SWAPS),
         AMOUNT_OF_SWAPS,
         SwapInterval.ONE_MINUTE.seconds,
@@ -257,6 +260,8 @@ describe('WToken', () => {
       );
       const event = await getHubEvent(tx, 'Deposited');
       const positionId = event.args.positionId;
+
+      await DCAPermissionManager.connect(cindy).modify(positionId, [{ operator: DCAHubCompanion.address, permissions: [0, 1, 2, 3] }]);
 
       await WETH.connect(swapper).approve(DCAHubCompanion.address, constants.MAX_UINT_256);
       await DCAHubCompanion.connect(swapper).swapForCaller(

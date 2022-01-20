@@ -61,7 +61,7 @@ describe('Multi pair swap with DEX', () => {
     const depositAmount = RATE.mul(AMOUNT_OF_SWAPS);
     await WETH.connect(wethWhale).transfer(cindy.address, depositAmount.mul(2));
     await WETH.connect(cindy).approve(DCAHub.address, depositAmount.mul(2));
-    await DCAHub.connect(cindy).deposit(
+    await DCAHub.connect(cindy)['deposit(address,address,uint256,uint32,uint32,address,(address,uint8[])[])'](
       WETH.address,
       USDC.address,
       depositAmount,
@@ -70,7 +70,7 @@ describe('Multi pair swap with DEX', () => {
       cindy.address,
       []
     );
-    await DCAHub.connect(cindy).deposit(
+    await DCAHub.connect(cindy)['deposit(address,address,uint256,uint32,uint32,address,(address,uint8[])[])'](
       WETH.address,
       LINK.address,
       depositAmount,

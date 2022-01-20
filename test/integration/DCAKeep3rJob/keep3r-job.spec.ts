@@ -80,7 +80,7 @@ contract('DCAKeep3rJob', () => {
     const depositAmount = utils.parseEther('0.1').mul(amountOfSwaps);
     await WETH.connect(wethWhale).transfer(cindy.address, depositAmount);
     await WETH.connect(cindy).approve(DCAHub.address, depositAmount);
-    await DCAHub.connect(cindy).deposit(
+    await DCAHub.connect(cindy)['deposit(address,address,uint256,uint32,uint32,address,(address,uint8[])[])'](
       WETH.address,
       USDC_ADDRESS,
       depositAmount,

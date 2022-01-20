@@ -104,7 +104,15 @@ contract('BetaMigrator', () => {
     await USDC.connect(positionOwner).approve(betaDCAHub.address, constants.MAX_UINT_256);
     const tx = await betaDCAHub
       .connect(positionOwner)
-      .deposit(USDC.address, WETH.address, RATE.mul(AMOUNT_OF_SWAPS), AMOUNT_OF_SWAPS, SwapInterval.ONE_DAY.seconds, positionOwner.address, []);
+      ['deposit(address,address,uint256,uint32,uint32,address,(address,uint8[])[])'](
+        USDC.address,
+        WETH.address,
+        RATE.mul(AMOUNT_OF_SWAPS),
+        AMOUNT_OF_SWAPS,
+        SwapInterval.ONE_DAY.seconds,
+        positionOwner.address,
+        []
+      );
     const event = await getHubEvent(tx, 'Deposited');
     const positionId = event.args.positionId;
 

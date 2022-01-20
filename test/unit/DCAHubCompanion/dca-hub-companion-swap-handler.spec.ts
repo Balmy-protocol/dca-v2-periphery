@@ -649,7 +649,7 @@ contract('DCAHubCompanionSwapHandler', () => {
       case tokenB.address:
         return tokenB;
       case wToken.address:
-        return wToken;
+        return wToken as any;
     }
     throw new Error('Unknown address');
   }
