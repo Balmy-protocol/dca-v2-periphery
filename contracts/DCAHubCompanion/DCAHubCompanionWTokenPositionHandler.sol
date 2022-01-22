@@ -19,33 +19,16 @@ abstract contract DCAHubCompanionWTokenPositionHandler is DCAHubCompanionParamet
     uint32 _amountOfSwaps,
     uint32 _swapInterval,
     address _owner,
-    IDCAPermissionManager.PermissionSet[] calldata _permissions
+    IDCAPermissionManager.PermissionSet[] calldata _permissions,
+    bytes calldata _miscellaneous
   ) external payable returns (uint256 _positionId) {
-    if ((_from == PROTOCOL_TOKEN) == (_to == PROTOCOL_TOKEN)) revert InvalidTokens();
+    if (_from != PROTOCOL_TOKEN || _to == PROTOCOL_TOKEN) revert InvalidTokens();
 
-    address _convertedFrom = _from;
-    address _convertedTo = _to;
-    if (_from == PROTOCOL_TOKEN) {
-      _wrap(_amount);
-      _convertedFrom = address(wToken);
-    } else {
-      IERC20(_from).safeTransferFrom(msg.sender, address(this), _amount);
-      _approveHub(_from, _amount);
-      _convertedTo = address(wToken);
-    }
-
-    // Create position
-    _positionId = hub.deposit(
-      _convertedFrom,
-      _convertedTo,
-      _amount,
-      _amountOfSwaps,
-      _swapInterval,
-      _owner,
-      _addPermissionsToThisContract(_permissions)
-    );
-
-    emit ConvertedDeposit(_positionId, _from, _convertedFrom, _to, _convertedTo);
+    _wrap(_amount);
+    IDCAPermissionManager.PermissionSet[] memory _newPermissions = _addPermissionsToThisContract(_permissions);
+    _positionId = _miscellaneous.length > 0
+      ? hub.deposit(address(wToken), _to, _amount, _amountOfSwaps, _swapInterval, _owner, _newPermissions, _miscellaneous)
+      : hub.deposit(address(wToken), _to, _amount, _amountOfSwaps, _swapInterval, _owner, _newPermissions);
   }
 
   function withdrawSwappedUsingProtocolToken(uint256 _positionId, address payable _recipient)

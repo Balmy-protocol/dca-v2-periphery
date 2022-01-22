@@ -64,7 +64,7 @@ contract('DCAHubCompanionWTokenPositionHandler', () => {
     erc20Token.approve.reset();
     DCAPermissionManager.hasPermission.reset();
     DCAPermissionManager.hasPermission.returns(({ _address }: { _address: string }) => _address === signer.address); // Give full access to signer
-    DCAHub.deposit.reset();
+    DCAHub['deposit(address,address,uint256,uint32,uint32,address,(address,uint8[])[],bytes)'].reset();
     DCAHub.withdrawSwapped.reset();
     DCAHub.withdrawSwappedMany.reset();
     DCAHub.increasePosition.reset();
@@ -86,10 +86,11 @@ contract('DCAHubCompanionWTokenPositionHandler', () => {
     const OWNER = '0x0000000000000000000000000000000000000002';
     const OPERATOR = '0x0000000000000000000000000000000000000003';
     const PERMISSIONS: PermissionSet = { operator: OPERATOR, permissions: [0, 2] };
+    const MISC = ethers.utils.randomBytes(10);
 
     type PermissionSet = { operator: string; permissions: (0 | 1 | 2 | 3)[] };
 
-    when('neither from nor to are prototol tokens', () => {
+    when('from is not the prototol token', () => {
       then('reverts with message', async () => {
         const tx = DCAHubCompanionWTokenPositionHandler.depositUsingProtocolToken(
           '0x0000000000000000000000000000000000000004',
@@ -99,6 +100,7 @@ contract('DCAHubCompanionWTokenPositionHandler', () => {
           SWAP_INTERVAL,
           OWNER,
           [],
+          MISC,
           {
             value: AMOUNT,
           }
@@ -106,16 +108,17 @@ contract('DCAHubCompanionWTokenPositionHandler', () => {
         await behaviours.checkTxRevertedWithMessage({ tx, message: 'InvalidTokens' });
       });
     });
-    when('both from and to are prototol tokens', () => {
+    when('to is the prototol token', () => {
       then('reverts with message', async () => {
         const tx = DCAHubCompanionWTokenPositionHandler.depositUsingProtocolToken(
-          PROTOCOL_TOKEN,
+          erc20Token.address,
           PROTOCOL_TOKEN,
           AMOUNT,
           AMOUNT_OF_SWAPS,
           SWAP_INTERVAL,
           OWNER,
           [],
+          MISC,
           {
             value: AMOUNT,
           }
@@ -133,6 +136,7 @@ contract('DCAHubCompanionWTokenPositionHandler', () => {
           SWAP_INTERVAL,
           OWNER,
           [],
+          MISC,
           {
             value: AMOUNT + 1,
           }
@@ -150,6 +154,7 @@ contract('DCAHubCompanionWTokenPositionHandler', () => {
           SWAP_INTERVAL,
           OWNER,
           [],
+          MISC,
           {
             value: AMOUNT - 1,
           }
@@ -161,7 +166,7 @@ contract('DCAHubCompanionWTokenPositionHandler', () => {
       const POSITION_ID = 10;
       let tx: TransactionResponse;
       given(async () => {
-        DCAHub.deposit.returns(POSITION_ID);
+        DCAHub['deposit(address,address,uint256,uint32,uint32,address,(address,uint8[])[],bytes)'].returns(POSITION_ID);
         tx = await DCAHubCompanionWTokenPositionHandler.depositUsingProtocolToken(
           PROTOCOL_TOKEN,
           erc20Token.address,
@@ -170,14 +175,58 @@ contract('DCAHubCompanionWTokenPositionHandler', () => {
           SWAP_INTERVAL,
           OWNER,
           [PERMISSIONS],
+          MISC,
           {
             value: AMOUNT,
           }
         );
       });
       then('deposit is executed', () => {
-        expect(DCAHub.deposit).to.have.been.calledOnce;
-        const [from, to, amount, amountOfSwaps, swapInterval, owner, uncastedPermissions] = DCAHub.deposit.getCall(0).args;
+        expect(DCAHub['deposit(address,address,uint256,uint32,uint32,address,(address,uint8[])[],bytes)']).to.have.been.calledOnce;
+        const [from, to, amount, amountOfSwaps, swapInterval, owner, uncastedPermissions, misc] =
+          DCAHub['deposit(address,address,uint256,uint32,uint32,address,(address,uint8[])[],bytes)'].getCall(0).args;
+        expect(from).to.equal(wToken.address);
+        expect(to).to.equal(erc20Token.address);
+        expect(amount).to.equal(AMOUNT);
+        expect(amountOfSwaps).to.equal(AMOUNT_OF_SWAPS);
+        expect(swapInterval).to.equal(SWAP_INTERVAL);
+        expect(owner).to.equal(OWNER);
+        expect(misc).to.equal(ethers.utils.hexlify(MISC));
+
+        const permissions = uncastedPermissions as PermissionSet[];
+        expect(permissions.length).to.equal(2);
+        // Make sure that original permissions was not modified
+        expect(permissions[0].operator).to.equal(PERMISSIONS.operator);
+        expect(permissions[0].permissions).to.eql(PERMISSIONS.permissions);
+        // Make sure that handler was added with full access
+        expect(permissions[1].operator).to.equal(DCAHubCompanionWTokenPositionHandler.address);
+        expect(permissions[1].permissions).to.eql([0, 1, 2, 3]);
+      });
+      thenTokenIsWrapped(AMOUNT);
+    });
+    when('from is protocol token but misc is empty', () => {
+      const POSITION_ID = 10;
+      let tx: TransactionResponse;
+      given(async () => {
+        DCAHub['deposit(address,address,uint256,uint32,uint32,address,(address,uint8[])[])'].returns(POSITION_ID);
+        tx = await DCAHubCompanionWTokenPositionHandler.depositUsingProtocolToken(
+          PROTOCOL_TOKEN,
+          erc20Token.address,
+          AMOUNT,
+          AMOUNT_OF_SWAPS,
+          SWAP_INTERVAL,
+          OWNER,
+          [PERMISSIONS],
+          ethers.utils.randomBytes(0),
+          {
+            value: AMOUNT,
+          }
+        );
+      });
+      then('deposit is executed', () => {
+        expect(DCAHub['deposit(address,address,uint256,uint32,uint32,address,(address,uint8[])[])']).to.have.been.calledOnce;
+        const [from, to, amount, amountOfSwaps, swapInterval, owner, uncastedPermissions] =
+          DCAHub['deposit(address,address,uint256,uint32,uint32,address,(address,uint8[])[])'].getCall(0).args;
         expect(from).to.equal(wToken.address);
         expect(to).to.equal(erc20Token.address);
         expect(amount).to.equal(AMOUNT);
@@ -194,90 +243,7 @@ contract('DCAHubCompanionWTokenPositionHandler', () => {
         expect(permissions[1].operator).to.equal(DCAHubCompanionWTokenPositionHandler.address);
         expect(permissions[1].permissions).to.eql([0, 1, 2, 3]);
       });
-      then('event is emitted', async () => {
-        await expect(tx)
-          .to.emit(DCAHubCompanionWTokenPositionHandler, 'ConvertedDeposit')
-          .withArgs(POSITION_ID, PROTOCOL_TOKEN, wToken.address, erc20Token.address, erc20Token.address);
-      });
       thenTokenIsWrapped(AMOUNT);
-    });
-    when('to is protocol token', () => {
-      const POSITION_ID = 10;
-      let tx: TransactionResponse;
-      given(async () => {
-        erc20Token.transferFrom.returns(true);
-        DCAHub.deposit.returns(POSITION_ID);
-        tx = await DCAHubCompanionWTokenPositionHandler.depositUsingProtocolToken(
-          erc20Token.address,
-          PROTOCOL_TOKEN,
-          AMOUNT,
-          AMOUNT_OF_SWAPS,
-          SWAP_INTERVAL,
-          OWNER,
-          [PERMISSIONS],
-          {
-            value: AMOUNT,
-          }
-        );
-      });
-      then('protocol token is not wrapped', async () => {
-        expect(await getPlatformBalance(wToken)).to.equal(INITIAL_WTOKEN_AND_PLATFORM_BALANCE);
-        expect(await wToken.balanceOf(DCAHubCompanionWTokenPositionHandler.address)).to.equal(INITIAL_WTOKEN_AND_PLATFORM_BALANCE);
-      });
-      then('from token is transfered to the companion', () => {
-        expect(erc20Token.transferFrom).to.have.been.calledWith(signer.address, DCAHubCompanionWTokenPositionHandler.address, AMOUNT);
-      });
-      then('from token is approved for the hub', () => {
-        expect(erc20Token.approve).to.have.been.calledOnceWith(DCAHub.address, AMOUNT + 1);
-      });
-      then('deposit is executed', () => {
-        expect(DCAHub.deposit).to.have.been.calledOnce;
-        const [from, to, amount, amountOfSwaps, swapInterval, owner, uncastedPermissions] = DCAHub.deposit.getCall(0).args;
-        expect(from).to.equal(erc20Token.address);
-        expect(to).to.equal(wToken.address);
-        expect(amount).to.equal(AMOUNT);
-        expect(amountOfSwaps).to.equal(AMOUNT_OF_SWAPS);
-        expect(swapInterval).to.equal(SWAP_INTERVAL);
-        expect(owner).to.equal(OWNER);
-
-        const permissions = uncastedPermissions as PermissionSet[];
-        expect(permissions.length).to.equal(2);
-        // Make sure that original permissions was not modified
-        expect(permissions[0].operator).to.equal(PERMISSIONS.operator);
-        expect(permissions[0].permissions).to.eql(PERMISSIONS.permissions);
-        // Make sure that handler was added with full access
-        expect(permissions[1].operator).to.equal(DCAHubCompanionWTokenPositionHandler.address);
-        expect(permissions[1].permissions).to.eql([0, 1, 2, 3]);
-      });
-      then('event is emitted', async () => {
-        await expect(tx)
-          .to.emit(DCAHubCompanionWTokenPositionHandler, 'ConvertedDeposit')
-          .withArgs(POSITION_ID, erc20Token.address, erc20Token.address, PROTOCOL_TOKEN, wToken.address);
-      });
-    });
-    when('to is protocol token and from has approval issues', () => {
-      const POSITION_ID = 10;
-      let tx: TransactionResponse;
-      given(async () => {
-        erc20Token.transferFrom.returns(true);
-        DCAHub.deposit.returns(POSITION_ID);
-        await DCAHubCompanionWTokenPositionHandler.setTokensWithApprovalIssues([erc20Token.address], [true]);
-        tx = await DCAHubCompanionWTokenPositionHandler.depositUsingProtocolToken(
-          erc20Token.address,
-          PROTOCOL_TOKEN,
-          AMOUNT,
-          AMOUNT_OF_SWAPS,
-          SWAP_INTERVAL,
-          OWNER,
-          [PERMISSIONS],
-          {
-            value: AMOUNT,
-          }
-        );
-      });
-      then('from token is approved for the hub with the exact amount', () => {
-        expect(erc20Token.approve).to.have.been.calledOnceWith(DCAHub.address, AMOUNT);
-      });
     });
   });
 

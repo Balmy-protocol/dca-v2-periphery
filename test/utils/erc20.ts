@@ -1,4 +1,4 @@
-import { ERC20Mock, ERC20Mock__factory } from '@typechained';
+import { ERC20Mock, ERC20Mock__factory, IERC20Metadata } from '@typechained';
 import { BigNumber, utils, constants } from 'ethers';
 import { ethers } from 'hardhat';
 
@@ -26,7 +26,7 @@ const deploy = async ({
   return addExtra(deployedContract);
 };
 
-export async function addExtra<T extends ERC20Mock>(tokenContract: T): Promise<TokenContract<T>> {
+export async function addExtra<T extends { decimals: () => Promise<number> }>(tokenContract: T): Promise<TokenContract<T>> {
   const decimals = await tokenContract.decimals();
   // @ts-ignore
   tokenContract.asUnits = (toParse: string | number) => utils.parseUnits(`${toParse}`, decimals);
@@ -40,7 +40,7 @@ export async function addExtra<T extends ERC20Mock>(tokenContract: T): Promise<T
 
 export type ERC20TokenContract = TokenContract<ERC20Mock>;
 
-export type TokenContract<T extends ERC20Mock> = T & {
+export type TokenContract<T> = T & {
   asUnits: (toParse: string | number) => BigNumber;
   amountOfDecimals: number;
   magnitude: BigNumber;

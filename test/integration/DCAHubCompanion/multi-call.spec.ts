@@ -278,6 +278,7 @@ describe('Multicall', () => {
         SwapInterval.ONE_MINUTE.seconds,
         positionOwner.address,
         [],
+        ethers.utils.randomBytes(0),
         false
       );
 
@@ -342,7 +343,7 @@ describe('Multicall', () => {
 
   async function depositWithWTokenAsFrom() {
     await WETH.connect(positionOwner).approve(DCAHub.address, RATE.mul(AMOUNT_OF_SWAPS));
-    const tx = await DCAHub.connect(positionOwner).deposit(
+    const tx = await DCAHub.connect(positionOwner)['deposit(address,address,uint256,uint32,uint32,address,(address,uint8[])[])'](
       WETH.address,
       USDC.address,
       RATE.mul(AMOUNT_OF_SWAPS),
@@ -357,7 +358,7 @@ describe('Multicall', () => {
 
   async function depositWithWTokenAsToAndSwap() {
     await USDC.connect(positionOwner).approve(DCAHub.address, constants.MAX_UINT_256);
-    const tx = await DCAHub.connect(positionOwner).deposit(
+    const tx = await DCAHub.connect(positionOwner)['deposit(address,address,uint256,uint32,uint32,address,(address,uint8[])[])'](
       USDC.address,
       WETH.address,
       RATE.mul(AMOUNT_OF_SWAPS),

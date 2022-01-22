@@ -27,13 +27,13 @@ abstract contract DCAHubCompanionMulticallHandler is Multicall, DCAHubCompanionP
     uint32 _swapInterval,
     address _owner,
     IDCAPermissionManager.PermissionSet[] calldata _permissions,
+    bytes calldata _miscellaneous,
     bool _transferFromCaller
   ) external returns (uint256 _positionId) {
-    if (_transferFromCaller) {
-      IERC20Metadata(_from).safeTransferFrom(msg.sender, address(this), _amount);
-    }
-    _approveHub(_from, _amount);
-    _positionId = hub.deposit(_from, _to, _amount, _amountOfSwaps, _swapInterval, _owner, _permissions);
+    _transferFromAndApprove(_from, _amount, _transferFromCaller);
+    _positionId = _miscellaneous.length > 0
+      ? hub.deposit(_from, _to, _amount, _amountOfSwaps, _swapInterval, _owner, _permissions, _miscellaneous)
+      : hub.deposit(_from, _to, _amount, _amountOfSwaps, _swapInterval, _owner, _permissions);
   }
 
   function withdrawSwappedProxy(uint256 _positionId, address _recipient)
@@ -63,10 +63,7 @@ abstract contract DCAHubCompanionMulticallHandler is Multicall, DCAHubCompanionP
     bool _transferFromCaller
   ) external checkPermission(_positionId, IDCAPermissionManager.Permission.INCREASE) {
     IERC20Metadata _from = hub.userPosition(_positionId).from;
-    if (_transferFromCaller) {
-      _from.safeTransferFrom(msg.sender, address(this), _amount);
-    }
-    _approveHub(address(_from), _amount);
+    _transferFromAndApprove(address(_from), _amount, _transferFromCaller);
     hub.increasePosition(_positionId, _amount, _newSwaps);
   }
 
@@ -85,5 +82,16 @@ abstract contract DCAHubCompanionMulticallHandler is Multicall, DCAHubCompanionP
     address _recipientSwapped
   ) external checkPermission(_positionId, IDCAPermissionManager.Permission.TERMINATE) returns (uint256 _unswapped, uint256 _swapped) {
     (_unswapped, _swapped) = hub.terminate(_positionId, _recipientUnswapped, _recipientSwapped);
+  }
+
+  function _transferFromAndApprove(
+    address _from,
+    uint256 _amount,
+    bool _transferFromCaller
+  ) internal {
+    if (_transferFromCaller) {
+      IERC20Metadata(_from).safeTransferFrom(msg.sender, address(this), _amount);
+    }
+    _approveHub(address(_from), _amount);
   }
 }

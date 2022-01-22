@@ -135,20 +135,6 @@ interface IDCAHubCompanionSwapHandler is IDCAHubSwapCallee {
 }
 
 interface IDCAHubCompanionWTokenPositionHandler {
-  /// @notice Emitted when a deposit is made by converting one of the user's tokens for another asset
-  /// @param positionId The id of the position that was created
-  /// @param originalTokenFrom The original "from" token
-  /// @param convertedTokenFrom The "from" token that was actually deposited on the hub
-  /// @param originalTokenTo The original "to" token
-  /// @param convertedTokenTo The "to" token that was actually part of the position
-  event ConvertedDeposit(
-    uint256 positionId,
-    address originalTokenFrom,
-    address convertedTokenFrom,
-    address originalTokenTo,
-    address convertedTokenTo
-  );
-
   /// @notice Thrown when the user tries to make a deposit where neither or both of the tokens are the protocol token
   error InvalidTokens();
 
@@ -165,6 +151,7 @@ interface IDCAHubCompanionWTokenPositionHandler {
   /// @param _swapInterval How frequently the position's swaps should be executed
   /// @param _owner The address of the owner of the position being created
   /// @param _permissions Extra permissions to add to the position. Can be empty
+  /// @param _miscellaneous Bytes that will be emitted, and associated with the position. If empty, no event will be emitted
   /// @return The id of the created position
   function depositUsingProtocolToken(
     address _from,
@@ -173,7 +160,8 @@ interface IDCAHubCompanionWTokenPositionHandler {
     uint32 _amountOfSwaps,
     uint32 _swapInterval,
     address _owner,
-    IDCAPermissionManager.PermissionSet[] calldata _permissions
+    IDCAPermissionManager.PermissionSet[] calldata _permissions,
+    bytes calldata _miscellaneous
   ) external payable returns (uint256);
 
   /// @notice Withdraws all swapped tokens from a position to a recipient
@@ -268,6 +256,7 @@ interface IDCAHubCompanionMulticallHandler {
   /// @param _amountOfSwaps How many swaps to execute for this position
   /// @param _swapInterval How frequently the position's swaps should be executed
   /// @param _owner The address of the owner of the position being created
+  /// @param _miscellaneous Bytes that will be emitted, and associated with the position. If empty, no event will be emitted
   /// @param _transferFromCaller Determines if the funds should be transfered from the caller
   /// @return _positionId The id of the created position
   function depositProxy(
@@ -278,6 +267,7 @@ interface IDCAHubCompanionMulticallHandler {
     uint32 _swapInterval,
     address _owner,
     IDCAPermissionManager.PermissionSet[] calldata _permissions,
+    bytes calldata _miscellaneous,
     bool _transferFromCaller
   ) external returns (uint256 _positionId);
 
