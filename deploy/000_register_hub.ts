@@ -22,7 +22,7 @@ const deployFunction: DeployFunction = async function (hre: HardhatRuntimeEnviro
       hub = '0x24F85583FAa9F8BD0B8Aa7B1D1f4f53F0F450038';
       break;
     case 'optimism-kovan':
-      hub = '0x2aCb69a8f2Ab6b496D482073eB70573A345a3272';
+      hub = '0xcaCd0CCb258C2a9f98224f7602A65EBe80C2459F';
       break;
     case 'mainnet':
       // TODO: Remove when we deploy to mainnet
