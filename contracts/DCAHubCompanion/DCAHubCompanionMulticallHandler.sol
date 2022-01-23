@@ -8,6 +8,7 @@ import './DCAHubCompanionParameters.sol';
 abstract contract DCAHubCompanionMulticallHandler is Multicall, DCAHubCompanionParameters, IDCAHubCompanionMulticallHandler {
   using SafeERC20 for IERC20Metadata;
 
+  /// @inheritdoc IDCAHubCompanionMulticallHandler
   function permissionPermitProxy(
     IDCAPermissionManager.PermissionSet[] calldata _permissions,
     uint256 _tokenId,
@@ -19,6 +20,7 @@ abstract contract DCAHubCompanionMulticallHandler is Multicall, DCAHubCompanionP
     permissionManager.permissionPermit(_permissions, _tokenId, _deadline, _v, _r, _s);
   }
 
+  /// @inheritdoc IDCAHubCompanionMulticallHandler
   function depositProxy(
     address _from,
     address _to,
@@ -36,6 +38,7 @@ abstract contract DCAHubCompanionMulticallHandler is Multicall, DCAHubCompanionP
       : hub.deposit(_from, _to, _amount, _amountOfSwaps, _swapInterval, _owner, _permissions);
   }
 
+  /// @inheritdoc IDCAHubCompanionMulticallHandler
   function withdrawSwappedProxy(uint256 _positionId, address _recipient)
     external
     checkPermission(_positionId, IDCAPermissionManager.Permission.WITHDRAW)
@@ -44,6 +47,7 @@ abstract contract DCAHubCompanionMulticallHandler is Multicall, DCAHubCompanionP
     _swapped = hub.withdrawSwapped(_positionId, _recipient);
   }
 
+  /// @inheritdoc IDCAHubCompanionMulticallHandler
   function withdrawSwappedManyProxy(IDCAHub.PositionSet[] calldata _positions, address _recipient)
     external
     returns (uint256[] memory _withdrawn)
@@ -56,6 +60,7 @@ abstract contract DCAHubCompanionMulticallHandler is Multicall, DCAHubCompanionP
     _withdrawn = hub.withdrawSwappedMany(_positions, _recipient);
   }
 
+  /// @inheritdoc IDCAHubCompanionMulticallHandler
   function increasePositionProxy(
     uint256 _positionId,
     uint256 _amount,
@@ -67,6 +72,7 @@ abstract contract DCAHubCompanionMulticallHandler is Multicall, DCAHubCompanionP
     hub.increasePosition(_positionId, _amount, _newSwaps);
   }
 
+  /// @inheritdoc IDCAHubCompanionMulticallHandler
   function reducePositionProxy(
     uint256 _positionId,
     uint256 _amount,
@@ -76,6 +82,7 @@ abstract contract DCAHubCompanionMulticallHandler is Multicall, DCAHubCompanionP
     hub.reducePosition(_positionId, _amount, _newSwaps, _recipient);
   }
 
+  /// @inheritdoc IDCAHubCompanionMulticallHandler
   function terminateProxy(
     uint256 _positionId,
     address _recipientUnswapped,

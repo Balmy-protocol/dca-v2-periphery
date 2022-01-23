@@ -12,6 +12,7 @@ abstract contract DCAHubCompanionWTokenPositionHandler is DCAHubCompanionParamet
     approveWTokenForHub();
   }
 
+  /// @inheritdoc IDCAHubCompanionWTokenPositionHandler
   function depositUsingProtocolToken(
     address _from,
     address _to,
@@ -31,6 +32,7 @@ abstract contract DCAHubCompanionWTokenPositionHandler is DCAHubCompanionParamet
       : hub.deposit(address(wToken), _to, _amount, _amountOfSwaps, _swapInterval, _owner, _newPermissions);
   }
 
+  /// @inheritdoc IDCAHubCompanionWTokenPositionHandler
   function withdrawSwappedUsingProtocolToken(uint256 _positionId, address payable _recipient)
     external
     checkPermission(_positionId, IDCAPermissionManager.Permission.WITHDRAW)
@@ -40,6 +42,7 @@ abstract contract DCAHubCompanionWTokenPositionHandler is DCAHubCompanionParamet
     _unwrapAndSend(_swapped, _recipient);
   }
 
+  /// @inheritdoc IDCAHubCompanionWTokenPositionHandler
   function withdrawSwappedManyUsingProtocolToken(uint256[] calldata _positionIds, address payable _recipient)
     external
     returns (uint256 _swapped)
@@ -55,6 +58,7 @@ abstract contract DCAHubCompanionWTokenPositionHandler is DCAHubCompanionParamet
     _unwrapAndSend(_swapped, _recipient);
   }
 
+  /// @inheritdoc IDCAHubCompanionWTokenPositionHandler
   function increasePositionUsingProtocolToken(
     uint256 _positionId,
     uint256 _amount,
@@ -64,6 +68,7 @@ abstract contract DCAHubCompanionWTokenPositionHandler is DCAHubCompanionParamet
     hub.increasePosition(_positionId, _amount, _newSwaps);
   }
 
+  /// @inheritdoc IDCAHubCompanionWTokenPositionHandler
   function reducePositionUsingProtocolToken(
     uint256 _positionId,
     uint256 _amount,
@@ -74,6 +79,7 @@ abstract contract DCAHubCompanionWTokenPositionHandler is DCAHubCompanionParamet
     _unwrapAndSend(_amount, _recipient);
   }
 
+  /// @inheritdoc IDCAHubCompanionWTokenPositionHandler
   function terminateUsingProtocolTokenAsFrom(
     uint256 _positionId,
     address payable _recipientUnswapped,
@@ -83,6 +89,7 @@ abstract contract DCAHubCompanionWTokenPositionHandler is DCAHubCompanionParamet
     _unwrapAndSend(_unswapped, _recipientUnswapped);
   }
 
+  /// @inheritdoc IDCAHubCompanionWTokenPositionHandler
   function terminateUsingProtocolTokenAsTo(
     uint256 _positionId,
     address _recipientUnswapped,
@@ -92,6 +99,7 @@ abstract contract DCAHubCompanionWTokenPositionHandler is DCAHubCompanionParamet
     _unwrapAndSend(_swapped, _recipientSwapped);
   }
 
+  /// @inheritdoc IDCAHubCompanionWTokenPositionHandler
   function approveWTokenForHub() public {
     wToken.approve(address(hub), type(uint256).max);
   }

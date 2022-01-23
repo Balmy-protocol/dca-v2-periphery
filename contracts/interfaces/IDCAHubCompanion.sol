@@ -72,6 +72,17 @@ interface IDCAHubCompanionSwapHandler is IDCAHubSwapCallee {
   /// @notice Thrown when a call to the given DEX fails
   error CallToDexFailed();
 
+  /// @notice Returns whether the given DEX can be used for swaps for not
+  /// @param _dex The address of the DEX to check
+  /// @return Whether the given DEX can be used for swaps for not
+  function isDexSupported(address _dex) external view returns (bool);
+
+  /// @notice Defines whether a specific DEX will be supported for swaps
+  /// @dev Will revert with `ZeroAddress` if the zero address if given
+  /// @param _dex The address of the DEX
+  /// @param _support Whether the Companion should support swaps with the given DEX
+  function defineDexSupport(address _dex, bool _support) external;
+
   /// @notice Executes a swap for the caller, by sending them the reward, and taking from them the needed tokens
   /// @dev Will revert:
   /// With RewardNotEnough if the minimum output is not met

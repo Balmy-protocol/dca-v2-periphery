@@ -5,10 +5,15 @@ import '../interfaces/IDCAHubCompanion.sol';
 import '../utils/Governable.sol';
 
 abstract contract DCAHubCompanionParameters is Governable, IDCAHubCompanionParameters {
+  /// @inheritdoc IDCAHubCompanionParameters
   IDCAHub public immutable hub;
+  /// @inheritdoc IDCAHubCompanionParameters
   IDCAPermissionManager public immutable permissionManager;
+  /// @inheritdoc IDCAHubCompanionParameters
   IWrappedProtocolToken public immutable wToken;
+  /// @inheritdoc IDCAHubCompanionParameters
   address public constant PROTOCOL_TOKEN = 0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE;
+  /// @inheritdoc IDCAHubCompanionParameters
   mapping(address => bool) public tokenHasApprovalIssue;
 
   constructor(
@@ -24,6 +29,7 @@ abstract contract DCAHubCompanionParameters is Governable, IDCAHubCompanionParam
     permissionManager = _permissionManager;
   }
 
+  /// @inheritdoc IDCAHubCompanionParameters
   function setTokensWithApprovalIssues(address[] calldata _addresses, bool[] calldata _hasIssue) external onlyGovernor {
     if (_addresses.length != _hasIssue.length) revert InvalidTokenApprovalParams();
     for (uint256 i; i < _addresses.length; i++) {
