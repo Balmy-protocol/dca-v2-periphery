@@ -58,7 +58,7 @@ describe('Swap for caller', () => {
     const depositAmount = RATE.mul(AMOUNT_OF_SWAPS);
     await WETH.connect(cindy).approve(DCAHub.address, depositAmount);
     await USDC.connect(swapper).approve(DCAHubCompanion.address, BigNumber.from(10).pow(12));
-    await DCAHub.connect(cindy).deposit(
+    await DCAHub.connect(cindy)['deposit(address,address,uint256,uint32,uint32,address,(address,uint8[])[])'](
       WETH.address,
       USDC.address,
       depositAmount,

@@ -20,8 +20,10 @@ abstract contract DCAHubCompanionSwapHandler is DeadlineValidation, DCAHubCompan
 
   using SafeERC20 for IERC20;
 
+  /// @inheritdoc IDCAHubCompanionSwapHandler
   mapping(address => bool) public isDexSupported;
 
+  /// @inheritdoc IDCAHubCompanionSwapHandler
   function swapForCaller(
     address[] calldata _tokens,
     IDCAHub.PairIndexes[] calldata _pairsToSwap,
@@ -50,6 +52,7 @@ abstract contract DCAHubCompanionSwapHandler is DeadlineValidation, DCAHubCompan
     }
   }
 
+  /// @inheritdoc IDCAHubCompanionSwapHandler
   function swapWithDex(
     address _dex,
     address[] calldata _tokens,
@@ -69,6 +72,7 @@ abstract contract DCAHubCompanionSwapHandler is DeadlineValidation, DCAHubCompan
     return _swapWithDex(_tokens, _pairsToSwap, _callbackData, _deadline);
   }
 
+  /// @inheritdoc IDCAHubCompanionSwapHandler
   function swapWithDexAndShareLeftoverWithHub(
     address _dex,
     address[] calldata _tokens,
@@ -126,6 +130,7 @@ abstract contract DCAHubCompanionSwapHandler is DeadlineValidation, DCAHubCompan
     }
   }
 
+  /// @inheritdoc IDCAHubCompanionSwapHandler
   function defineDexSupport(address _dex, bool _support) external onlyGovernor {
     if (_dex == address(0)) revert IDCAHubCompanion.ZeroAddress();
     isDexSupported[_dex] = _support;

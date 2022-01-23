@@ -12,6 +12,7 @@ abstract contract DCAHubCompanionWTokenPositionHandler is DCAHubCompanionParamet
     approveWTokenForHub();
   }
 
+  /// @inheritdoc IDCAHubCompanionWTokenPositionHandler
   function depositUsingProtocolToken(
     address _from,
     address _to,
@@ -19,35 +20,19 @@ abstract contract DCAHubCompanionWTokenPositionHandler is DCAHubCompanionParamet
     uint32 _amountOfSwaps,
     uint32 _swapInterval,
     address _owner,
-    IDCAPermissionManager.PermissionSet[] calldata _permissions
+    IDCAPermissionManager.PermissionSet[] calldata _permissions,
+    bytes calldata _miscellaneous
   ) external payable returns (uint256 _positionId) {
-    if ((_from == PROTOCOL_TOKEN) == (_to == PROTOCOL_TOKEN)) revert InvalidTokens();
+    if (_from != PROTOCOL_TOKEN || _to == PROTOCOL_TOKEN) revert InvalidTokens();
 
-    address _convertedFrom = _from;
-    address _convertedTo = _to;
-    if (_from == PROTOCOL_TOKEN) {
-      _wrap(_amount);
-      _convertedFrom = address(wToken);
-    } else {
-      IERC20(_from).safeTransferFrom(msg.sender, address(this), _amount);
-      _approveHub(_from, _amount);
-      _convertedTo = address(wToken);
-    }
-
-    // Create position
-    _positionId = hub.deposit(
-      _convertedFrom,
-      _convertedTo,
-      _amount,
-      _amountOfSwaps,
-      _swapInterval,
-      _owner,
-      _addPermissionsToThisContract(_permissions)
-    );
-
-    emit ConvertedDeposit(_positionId, _from, _convertedFrom, _to, _convertedTo);
+    _wrap(_amount);
+    IDCAPermissionManager.PermissionSet[] memory _newPermissions = _addPermissionsToThisContract(_permissions);
+    _positionId = _miscellaneous.length > 0
+      ? hub.deposit(address(wToken), _to, _amount, _amountOfSwaps, _swapInterval, _owner, _newPermissions, _miscellaneous)
+      : hub.deposit(address(wToken), _to, _amount, _amountOfSwaps, _swapInterval, _owner, _newPermissions);
   }
 
+  /// @inheritdoc IDCAHubCompanionWTokenPositionHandler
   function withdrawSwappedUsingProtocolToken(uint256 _positionId, address payable _recipient)
     external
     checkPermission(_positionId, IDCAPermissionManager.Permission.WITHDRAW)
@@ -57,6 +42,7 @@ abstract contract DCAHubCompanionWTokenPositionHandler is DCAHubCompanionParamet
     _unwrapAndSend(_swapped, _recipient);
   }
 
+  /// @inheritdoc IDCAHubCompanionWTokenPositionHandler
   function withdrawSwappedManyUsingProtocolToken(uint256[] calldata _positionIds, address payable _recipient)
     external
     returns (uint256 _swapped)
@@ -72,6 +58,7 @@ abstract contract DCAHubCompanionWTokenPositionHandler is DCAHubCompanionParamet
     _unwrapAndSend(_swapped, _recipient);
   }
 
+  /// @inheritdoc IDCAHubCompanionWTokenPositionHandler
   function increasePositionUsingProtocolToken(
     uint256 _positionId,
     uint256 _amount,
@@ -81,6 +68,7 @@ abstract contract DCAHubCompanionWTokenPositionHandler is DCAHubCompanionParamet
     hub.increasePosition(_positionId, _amount, _newSwaps);
   }
 
+  /// @inheritdoc IDCAHubCompanionWTokenPositionHandler
   function reducePositionUsingProtocolToken(
     uint256 _positionId,
     uint256 _amount,
@@ -91,6 +79,7 @@ abstract contract DCAHubCompanionWTokenPositionHandler is DCAHubCompanionParamet
     _unwrapAndSend(_amount, _recipient);
   }
 
+  /// @inheritdoc IDCAHubCompanionWTokenPositionHandler
   function terminateUsingProtocolTokenAsFrom(
     uint256 _positionId,
     address payable _recipientUnswapped,
@@ -100,6 +89,7 @@ abstract contract DCAHubCompanionWTokenPositionHandler is DCAHubCompanionParamet
     _unwrapAndSend(_unswapped, _recipientUnswapped);
   }
 
+  /// @inheritdoc IDCAHubCompanionWTokenPositionHandler
   function terminateUsingProtocolTokenAsTo(
     uint256 _positionId,
     address _recipientUnswapped,
@@ -109,6 +99,7 @@ abstract contract DCAHubCompanionWTokenPositionHandler is DCAHubCompanionParamet
     _unwrapAndSend(_swapped, _recipientSwapped);
   }
 
+  /// @inheritdoc IDCAHubCompanionWTokenPositionHandler
   function approveWTokenForHub() public {
     wToken.approve(address(hub), type(uint256).max);
   }
