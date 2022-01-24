@@ -4,11 +4,12 @@ import { ethers, network } from 'hardhat';
 import { randomHex } from 'web3-utils';
 import { JsonRpcSigner } from '@ethersproject/providers';
 
-const impersonate = async (address: string): Promise<JsonRpcSigner> => {
+const impersonate = async (address: string): Promise<any> => {
   await network.provider.request({
     method: 'hardhat_impersonateAccount',
     params: [address],
   });
+  // return ethers.provider.getSigner('');
   return ethers.provider.getSigner(address);
 };
 const generateRandom = async () => {
