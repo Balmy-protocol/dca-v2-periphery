@@ -1,5 +1,5 @@
 {
-  "address": "0xcaCd0CCb258C2a9f98224f7602A65EBe80C2459F",
+  "address": "0xB1EDC6ea9011bCC5318e2b36954008357b59292F",
   "abi": [
     {
       "inputs": [
@@ -250,25 +250,6 @@
         }
       ],
       "name": "Loaned",
-      "type": "event"
-    },
-    {
-      "anonymous": false,
-      "inputs": [
-        {
-          "indexed": false,
-          "internalType": "uint256",
-          "name": "positionId",
-          "type": "uint256"
-        },
-        {
-          "indexed": false,
-          "internalType": "bytes",
-          "name": "data",
-          "type": "bytes"
-        }
-      ],
-      "name": "Miscellaneous",
       "type": "event"
     },
     {
@@ -967,72 +948,6 @@
         {
           "internalType": "uint256",
           "name": "",
-          "type": "uint256"
-        }
-      ],
-      "stateMutability": "nonpayable",
-      "type": "function"
-    },
-    {
-      "inputs": [
-        {
-          "internalType": "address",
-          "name": "_from",
-          "type": "address"
-        },
-        {
-          "internalType": "address",
-          "name": "_to",
-          "type": "address"
-        },
-        {
-          "internalType": "uint256",
-          "name": "_amount",
-          "type": "uint256"
-        },
-        {
-          "internalType": "uint32",
-          "name": "_amountOfSwaps",
-          "type": "uint32"
-        },
-        {
-          "internalType": "uint32",
-          "name": "_swapInterval",
-          "type": "uint32"
-        },
-        {
-          "internalType": "address",
-          "name": "_owner",
-          "type": "address"
-        },
-        {
-          "components": [
-            {
-              "internalType": "address",
-              "name": "operator",
-              "type": "address"
-            },
-            {
-              "internalType": "enum IDCAPermissionManager.Permission[]",
-              "name": "permissions",
-              "type": "uint8[]"
-            }
-          ],
-          "internalType": "struct IDCAPermissionManager.PermissionSet[]",
-          "name": "_permissions",
-          "type": "tuple[]"
-        },
-        {
-          "internalType": "bytes",
-          "name": "_miscellaneous",
-          "type": "bytes"
-        }
-      ],
-      "name": "deposit",
-      "outputs": [
-        {
-          "internalType": "uint256",
-          "name": "_positionId",
           "type": "uint256"
         }
       ],
