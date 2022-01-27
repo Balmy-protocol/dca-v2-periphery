@@ -6,8 +6,7 @@ import '@openzeppelin/contracts/utils/Address.sol';
 
 /**
  * @dev This Multicall contract was modified from the one built by OZ. It supports both payable and non payable
- * functions. However, payable functions cannot read `msg.value`, since it will always be zero. We are doing
- * this so that we are less vulnerable to exploits.
+ * functions. However if `msg.value` is not zero, then non payable functions cannot be called.
  */
 abstract contract Multicall {
   /**
@@ -16,7 +15,7 @@ abstract contract Multicall {
   function multicall(bytes[] calldata data) external payable returns (bytes[] memory results) {
     results = new bytes[](data.length);
     for (uint256 i; i < data.length; i++) {
-      results[i] = Address.functionCallWithValue(address(this), data[i], 0);
+      results[i] = Address.functionDelegateCall(address(this), data[i]);
     }
     return results;
   }

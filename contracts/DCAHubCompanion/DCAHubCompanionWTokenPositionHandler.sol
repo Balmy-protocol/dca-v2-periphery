@@ -5,6 +5,7 @@ import '@openzeppelin/contracts/token/ERC20/IERC20.sol';
 import '@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol';
 import './DCAHubCompanionParameters.sol';
 
+/// @dev All public functions are payable, so that they can be multicalled together with other payable functions when msg.value > 0
 abstract contract DCAHubCompanionWTokenPositionHandler is DCAHubCompanionParameters, IDCAHubCompanionWTokenPositionHandler {
   using SafeERC20 for IERC20;
 
@@ -35,6 +36,7 @@ abstract contract DCAHubCompanionWTokenPositionHandler is DCAHubCompanionParamet
   /// @inheritdoc IDCAHubCompanionWTokenPositionHandler
   function withdrawSwappedUsingProtocolToken(uint256 _positionId, address payable _recipient)
     external
+    payable
     checkPermission(_positionId, IDCAPermissionManager.Permission.WITHDRAW)
     returns (uint256 _swapped)
   {
@@ -45,6 +47,7 @@ abstract contract DCAHubCompanionWTokenPositionHandler is DCAHubCompanionParamet
   /// @inheritdoc IDCAHubCompanionWTokenPositionHandler
   function withdrawSwappedManyUsingProtocolToken(uint256[] calldata _positionIds, address payable _recipient)
     external
+    payable
     returns (uint256 _swapped)
   {
     for (uint256 i; i < _positionIds.length; i++) {
@@ -74,7 +77,7 @@ abstract contract DCAHubCompanionWTokenPositionHandler is DCAHubCompanionParamet
     uint256 _amount,
     uint32 _newSwaps,
     address payable _recipient
-  ) external checkPermission(_positionId, IDCAPermissionManager.Permission.REDUCE) {
+  ) external payable checkPermission(_positionId, IDCAPermissionManager.Permission.REDUCE) {
     hub.reducePosition(_positionId, _amount, _newSwaps, address(this));
     _unwrapAndSend(_amount, _recipient);
   }
@@ -84,7 +87,7 @@ abstract contract DCAHubCompanionWTokenPositionHandler is DCAHubCompanionParamet
     uint256 _positionId,
     address payable _recipientUnswapped,
     address _recipientSwapped
-  ) external checkPermission(_positionId, IDCAPermissionManager.Permission.TERMINATE) returns (uint256 _unswapped, uint256 _swapped) {
+  ) external payable checkPermission(_positionId, IDCAPermissionManager.Permission.TERMINATE) returns (uint256 _unswapped, uint256 _swapped) {
     (_unswapped, _swapped) = hub.terminate(_positionId, address(this), _recipientSwapped);
     _unwrapAndSend(_unswapped, _recipientUnswapped);
   }
@@ -94,7 +97,7 @@ abstract contract DCAHubCompanionWTokenPositionHandler is DCAHubCompanionParamet
     uint256 _positionId,
     address _recipientUnswapped,
     address payable _recipientSwapped
-  ) external checkPermission(_positionId, IDCAPermissionManager.Permission.TERMINATE) returns (uint256 _unswapped, uint256 _swapped) {
+  ) external payable checkPermission(_positionId, IDCAPermissionManager.Permission.TERMINATE) returns (uint256 _unswapped, uint256 _swapped) {
     (_unswapped, _swapped) = hub.terminate(_positionId, _recipientUnswapped, address(this));
     _unwrapAndSend(_swapped, _recipientSwapped);
   }

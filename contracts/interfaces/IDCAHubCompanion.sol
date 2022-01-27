@@ -176,7 +176,7 @@ interface IDCAHubCompanionWTokenPositionHandler {
   /// @param _positionId The position's id
   /// @param _recipient The address to withdraw swapped tokens to
   /// @return _swapped How much was withdrawn
-  function withdrawSwappedUsingProtocolToken(uint256 _positionId, address payable _recipient) external returns (uint256 _swapped);
+  function withdrawSwappedUsingProtocolToken(uint256 _positionId, address payable _recipient) external payable returns (uint256 _swapped);
 
   /// @notice Withdraws all swapped tokens from multiple positions
   /// @param _positionIds A list positions whose 'to' token is the wToken
@@ -184,6 +184,7 @@ interface IDCAHubCompanionWTokenPositionHandler {
   /// @return _swapped How much was withdrawn in total
   function withdrawSwappedManyUsingProtocolToken(uint256[] calldata _positionIds, address payable _recipient)
     external
+    payable
     returns (uint256 _swapped);
 
   /// @notice Takes the unswapped balance, adds the new deposited funds and modifies the position so that
@@ -208,7 +209,7 @@ interface IDCAHubCompanionWTokenPositionHandler {
     uint256 _amount,
     uint32 _newSwaps,
     address payable _recipient
-  ) external;
+  ) external payable;
 
   /// @notice Terminates the position and sends all unswapped and swapped balance to the specified recipients
   /// @param _positionId The position's id
@@ -220,7 +221,7 @@ interface IDCAHubCompanionWTokenPositionHandler {
     uint256 _positionId,
     address payable _recipientUnswapped,
     address _recipientSwapped
-  ) external returns (uint256 _unswapped, uint256 _swapped);
+  ) external payable returns (uint256 _unswapped, uint256 _swapped);
 
   /// @notice Terminates the position and sends all unswapped and swapped balance to the specified recipients
   /// @param _positionId The position's id
@@ -232,7 +233,7 @@ interface IDCAHubCompanionWTokenPositionHandler {
     uint256 _positionId,
     address _recipientUnswapped,
     address payable _recipientSwapped
-  ) external returns (uint256 _unswapped, uint256 _swapped);
+  ) external payable returns (uint256 _unswapped, uint256 _swapped);
 
   /// @notice Increases the allowance of wToken to the max, for the DCAHub
   /// @dev Anyone can call this method
@@ -277,14 +278,14 @@ interface IDCAHubCompanionMulticallHandler {
     IDCAPermissionManager.PermissionSet[] calldata _permissions,
     bytes calldata _miscellaneous,
     bool _transferFromCaller
-  ) external returns (uint256 _positionId);
+  ) external payable returns (uint256 _positionId);
 
   /// @notice Call the hub and withdraws all swapped tokens from a position to a recipient
   /// @dev Meant to be used as part of a multicall
   /// @param _positionId The position's id
   /// @param _recipient The address to withdraw swapped tokens to
   /// @return _swapped How much was withdrawn
-  function withdrawSwappedProxy(uint256 _positionId, address _recipient) external returns (uint256 _swapped);
+  function withdrawSwappedProxy(uint256 _positionId, address _recipient) external payable returns (uint256 _swapped);
 
   /// @notice Call the hub and withdraws all swapped tokens from multiple positions
   /// @dev Meant to be used as part of a multicall
@@ -293,6 +294,7 @@ interface IDCAHubCompanionMulticallHandler {
   /// @return _withdrawn How much was withdrawn for each token
   function withdrawSwappedManyProxy(IDCAHub.PositionSet[] calldata _positions, address _recipient)
     external
+    payable
     returns (uint256[] memory _withdrawn);
 
   /// @notice Call the hub and takes the unswapped balance, adds the new deposited funds and modifies the position so that
@@ -307,7 +309,7 @@ interface IDCAHubCompanionMulticallHandler {
     uint256 _amount,
     uint32 _newSwaps,
     bool _transferFromCaller
-  ) external;
+  ) external payable;
 
   /// @notice Call the hub and withdraws the specified amount from the unswapped balance and modifies the position so that
   /// it is executed in _newSwaps swaps
@@ -321,7 +323,7 @@ interface IDCAHubCompanionMulticallHandler {
     uint256 _amount,
     uint32 _newSwaps,
     address _recipient
-  ) external;
+  ) external payable;
 
   /// @notice Calls the hub and terminates the position and sends all unswapped and swapped balance to the specified recipients
   /// @dev Meant to be used as part of a multicall
@@ -334,7 +336,7 @@ interface IDCAHubCompanionMulticallHandler {
     uint256 _positionId,
     address _recipientUnswapped,
     address _recipientSwapped
-  ) external returns (uint256 _unswapped, uint256 _swapped);
+  ) external payable returns (uint256 _unswapped, uint256 _swapped);
 
   /// @notice Calls the permission manager and sets permissions via signature
   /// @param _permissions The permissions to set
@@ -350,7 +352,7 @@ interface IDCAHubCompanionMulticallHandler {
     uint8 _v,
     bytes32 _r,
     bytes32 _s
-  ) external;
+  ) external payable;
 }
 
 interface IDCAHubCompanion is
