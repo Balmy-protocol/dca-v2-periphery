@@ -126,42 +126,6 @@ contract('DCAHubCompanionWTokenPositionHandler', () => {
         await behaviours.checkTxRevertedWithMessage({ tx, message: 'InvalidTokens' });
       });
     });
-    when('sending more protocol token than expected', () => {
-      then('reverts with message', async () => {
-        const tx = DCAHubCompanionWTokenPositionHandler.depositUsingProtocolToken(
-          PROTOCOL_TOKEN,
-          erc20Token.address,
-          AMOUNT,
-          AMOUNT_OF_SWAPS,
-          SWAP_INTERVAL,
-          OWNER,
-          [],
-          MISC,
-          {
-            value: AMOUNT + 1,
-          }
-        );
-        await behaviours.checkTxRevertedWithMessage({ tx, message: 'InvalidAmountOfProtocolTokenReceived' });
-      });
-    });
-    when('sending less protocol token than expected', () => {
-      then('reverts with message', async () => {
-        const tx = DCAHubCompanionWTokenPositionHandler.depositUsingProtocolToken(
-          PROTOCOL_TOKEN,
-          erc20Token.address,
-          AMOUNT,
-          AMOUNT_OF_SWAPS,
-          SWAP_INTERVAL,
-          OWNER,
-          [],
-          MISC,
-          {
-            value: AMOUNT - 1,
-          }
-        );
-        await behaviours.checkTxRevertedWithMessage({ tx, message: 'InvalidAmountOfProtocolTokenReceived' });
-      });
-    });
     when('from is protocol token', () => {
       const POSITION_ID = 10;
       let tx: TransactionResponse;
@@ -303,22 +267,6 @@ contract('DCAHubCompanionWTokenPositionHandler', () => {
 
   describe('increasePositionUsingProtocolToken', () => {
     const POSITION_ID = 10;
-    when('sending more protocol token than expected', () => {
-      then('reverts with message', async () => {
-        const tx = DCAHubCompanionWTokenPositionHandler.increasePositionUsingProtocolToken(POSITION_ID, AMOUNT, AMOUNT_OF_SWAPS, {
-          value: AMOUNT + 1,
-        });
-        await behaviours.checkTxRevertedWithMessage({ tx, message: 'InvalidAmountOfProtocolTokenReceived' });
-      });
-    });
-    when('sending less protocol token than expected', () => {
-      then('reverts with message', async () => {
-        const tx = DCAHubCompanionWTokenPositionHandler.increasePositionUsingProtocolToken(POSITION_ID, AMOUNT, AMOUNT_OF_SWAPS, {
-          value: AMOUNT - 1,
-        });
-        await behaviours.checkTxRevertedWithMessage({ tx, message: 'InvalidAmountOfProtocolTokenReceived' });
-      });
-    });
     when('a valid increase is made', () => {
       given(async () => {
         await DCAHubCompanionWTokenPositionHandler.increasePositionUsingProtocolToken(POSITION_ID, AMOUNT, AMOUNT_OF_SWAPS, {
