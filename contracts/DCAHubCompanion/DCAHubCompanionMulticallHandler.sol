@@ -1,10 +1,11 @@
 // SPDX-License-Identifier: GPL-2.0-or-later
 pragma solidity >=0.8.7 <0.9.0;
 
-import '@openzeppelin/contracts/utils/Multicall.sol';
 import '@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol';
+import './utils/Multicall.sol';
 import './DCAHubCompanionParameters.sol';
 
+/// @dev All public functions are payable, so that they can be multicalled together with other payable functions when msg.value > 0
 abstract contract DCAHubCompanionMulticallHandler is Multicall, DCAHubCompanionParameters, IDCAHubCompanionMulticallHandler {
   using SafeERC20 for IERC20Metadata;
 
@@ -16,7 +17,7 @@ abstract contract DCAHubCompanionMulticallHandler is Multicall, DCAHubCompanionP
     uint8 _v,
     bytes32 _r,
     bytes32 _s
-  ) external {
+  ) external payable {
     permissionManager.permissionPermit(_permissions, _tokenId, _deadline, _v, _r, _s);
   }
 
@@ -31,7 +32,7 @@ abstract contract DCAHubCompanionMulticallHandler is Multicall, DCAHubCompanionP
     IDCAPermissionManager.PermissionSet[] calldata _permissions,
     bytes calldata _miscellaneous,
     bool _transferFromCaller
-  ) external returns (uint256 _positionId) {
+  ) external payable returns (uint256 _positionId) {
     _transferFromAndApprove(_from, _amount, _transferFromCaller);
     _positionId = _miscellaneous.length > 0
       ? hub.deposit(_from, _to, _amount, _amountOfSwaps, _swapInterval, _owner, _permissions, _miscellaneous)
@@ -41,6 +42,7 @@ abstract contract DCAHubCompanionMulticallHandler is Multicall, DCAHubCompanionP
   /// @inheritdoc IDCAHubCompanionMulticallHandler
   function withdrawSwappedProxy(uint256 _positionId, address _recipient)
     external
+    payable
     checkPermission(_positionId, IDCAPermissionManager.Permission.WITHDRAW)
     returns (uint256 _swapped)
   {
@@ -50,6 +52,7 @@ abstract contract DCAHubCompanionMulticallHandler is Multicall, DCAHubCompanionP
   /// @inheritdoc IDCAHubCompanionMulticallHandler
   function withdrawSwappedManyProxy(IDCAHub.PositionSet[] calldata _positions, address _recipient)
     external
+    payable
     returns (uint256[] memory _withdrawn)
   {
     for (uint256 i; i < _positions.length; i++) {
@@ -66,7 +69,7 @@ abstract contract DCAHubCompanionMulticallHandler is Multicall, DCAHubCompanionP
     uint256 _amount,
     uint32 _newSwaps,
     bool _transferFromCaller
-  ) external checkPermission(_positionId, IDCAPermissionManager.Permission.INCREASE) {
+  ) external payable checkPermission(_positionId, IDCAPermissionManager.Permission.INCREASE) {
     IERC20Metadata _from = hub.userPosition(_positionId).from;
     _transferFromAndApprove(address(_from), _amount, _transferFromCaller);
     hub.increasePosition(_positionId, _amount, _newSwaps);
@@ -78,7 +81,7 @@ abstract contract DCAHubCompanionMulticallHandler is Multicall, DCAHubCompanionP
     uint256 _amount,
     uint32 _newSwaps,
     address _recipient
-  ) external checkPermission(_positionId, IDCAPermissionManager.Permission.REDUCE) {
+  ) external payable checkPermission(_positionId, IDCAPermissionManager.Permission.REDUCE) {
     hub.reducePosition(_positionId, _amount, _newSwaps, _recipient);
   }
 
@@ -87,7 +90,7 @@ abstract contract DCAHubCompanionMulticallHandler is Multicall, DCAHubCompanionP
     uint256 _positionId,
     address _recipientUnswapped,
     address _recipientSwapped
-  ) external checkPermission(_positionId, IDCAPermissionManager.Permission.TERMINATE) returns (uint256 _unswapped, uint256 _swapped) {
+  ) external payable checkPermission(_positionId, IDCAPermissionManager.Permission.TERMINATE) returns (uint256 _unswapped, uint256 _swapped) {
     (_unswapped, _swapped) = hub.terminate(_positionId, _recipientUnswapped, _recipientSwapped);
   }
 

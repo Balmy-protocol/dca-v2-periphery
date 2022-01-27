@@ -69,6 +69,34 @@ describe('Multicall', () => {
   });
 
   describe('protocol token as "from"', () => {
+    when('increasing a position with protocol token', () => {
+      const AMOUNT_TO_INCREASE = RATE.mul(AMOUNT_OF_SWAPS);
+      let positionId: BigNumber;
+      let hubWTokenBalanceAfterDeposit: BigNumber;
+      given(async () => {
+        positionId = await depositWithWTokenAsFrom();
+        hubWTokenBalanceAfterDeposit = await WETH.balanceOf(DCAHub.address);
+
+        const permissionData = await addPermissionToCompanionData(positionOwner, positionId, Permission.INCREASE);
+        const { data: increaseData } = await DCAHubCompanion.populateTransaction.increasePositionUsingProtocolToken(
+          positionId,
+          AMOUNT_TO_INCREASE,
+          AMOUNT_OF_SWAPS
+        );
+        await DCAHubCompanion.multicall([permissionData, increaseData!], { value: AMOUNT_TO_INCREASE });
+      });
+      then('position is increased', async () => {
+        const userPosition = await DCAHub.userPosition(positionId);
+        expect(userPosition.from).to.equal(WETH_ADDRESS);
+        expect(userPosition.rate).to.equal(RATE.mul(2));
+        expect(userPosition.swapsLeft).to.equal(AMOUNT_OF_SWAPS);
+      });
+      then(`hub's wToken balance is increased`, async () => {
+        const balance = await WETH.balanceOf(DCAHub.address);
+        expect(balance).to.equal(hubWTokenBalanceAfterDeposit.add(AMOUNT_TO_INCREASE));
+      });
+      thenCompanionRemainsWithoutAnyBalance();
+    });
     when('reducing a position with protocol token', () => {
       const AMOUNT_TO_REDUCE = RATE.mul(AMOUNT_OF_SWAPS).div(2);
       let positionId: BigNumber;

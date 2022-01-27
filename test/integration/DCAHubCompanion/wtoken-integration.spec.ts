@@ -1,7 +1,7 @@
 import { expect } from 'chai';
 import { deployments, ethers, getNamedAccounts } from 'hardhat';
 import { TransactionResponse } from '@ethersproject/providers';
-import { constants, wallet } from '@test-utils';
+import { behaviours, constants, wallet } from '@test-utils';
 import { given, then, when } from '@test-utils/bdd';
 import evm, { snapshot } from '@test-utils/evm';
 import { DCAHubCompanion, IERC20 } from '@typechained';
@@ -85,6 +85,27 @@ describe('WToken', () => {
       thenCompanionRemainsWithoutAnyBalance();
     });
 
+    when('making a deposit, but sending less protocol token than expected', () => {
+      const AMOUNT = RATE.mul(AMOUNT_OF_SWAPS);
+      let tx: Promise<TransactionResponse>;
+      given(async () => {
+        tx = DCAHubCompanion.connect(cindy).depositUsingProtocolToken(
+          PROTOCOL_TOKEN,
+          USDC.address,
+          RATE.mul(AMOUNT_OF_SWAPS),
+          AMOUNT_OF_SWAPS,
+          SwapInterval.ONE_MINUTE.seconds,
+          cindy.address,
+          [],
+          ethers.utils.randomBytes(0),
+          { value: AMOUNT.sub(1) }
+        );
+      });
+      then('tx reverts', async () => {
+        await expect(tx).to.have.reverted;
+      });
+    });
+
     when('increasing a position with protocol token', () => {
       const AMOUNT_TO_INCREASE = RATE.mul(AMOUNT_OF_SWAPS);
       let positionId: BigNumber;
@@ -105,6 +126,20 @@ describe('WToken', () => {
         expect(balance).to.equal(hubWTokenBalanceAfterDeposit.add(AMOUNT_TO_INCREASE));
       });
       thenCompanionRemainsWithoutAnyBalance();
+    });
+
+    when('increasing a position with protocol token, but we sent less than expected', () => {
+      const AMOUNT_TO_INCREASE = RATE.mul(AMOUNT_OF_SWAPS);
+      let tx: Promise<TransactionResponse>;
+      given(async () => {
+        const positionId = await depositWithProtocolTokenAsFrom();
+        tx = DCAHubCompanion.increasePositionUsingProtocolToken(positionId, AMOUNT_TO_INCREASE, AMOUNT_OF_SWAPS, {
+          value: AMOUNT_TO_INCREASE.sub(1),
+        });
+      });
+      then('tx reverts', async () => {
+        await expect(tx).to.have.reverted;
+      });
     });
 
     when('reducing a position with protocol token', () => {
