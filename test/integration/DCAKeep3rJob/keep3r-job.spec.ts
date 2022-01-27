@@ -21,7 +21,8 @@ const UNISWAP_V3_PAIR_MANAGER = '0xfbba1784163212e7b639ed9e434e3aed48036b34';
 const WETH_WHALE_ADDRESS = '0xf04a5cc80b1e94c69b48f5ee68a08cd2f09a7c3e';
 const K3PR_WHALE_ADDRESS = '0x2fc52c61fb0c03489649311989ce2689d93dc1a2';
 
-contract('DCAKeep3rJob', () => {
+// TODO: Migrate to new Keep3r contract and un-skip
+contract.skip('DCAKeep3rJob', () => {
   let WETH: IERC20, K3PR: IERC20;
   let DCAKeep3rJob: DCAKeep3rJob;
   let DCAHubCompanion: DCAHubCompanion;
