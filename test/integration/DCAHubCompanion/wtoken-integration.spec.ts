@@ -200,7 +200,7 @@ describe('WToken', () => {
         AMOUNT_OF_SWAPS,
         SwapInterval.ONE_MINUTE.seconds,
         cindy.address,
-        [],
+        [{ operator: DCAHubCompanion.address, permissions: [0, 1, 2, 3] }],
         ethers.utils.randomBytes(0),
         { value: RATE.mul(AMOUNT_OF_SWAPS) }
       );
