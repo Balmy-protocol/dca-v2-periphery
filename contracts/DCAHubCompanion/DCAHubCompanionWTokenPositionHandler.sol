@@ -27,10 +27,9 @@ abstract contract DCAHubCompanionWTokenPositionHandler is DCAHubCompanionParamet
     if (_from != PROTOCOL_TOKEN || _to == PROTOCOL_TOKEN) revert InvalidTokens();
 
     _wrap(_amount);
-    IDCAPermissionManager.PermissionSet[] memory _newPermissions = _addPermissionsToThisContract(_permissions);
     _positionId = _miscellaneous.length > 0
-      ? hub.deposit(address(wToken), _to, _amount, _amountOfSwaps, _swapInterval, _owner, _newPermissions, _miscellaneous)
-      : hub.deposit(address(wToken), _to, _amount, _amountOfSwaps, _swapInterval, _owner, _newPermissions);
+      ? hub.deposit(address(wToken), _to, _amount, _amountOfSwaps, _swapInterval, _owner, _permissions, _miscellaneous)
+      : hub.deposit(address(wToken), _to, _amount, _amountOfSwaps, _swapInterval, _owner, _permissions);
   }
 
   /// @inheritdoc IDCAHubCompanionWTokenPositionHandler
@@ -124,26 +123,5 @@ abstract contract DCAHubCompanionWTokenPositionHandler is DCAHubCompanionParamet
       // Convert to wToken
       wToken.deposit{value: _amount}();
     }
-  }
-
-  function _addPermissionsToThisContract(IDCAPermissionManager.PermissionSet[] calldata _permissionSets)
-    internal
-    view
-    returns (IDCAPermissionManager.PermissionSet[] memory _newPermissionSets)
-  {
-    // Copy permission sets to the new array
-    _newPermissionSets = new IDCAPermissionManager.PermissionSet[](_permissionSets.length + 1);
-    for (uint256 i; i < _permissionSets.length; i++) {
-      _newPermissionSets[i] = _permissionSets[i];
-    }
-
-    // Create new list that contains all permissions
-    IDCAPermissionManager.Permission[] memory _permissions = new IDCAPermissionManager.Permission[](4);
-    for (uint256 i; i < 4; i++) {
-      _permissions[i] = IDCAPermissionManager.Permission(i);
-    }
-
-    // Assign all permisisons to this contract
-    _newPermissionSets[_permissionSets.length] = IDCAPermissionManager.PermissionSet({operator: address(this), permissions: _permissions});
   }
 }

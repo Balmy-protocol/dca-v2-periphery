@@ -158,13 +158,9 @@ contract('DCAHubCompanionWTokenPositionHandler', () => {
         expect(misc).to.equal(ethers.utils.hexlify(MISC));
 
         const permissions = uncastedPermissions as PermissionSet[];
-        expect(permissions.length).to.equal(2);
-        // Make sure that original permissions was not modified
+        expect(permissions.length).to.equal(1);
         expect(permissions[0].operator).to.equal(PERMISSIONS.operator);
         expect(permissions[0].permissions).to.eql(PERMISSIONS.permissions);
-        // Make sure that handler was added with full access
-        expect(permissions[1].operator).to.equal(DCAHubCompanionWTokenPositionHandler.address);
-        expect(permissions[1].permissions).to.eql([0, 1, 2, 3]);
       });
       thenTokenIsWrapped(AMOUNT);
     });
@@ -199,13 +195,9 @@ contract('DCAHubCompanionWTokenPositionHandler', () => {
         expect(owner).to.equal(OWNER);
 
         const permissions = uncastedPermissions as PermissionSet[];
-        expect(permissions.length).to.equal(2);
-        // Make sure that original permissions was not modified
+        expect(permissions.length).to.equal(1);
         expect(permissions[0].operator).to.equal(PERMISSIONS.operator);
         expect(permissions[0].permissions).to.eql(PERMISSIONS.permissions);
-        // Make sure that handler was added with full access
-        expect(permissions[1].operator).to.equal(DCAHubCompanionWTokenPositionHandler.address);
-        expect(permissions[1].permissions).to.eql([0, 1, 2, 3]);
       });
       thenTokenIsWrapped(AMOUNT);
     });
