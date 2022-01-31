@@ -21,13 +21,15 @@
   "files": [
     "contracts/libraries",
     "contracts/interfaces",
-    "artifacts/contracts/interfaces/**/*.json",
-    "artifacts/contracts/libraries/**/*.json",
+    "artifacts/contracts/**/*.json",
+    "!artifacts/contracts/mocks",
     "!artifacts/contracts/**/**/*.dbg.json",
     "typechained",
+    "!typechained/**/*Mock*",
     "deployments",
     "!deployments/localhost",
-    "!.env"
+    "!.env",
+    "!**/.DS_Store"
   ],
   "scripts": {
     "compile": "npx hardhat compile",
