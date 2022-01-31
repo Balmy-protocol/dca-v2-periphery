@@ -18,8 +18,7 @@ const deployFunction: DeployFunction = async function (hre: HardhatRuntimeEnviro
   const network = hre.network.name !== 'hardhat' ? hre.network.name : networkBeingForked ?? hre.network.name;
   switch (network) {
     case 'optimism':
-      // TODO: Update to non-beta deployment
-      hub = '0x24F85583FAa9F8BD0B8Aa7B1D1f4f53F0F450038';
+      hub = '0x230C63702D1B5034461ab2ca889a30E343D81349';
       break;
     case 'optimism-kovan':
       hub = '0xB1EDC6ea9011bCC5318e2b36954008357b59292F';
