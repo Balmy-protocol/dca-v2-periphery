@@ -112,14 +112,14 @@ describe('Multi pair swap with DEX', () => {
             sellToken: WETH_ADDRESS,
             buyToken: USDC_ADDRESS,
             buyAmount: usdc.toProvide,
-            sippagePercentage: 0.001,
+            sippagePercentage: 0.01,
           }),
           zrx.quote({
             chainId: 10,
             sellToken: WETH_ADDRESS,
             buyToken: LINK_ADDRESS,
             buyAmount: link.toProvide,
-            sippagePercentage: 0.001,
+            sippagePercentage: 0.01,
           }),
         ]);
         const dexAddress = dexQuotes[0].to;
