@@ -18,7 +18,7 @@ const USDC_ADDRESS = '0x7f5c764cbc14f9669b88837ca1490cca17c31607';
 const LINK_ADDRESS = '0x350a791bfc2c21f9ed5d10980dad2e2638ffa7f6';
 const WETH_WHALE_ADDRESS = '0xaa30d6bba6285d0585722e2440ff89e23ef68864';
 
-describe.only('Multi pair swap with DEX', () => {
+describe('Multi pair swap with DEX', () => {
   let WETH: IERC20, USDC: IERC20, LINK: IERC20;
   let governor: JsonRpcSigner;
   let cindy: SignerWithAddress, recipient: SignerWithAddress;
