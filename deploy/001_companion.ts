@@ -16,8 +16,6 @@ const deployFunction: DeployFunction = async function (hre: HardhatRuntimeEnviro
       weth = '0xd0a1e359811322d97991e03f863a0c30c2cf029c';
       break;
     case 'optimism-kovan':
-      weth = '0x4200000000000000000000000000000000000006';
-      break;
     case 'optimism':
       weth = '0x4200000000000000000000000000000000000006';
       break;
