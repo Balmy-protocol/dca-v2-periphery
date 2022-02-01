@@ -1,8 +1,8 @@
 const forkBlockNumber = {
-  'swap-for-caller': 2022600,
-  wtoken: 2022600,
-  multicall: 1023177,
-  'beta-migrator': 1023177,
+  'swap-for-caller': 3084800,
+  wtoken: 3084800,
+  multicall: 3084800,
+  'beta-migrator': 3084800,
 };
 
 export default forkBlockNumber;

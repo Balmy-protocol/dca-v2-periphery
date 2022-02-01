@@ -16,9 +16,9 @@ import forkBlockNumber from '@integration/fork-block-numbers';
 import { fromRpcSig } from 'ethereumjs-util';
 
 const WETH_ADDRESS = '0x4200000000000000000000000000000000000006';
-const USDC_ADDRESS = '0x4bec326fe1bef34c4858a1de3906c7f52a95a682';
-const WETH_WHALE_ADDRESS = '0x03af20bdaaffb4cc0a521796a223f7d85e2aac31';
-const USDC_WHALE_ADDRESS = '0xc96495c314879586761d991a2b68ebeab12c03fe';
+const USDC_ADDRESS = '0x7f5c764cbc14f9669b88837ca1490cca17c31607';
+const WETH_WHALE_ADDRESS = '0xaa30d6bba6285d0585722e2440ff89e23ef68864';
+const USDC_WHALE_ADDRESS = '0xad7b4c162707e0b2b5f6fddbd3f8538a5fba0d60';
 
 describe('Multicall', () => {
   let WETH: IERC20, USDC: IERC20;
@@ -35,7 +35,7 @@ describe('Multicall', () => {
 
   before(async () => {
     await evm.reset({
-      network: 'optimism-kovan', // We are using Kovan until the stable deployment is made on Optimism
+      network: 'optimism',
       blockNumber: forkBlockNumber['multicall'],
     });
     [positionOwner, swapper, recipient] = await ethers.getSigners();
@@ -49,6 +49,7 @@ describe('Multicall', () => {
     const governorAddress = namedAccounts.governor;
     const governor = await wallet.impersonate(governorAddress);
     await ethers.provider.send('hardhat_setBalance', [governorAddress, '0xffffffffffffffff']);
+    await ethers.provider.send('hardhat_setBalance', [DCAHubCompanion.address, '0x0']); // For some reason the Companion sometimes starts with some balance, so we remove it
 
     // Allow one minute interval
     await DCAHub.connect(governor).addSwapIntervalsToAllowedList([SwapInterval.ONE_MINUTE.seconds]);

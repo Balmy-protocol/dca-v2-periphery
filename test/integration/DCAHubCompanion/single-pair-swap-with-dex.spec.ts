@@ -43,7 +43,7 @@ describe('Single pair swap with DEX', () => {
     const namedAccounts = await getNamedAccounts();
     const governorAddress = namedAccounts.governor;
     governor = await wallet.impersonate(governorAddress);
-    const timelock = await wallet.impersonate('0x19BB8c1130649BD2a114c2f2d4C3a6AFa3Bd4944');
+    const timelock = await wallet.impersonate('0xE0F0eeA2bdaFCB913A2b2b7938C0Fce1A39f5754');
     await ethers.provider.send('hardhat_setBalance', [governorAddress, '0xffffffffffffffff']);
     await ethers.provider.send('hardhat_setBalance', [timelock._address, '0xffffffffffffffff']);
 

@@ -18,7 +18,7 @@ const USDC_ADDRESS = '0x7f5c764cbc14f9669b88837ca1490cca17c31607';
 const LINK_ADDRESS = '0x350a791bfc2c21f9ed5d10980dad2e2638ffa7f6';
 const WETH_WHALE_ADDRESS = '0xaa30d6bba6285d0585722e2440ff89e23ef68864';
 
-describe('Multi pair swap with DEX', () => {
+describe.only('Multi pair swap with DEX', () => {
   let WETH: IERC20, USDC: IERC20, LINK: IERC20;
   let governor: JsonRpcSigner;
   let cindy: SignerWithAddress, recipient: SignerWithAddress;
@@ -43,14 +43,14 @@ describe('Multi pair swap with DEX', () => {
     const namedAccounts = await getNamedAccounts();
     const governorAddress = namedAccounts.governor;
     governor = await wallet.impersonate(governorAddress);
-    const timelock = await wallet.impersonate('0x19BB8c1130649BD2a114c2f2d4C3a6AFa3Bd4944');
+    const timelock = await wallet.impersonate('0xE0F0eeA2bdaFCB913A2b2b7938C0Fce1A39f5754');
     await ethers.provider.send('hardhat_setBalance', [governorAddress, '0xffffffffffffffff']);
     await ethers.provider.send('hardhat_setBalance', [timelock._address, '0xffffffffffffffff']);
 
     // Allow one minute interval
     await DCAHub.connect(governor).addSwapIntervalsToAllowedList([SwapInterval.ONE_MINUTE.seconds]);
     //We are setting a very high fee, so that there is a surplus in both reward and toProvide tokens
-    await DCAHub.connect(timelock).setSwapFee(20000); // 2%
+    await DCAHub.connect(timelock).setSwapFee(50000); // 5%
 
     WETH = await ethers.getContractAt(IERC20_ABI, WETH_ADDRESS);
     USDC = await ethers.getContractAt(IERC20_ABI, USDC_ADDRESS);
@@ -112,14 +112,14 @@ describe('Multi pair swap with DEX', () => {
             sellToken: WETH_ADDRESS,
             buyToken: USDC_ADDRESS,
             buyAmount: usdc.toProvide,
-            sippagePercentage: 0.001,
+            sippagePercentage: 0.01,
           }),
           zrx.quote({
             chainId: 10,
             sellToken: WETH_ADDRESS,
             buyToken: LINK_ADDRESS,
             buyAmount: link.toProvide,
-            sippagePercentage: 0.001,
+            sippagePercentage: 0.01,
           }),
         ]);
         const dexAddress = dexQuotes[0].to;

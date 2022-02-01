@@ -1,5 +1,5 @@
 import { expect } from 'chai';
-import { deployments, ethers } from 'hardhat';
+import { deployments, ethers, getNamedAccounts } from 'hardhat';
 import { TransactionResponse } from '@ethersproject/providers';
 import { constants, wallet } from '@test-utils';
 import { contract, given, then, when } from '@test-utils/bdd';
@@ -15,9 +15,9 @@ import forkBlockNumber from '@integration/fork-block-numbers';
 import { fromRpcSig } from 'ethereumjs-util';
 
 const WETH_ADDRESS = '0x4200000000000000000000000000000000000006';
-const USDC_ADDRESS = '0x4bec326fe1bef34c4858a1de3906c7f52a95a682';
-const WETH_WHALE_ADDRESS = '0x03af20bdaaffb4cc0a521796a223f7d85e2aac31';
-const USDC_WHALE_ADDRESS = '0xc96495c314879586761d991a2b68ebeab12c03fe';
+const USDC_ADDRESS = '0x7f5c764cbc14f9669b88837ca1490cca17c31607';
+const WETH_WHALE_ADDRESS = '0xaa30d6bba6285d0585722e2440ff89e23ef68864';
+const USDC_WHALE_ADDRESS = '0xad7b4c162707e0b2b5f6fddbd3f8538a5fba0d60';
 
 contract('BetaMigrator', () => {
   let WETH: IERC20, USDC: IERC20;
@@ -33,7 +33,7 @@ contract('BetaMigrator', () => {
 
   before(async () => {
     await evm.reset({
-      network: 'optimism-kovan',
+      network: 'optimism',
       blockNumber: forkBlockNumber['beta-migrator'],
     });
     [positionOwner, swapper] = await ethers.getSigners();
@@ -43,6 +43,15 @@ contract('BetaMigrator', () => {
     migrator = await ethers.getContract('BetaMigrator');
     betaDCAHub = await ethers.getContractAt(DCA_HUB_ABI, await migrator.betaHub());
     betaPermissionManager = await betaDCAHub.permissionManager();
+
+    const namedAccounts = await getNamedAccounts();
+    const governorAddress = namedAccounts.governor;
+    const governor = await wallet.impersonate(governorAddress);
+    await ethers.provider.send('hardhat_setBalance', [governorAddress, '0xffffffffffffffff']);
+
+    // Allow one minute interval
+    await betaDCAHub.connect(governor).addSwapIntervalsToAllowedList([SwapInterval.ONE_MINUTE.seconds]);
+    await DCAHub.connect(governor).addSwapIntervalsToAllowedList([SwapInterval.ONE_MINUTE.seconds]);
 
     WETH = await ethers.getContractAt(IERC20_ABI, WETH_ADDRESS);
     USDC = await ethers.getContractAt(IERC20_ABI, USDC_ADDRESS);
@@ -59,16 +68,18 @@ contract('BetaMigrator', () => {
   });
 
   when('migrating a position from beta', () => {
-    let positionId: BigNumber;
+    let betaPositionId: BigNumber, stablePositionId: BigNumber;
     let swappedBalance: BigNumber, unswappedBalance: BigNumber;
     let tx: TransactionResponse;
     given(async () => {
-      ({ positionId, swappedBalance, unswappedBalance } = await depositInBetaAndSwap());
-      const signature = await generateSignature(positionOwner, positionId);
-      tx = await migrator.migrate(positionId, signature);
+      ({ positionId: betaPositionId, swappedBalance, unswappedBalance } = await depositInBetaAndSwap());
+      const signature = await generateSignature(positionOwner, betaPositionId);
+      tx = await migrator.migrate(betaPositionId, signature);
+      const event = await getHubEvent(tx, 'Deposited');
+      stablePositionId = event.args.positionId;
     });
     then('position is terminated', async () => {
-      const userPosition = await betaDCAHub.userPosition(positionId);
+      const userPosition = await betaDCAHub.userPosition(betaPositionId);
       expect(userPosition.swapInterval).to.equal(0);
     });
     then('owner gets the swapped balance', async () => {
@@ -76,10 +87,10 @@ contract('BetaMigrator', () => {
       expect(balance).to.equal(swappedBalance);
     });
     then('new position is created on the stable version', async () => {
-      const { from, to, swapInterval, swapsExecuted, swapped, swapsLeft, remaining, rate } = await DCAHub.userPosition(1);
+      const { from, to, swapInterval, swapsExecuted, swapped, swapsLeft, remaining, rate } = await DCAHub.userPosition(stablePositionId);
       expect(from.toLowerCase()).to.equal(USDC.address.toLowerCase());
       expect(to.toLowerCase()).to.equal(WETH.address.toLowerCase());
-      expect(swapInterval).to.equal(SwapInterval.ONE_DAY.seconds);
+      expect(swapInterval).to.equal(SwapInterval.ONE_MINUTE.seconds);
       expect(swapsExecuted).to.equal(0);
       expect(swapped).to.equal(0);
       expect(swapsLeft).to.equal(AMOUNT_OF_SWAPS - 1);
@@ -87,7 +98,7 @@ contract('BetaMigrator', () => {
       expect(rate).to.equal(RATE);
     });
     then('event is emitted', async () => {
-      await expect(tx).to.emit(migrator, 'Migrated').withArgs(positionId);
+      await expect(tx).to.emit(migrator, 'Migrated').withArgs(betaPositionId);
     });
   });
 
@@ -109,7 +120,7 @@ contract('BetaMigrator', () => {
         WETH.address,
         RATE.mul(AMOUNT_OF_SWAPS),
         AMOUNT_OF_SWAPS,
-        SwapInterval.ONE_DAY.seconds,
+        SwapInterval.ONE_MINUTE.seconds,
         positionOwner.address,
         []
       );

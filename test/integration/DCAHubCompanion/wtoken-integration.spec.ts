@@ -47,6 +47,7 @@ describe('WToken', () => {
     const governorAddress = namedAccounts.governor;
     const governor = await wallet.impersonate(governorAddress);
     await ethers.provider.send('hardhat_setBalance', [governorAddress, '0xffffffffffffffff']);
+    await ethers.provider.send('hardhat_setBalance', [DCAHubCompanion.address, '0x0']); // For some reason the Companion sometimes starts with some balance, so we remove it
 
     // Allow one minute interval
     await DCAHub.connect(governor).addSwapIntervalsToAllowedList([SwapInterval.ONE_MINUTE.seconds]);
