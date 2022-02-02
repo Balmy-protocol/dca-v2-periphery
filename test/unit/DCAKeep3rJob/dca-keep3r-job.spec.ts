@@ -141,6 +141,37 @@ contract('DCAKeep3rJob', () => {
       governor: () => governor,
     });
   });
+  describe('setKeep3r', () => {
+    when('zero address is sent', () => {
+      then('reverts with message', async () => {
+        await behaviours.txShouldRevertWithMessage({
+          contract: DCAKeep3rJob.connect(governor),
+          func: 'setKeep3r',
+          args: [constants.ZERO_ADDRESS],
+          message: 'ZeroAddress',
+        });
+      });
+    });
+    when('a valid address is sent', () => {
+      const NEW_KEEP3R = constants.NOT_ZERO_ADDRESS;
+      let tx: TransactionResponse;
+      given(async () => {
+        tx = await DCAKeep3rJob.connect(governor).setKeep3r(NEW_KEEP3R);
+      });
+      then('it is set correctly', async () => {
+        expect(await DCAKeep3rJob.keep3r()).to.equal(NEW_KEEP3R);
+      });
+      then('event is emitted', async () => {
+        await expect(tx).to.emit(DCAKeep3rJob, 'NewKeep3rSet').withArgs(NEW_KEEP3R);
+      });
+    });
+    behaviours.shouldBeExecutableOnlyByGovernor({
+      contract: () => DCAKeep3rJob,
+      funcAndSignature: 'setKeep3r',
+      params: () => [constants.NOT_ZERO_ADDRESS],
+      governor: () => governor,
+    });
+  });
   describe('work', () => {
     given(async () => {
       await DCAKeep3rJob.connect(governor).setIfAddressCanSign(signer.address, true);
