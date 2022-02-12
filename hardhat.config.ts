@@ -68,6 +68,11 @@ const networks: NetworksUserConfig = process.env.TEST
         accounts: accounts('optimism'),
         tags: ['production'],
       },
+      mumbai: {
+        url: 'https://rpc-mumbai.matic.today',
+        accounts: accounts('mumbai'),
+        tags: ['staging'],
+      },
     };
 
 const config: HardhatUserConfig = {
