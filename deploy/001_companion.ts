@@ -20,7 +20,7 @@ const deployFunction: DeployFunction = async function (hre: HardhatRuntimeEnviro
       weth = '0x4200000000000000000000000000000000000006';
       break;
     case 'mumbai':
-      weth = '0x9c3C9283D3e44854697Cd22D3Faa240Cfb032889';
+      weth = '0x9c3C9283D3e44854697Cd22D3Faa240Cfb032889'; // Actually wMATIC
       break;
     default:
       throw new Error(`Unsupported chain '${hre.network.name}`);
