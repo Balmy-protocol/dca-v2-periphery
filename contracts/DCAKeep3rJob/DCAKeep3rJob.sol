@@ -42,7 +42,8 @@ contract DCAKeep3rJob is Governable, IDCAKeep3rJob {
   }
 
   function work(bytes calldata _bytes, bytes calldata _signature) external {
-    if (!keep3r.isKeeper(msg.sender)) revert NotAKeeper();
+    IKeep3rJobs _keep3r = keep3r;
+    if (!_keep3r.isKeeper(msg.sender)) revert NotAKeeper();
 
     address _signer = keccak256(_bytes).toEthSignedMessageHash().recover(_signature);
     if (!canAddressSignWork[_signer]) revert SignerCannotSignWork();
@@ -54,7 +55,7 @@ contract DCAKeep3rJob is Governable, IDCAKeep3rJob {
 
     _callSwapper(_call.swapperCall);
 
-    keep3r.worked(msg.sender);
+    _keep3r.worked(msg.sender);
   }
 
   function _callSwapper(bytes memory _call) internal virtual {
