@@ -23,6 +23,9 @@ const deployFunction: DeployFunction = async function (hre: HardhatRuntimeEnviro
     case 'optimism-kovan':
       hub = '0xB1EDC6ea9011bCC5318e2b36954008357b59292F';
       break;
+    case 'mumbai':
+      hub = '0x898D220C7cd30bf2DCacc9178ca3463e39cbB803';
+      break;
     case 'mainnet':
       // TODO: Remove when we deploy to mainnet
       const WETH = '0xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2';
