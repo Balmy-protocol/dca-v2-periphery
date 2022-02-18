@@ -9,7 +9,6 @@ const impersonate = async (address: string): Promise<any> => {
     method: 'hardhat_impersonateAccount',
     params: [address],
   });
-  // return ethers.provider.getSigner('');
   return ethers.provider.getSigner(address);
 };
 const generateRandom = async () => {

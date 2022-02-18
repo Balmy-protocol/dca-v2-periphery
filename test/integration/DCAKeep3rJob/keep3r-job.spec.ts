@@ -16,13 +16,12 @@ import moment from 'moment';
 
 const WETH_ADDRESS = '0xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2';
 const USDC_ADDRESS = '0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48';
-const K3PR_ADDRESS = '0x1ceb5cb57c4d4e2b2433641b95dd330a33185a44';
+const KP3R_ADDRESS = '0x1ceb5cb57c4d4e2b2433641b95dd330a33185a44';
 const UNISWAP_V3_PAIR_MANAGER = '0xfbba1784163212e7b639ed9e434e3aed48036b34';
 const WETH_WHALE_ADDRESS = '0xf04a5cc80b1e94c69b48f5ee68a08cd2f09a7c3e';
-const K3PR_WHALE_ADDRESS = '0x2fc52c61fb0c03489649311989ce2689d93dc1a2';
+const KP3R_WHALE_ADDRESS = '0x2fc52c61fb0c03489649311989ce2689d93dc1a2';
 
-// TODO: Migrate to new Keep3r contract and un-skip
-contract.skip('DCAKeep3rJob', () => {
+contract('DCAKeep3rJob', () => {
   let WETH: IERC20, K3PR: IERC20;
   let DCAKeep3rJob: DCAKeep3rJob;
   let DCAHubCompanion: DCAHubCompanion;
@@ -57,8 +56,8 @@ contract.skip('DCAKeep3rJob', () => {
     await ethers.provider.send('hardhat_setBalance', [governorAddress, '0xffffffffffffffff']);
     const wethWhale = await wallet.impersonate(WETH_WHALE_ADDRESS);
     await ethers.provider.send('hardhat_setBalance', [WETH_WHALE_ADDRESS, '0xffffffffffffffff']);
-    const k3prWhale = await wallet.impersonate(K3PR_WHALE_ADDRESS);
-    await ethers.provider.send('hardhat_setBalance', [K3PR_WHALE_ADDRESS, '0xffffffffffffffff']);
+    const k3prWhale = await wallet.impersonate(KP3R_WHALE_ADDRESS);
+    await ethers.provider.send('hardhat_setBalance', [KP3R_WHALE_ADDRESS, '0xffffffffffffffff']);
 
     // Allow one minute interval
     await DCAHub.connect(governor).addSwapIntervalsToAllowedList([SwapInterval.ONE_MINUTE.seconds]);
@@ -67,12 +66,12 @@ contract.skip('DCAKeep3rJob', () => {
 
     // Add job and register keeper
     await keep3rProtocol.addJob(DCAKeep3rJob.address);
-    await keep3rProtocol.connect(keeper).bond(K3PR_ADDRESS, 0);
+    await keep3rProtocol.connect(keeper).bond(KP3R_ADDRESS, 0);
     await evm.advanceTimeAndBlock(moment.duration(3, 'days').as('seconds'));
-    await keep3rProtocol.connect(keeper).activate(K3PR_ADDRESS);
+    await keep3rProtocol.connect(keeper).activate(KP3R_ADDRESS);
 
     WETH = await ethers.getContractAt(IERC20_ABI, WETH_ADDRESS);
-    K3PR = await ethers.getContractAt(IERC20_ABI, K3PR_ADDRESS);
+    K3PR = await ethers.getContractAt(IERC20_ABI, KP3R_ADDRESS);
 
     await WETH.connect(wethWhale).transfer(jobOwner.address, utils.parseEther('100'));
     await K3PR.connect(k3prWhale).transfer(jobOwner.address, utils.parseEther('100'));
@@ -122,7 +121,7 @@ contract.skip('DCAKeep3rJob', () => {
         await evm.advanceTimeAndBlock(moment.duration(5, 'days').as('seconds'));
 
         // Remember initial bonds and credits
-        initialBonds = await keep3rProtocol.bonds(keeper.address, K3PR_ADDRESS);
+        initialBonds = await keep3rProtocol.bonds(keeper.address, KP3R_ADDRESS);
         initialCredits = await keep3rProtocol.jobLiquidityCredits(DCAKeep3rJob.address);
 
         // Execute work
@@ -130,7 +129,7 @@ contract.skip('DCAKeep3rJob', () => {
         await DCAKeep3rJob.connect(keeper).work(bytes, signature);
       });
       then('credits are transfered to keeper as bonds', async () => {
-        const bonds = await keep3rProtocol.bonds(keeper.address, K3PR_ADDRESS);
+        const bonds = await keep3rProtocol.bonds(keeper.address, KP3R_ADDRESS);
         const credits = await keep3rProtocol.jobLiquidityCredits(DCAKeep3rJob.address);
         const liquidityCreditsSpent = initialCredits.sub(credits);
         const bondsEarned = bonds.sub(initialBonds);
