@@ -736,10 +736,10 @@
   resolved "https://registry.yarnpkg.com/@hutson/parse-repository-url/-/parse-repository-url-3.0.2.tgz#98c23c950a3d9b6c8f0daed06da6c3af06981340"
   integrity sha512-H9XAx3hc0BQHY6l+IFSWHDySypcXsvsuLhgYLUGywmJ5pswRVQJUHpOsobnLYp2ZUaUlKiKDrgWWhosOwAEM8Q==
 
-"@mean-finance/dca-v2-core@1.0.0":
-  version "1.0.0"
-  resolved "https://registry.yarnpkg.com/@mean-finance/dca-v2-core/-/dca-v2-core-1.0.0.tgz#86c249289227d2a62a1d685281479951c70b050b"
-  integrity sha512-ULybJ18bj80tgzO6Kk/dvtQz0gOi5WzZE5Eb9yCE6ZVlmq8vbwHafcCSXP/G2vqRKsNUh4/Iuozjuk9eFPhrow==
+"@mean-finance/dca-v2-core@1.1.0":
+  version "1.1.0"
+  resolved "https://registry.yarnpkg.com/@mean-finance/dca-v2-core/-/dca-v2-core-1.1.0.tgz#759922f45839bc6afcb0074237a72429e7ef6b90"
+  integrity sha512-Yr687+ajfVNLEIY5l3kKUxSGgMufhhusa1RWHlofkfruuhw1KYoQTFlgtehc1RDeRSIMq16beZ6sSZci3l4W0w==
   dependencies:
     "@chainlink/contracts" "^0.2.2"
     "@openzeppelin/contracts" "4.4.2"
