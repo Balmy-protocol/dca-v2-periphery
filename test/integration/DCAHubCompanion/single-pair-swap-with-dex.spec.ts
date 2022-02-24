@@ -5,8 +5,9 @@ import { constants, wallet } from '@test-utils';
 import { given, then, when } from '@test-utils/bdd';
 import evm, { snapshot } from '@test-utils/evm';
 import { DCAHubCompanion, IERC20 } from '@typechained';
-import { DCAHub } from '@mean-finance/dca-v2-core/typechained';
+import { DCAHub, OracleAggregator } from '@mean-finance/dca-v2-core/typechained';
 import { abi as DCA_HUB_ABI } from '@mean-finance/dca-v2-core/artifacts/contracts/DCAHub/DCAHub.sol/DCAHub.json';
+import { abi as AGGREGATOR_ABI } from '@mean-finance/dca-v2-core/artifacts/contracts/oracles/OracleAggregator.sol/OracleAggregator.json';
 import { abi as IERC20_ABI } from '@openzeppelin/contracts/build/contracts/IERC20.json';
 import { BigNumber, utils } from 'ethers';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signers';
@@ -51,6 +52,10 @@ describe('Single pair swap with DEX', () => {
     await DCAHub.connect(governor).addSwapIntervalsToAllowedList([SwapInterval.ONE_MINUTE.seconds]);
     //We are setting a very high fee, so that there is a surplus in both reward and toProvide tokens
     await DCAHub.connect(timelock).setSwapFee(20000); // 2%
+
+    // We will be using the Uniswap oracle for these pairs, so that the test won't fail if the Chainlink oracle does not match the market
+    const aggregator: OracleAggregator = await ethers.getContractAt(AGGREGATOR_ABI, await DCAHub.oracle());
+    await aggregator.connect(governor).setOracleForPair(WETH_ADDRESS, USDC_ADDRESS, 2);
 
     WETH = await ethers.getContractAt(IERC20_ABI, WETH_ADDRESS);
     USDC = await ethers.getContractAt(IERC20_ABI, USDC_ADDRESS);
@@ -116,7 +121,9 @@ describe('Single pair swap with DEX', () => {
           sellToken: WETH_ADDRESS,
           buyToken: USDC_ADDRESS,
           sellAmount: weth.reward,
-          sippagePercentage: 0.001,
+          sippagePercentage: 0.01, // 1%
+          takerAddress: DCAHubCompanion.address,
+          skipValidation: true,
         });
         await DCAHubCompanion.connect(governor).defineDexSupport(dexQuote.to, true);
         const dexFunction = sendLeftoverToHub ? 'swapWithDexAndShareLeftoverWithHub' : 'swapWithDex';
