@@ -5,18 +5,17 @@ import { constants, wallet } from '@test-utils';
 import { given, then, when } from '@test-utils/bdd';
 import evm, { snapshot } from '@test-utils/evm';
 import { DCAHubCompanion, IERC20 } from '@typechained';
-import { DCAHub, OracleAggregator } from '@mean-finance/dca-v2-core/typechained';
+import { DCAHub } from '@mean-finance/dca-v2-core/typechained';
 import { abi as DCA_HUB_ABI } from '@mean-finance/dca-v2-core/artifacts/contracts/DCAHub/DCAHub.sol/DCAHub.json';
-import { abi as AGGREGATOR_ABI } from '@mean-finance/dca-v2-core/artifacts/contracts/oracles/OracleAggregator.sol/OracleAggregator.json';
 import { abi as IERC20_ABI } from '@openzeppelin/contracts/build/contracts/IERC20.json';
 import { BigNumber, utils } from 'ethers';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signers';
 import { SwapInterval } from '@test-utils/interval-utils';
 import zrx from '@test-utils/zrx';
 
-const WETH_ADDRESS = '0x4200000000000000000000000000000000000006';
-const USDC_ADDRESS = '0x7f5c764cbc14f9669b88837ca1490cca17c31607';
-const WETH_WHALE_ADDRESS = '0xaa30d6bba6285d0585722e2440ff89e23ef68864';
+const WETH_ADDRESS = '0x7ceb23fd6bc0add59e62ac25578270cff1b9f619';
+const USDC_ADDRESS = '0x2791bca1f2de4661ed88a30c99a7a9449aa84174';
+const WETH_WHALE_ADDRESS = '0xdc9232e2df177d7a12fdff6ecbab114e2231198d';
 
 describe('Single pair swap with DEX', () => {
   let WETH: IERC20;
@@ -33,7 +32,7 @@ describe('Single pair swap with DEX', () => {
 
   before(async () => {
     await evm.reset({
-      network: 'optimism',
+      network: 'polygon',
     });
     [cindy, recipient] = await ethers.getSigners();
 
@@ -52,10 +51,6 @@ describe('Single pair swap with DEX', () => {
     await DCAHub.connect(governor).addSwapIntervalsToAllowedList([SwapInterval.ONE_MINUTE.seconds]);
     //We are setting a very high fee, so that there is a surplus in both reward and toProvide tokens
     await DCAHub.connect(timelock).setSwapFee(20000); // 2%
-
-    // We will be using the Uniswap oracle for these pairs, so that the test won't fail if the Chainlink oracle does not match the market
-    const aggregator: OracleAggregator = await ethers.getContractAt(AGGREGATOR_ABI, await DCAHub.oracle());
-    await aggregator.connect(governor).setOracleForPair(WETH_ADDRESS, USDC_ADDRESS, 2);
 
     WETH = await ethers.getContractAt(IERC20_ABI, WETH_ADDRESS);
     USDC = await ethers.getContractAt(IERC20_ABI, USDC_ADDRESS);
@@ -114,10 +109,10 @@ describe('Single pair swap with DEX', () => {
         initialHubWETHBalance = await WETH.balanceOf(DCAHub.address);
         initialHubUSDCBalance = await USDC.balanceOf(DCAHub.address);
         const {
-          tokens: [weth],
+          tokens: [, weth],
         } = await DCAHubCompanion.getNextSwapInfo([{ tokenA: WETH_ADDRESS, tokenB: USDC_ADDRESS }]);
         const dexQuote = await zrx.quote({
-          chainId: 10,
+          chainId: 137,
           sellToken: WETH_ADDRESS,
           buyToken: USDC_ADDRESS,
           sellAmount: weth.reward,
@@ -127,7 +122,7 @@ describe('Single pair swap with DEX', () => {
         });
         await DCAHubCompanion.connect(governor).defineDexSupport(dexQuote.to, true);
         const dexFunction = sendLeftoverToHub ? 'swapWithDexAndShareLeftoverWithHub' : 'swapWithDex';
-        const tokensInSwap = [WETH_ADDRESS, USDC_ADDRESS];
+        const tokensInSwap = [USDC_ADDRESS, WETH_ADDRESS];
         const indexesInSwap = [{ indexTokenA: 0, indexTokenB: 1 }];
         const swapTx = await DCAHubCompanion[dexFunction](
           dexQuote.to,
