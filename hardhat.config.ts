@@ -73,6 +73,11 @@ const networks: NetworksUserConfig = process.env.TEST
         accounts: accounts('mumbai'),
         tags: ['staging'],
       },
+      polygon: {
+        url: 'https://polygon-rpc.com',
+        accounts: accounts('polygon'),
+        tags: ['production'],
+      },
     };
 
 const config: HardhatUserConfig = {

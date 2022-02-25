@@ -26,6 +26,9 @@ const deployFunction: DeployFunction = async function (hre: HardhatRuntimeEnviro
     case 'mumbai':
       hub = '0x898D220C7cd30bf2DCacc9178ca3463e39cbB803';
       break;
+    case 'polygon':
+      hub = '0x230C63702D1B5034461ab2ca889a30E343D81349';
+      break;
     case 'mainnet':
       // TODO: Remove when we deploy to mainnet
       const WETH = '0xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2';
