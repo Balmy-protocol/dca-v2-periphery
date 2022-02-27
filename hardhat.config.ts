@@ -73,6 +73,11 @@ const networks: NetworksUserConfig = process.env.TEST
         accounts: accounts('mumbai'),
         tags: ['staging'],
       },
+      polygon: {
+        url: 'https://polygon-rpc.com',
+        accounts: accounts('polygon'),
+        tags: ['production'],
+      },
     };
 
 const config: HardhatUserConfig = {
@@ -81,7 +86,7 @@ const config: HardhatUserConfig = {
     timeout: process.env.MOCHA_TIMEOUT || 300000,
   },
   namedAccounts: {
-    deployer: 0,
+    deployer: 4,
     governor: '0x1a00e1E311009E56e3b0B9Ed6F86f5Ce128a1C01',
   },
   networks,
