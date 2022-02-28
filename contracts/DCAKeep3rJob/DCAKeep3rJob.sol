@@ -8,7 +8,7 @@ import '../utils/Governable.sol';
 contract DCAKeep3rJob is Governable, IDCAKeep3rJob {
   using ECDSA for bytes32;
 
-  IKeep3rJobs public immutable keep3r;
+  IKeep3rJobs public keep3r;
   uint256 public nonce;
   address public swapper;
   mapping(address => bool) public canAddressSignWork;
@@ -21,6 +21,12 @@ contract DCAKeep3rJob is Governable, IDCAKeep3rJob {
     if (address(_keep3r) == address(0)) revert ZeroAddress();
     if (address(_swapper) != address(0)) swapper = _swapper;
     keep3r = _keep3r;
+  }
+
+  function setKeep3r(IKeep3rJobs _keep3r) external onlyGovernor {
+    if (address(_keep3r) == address(0)) revert ZeroAddress();
+    keep3r = _keep3r;
+    emit NewKeep3rSet(_keep3r);
   }
 
   function setSwapper(address _swapper) external onlyGovernor {
@@ -36,7 +42,8 @@ contract DCAKeep3rJob is Governable, IDCAKeep3rJob {
   }
 
   function work(bytes calldata _bytes, bytes calldata _signature) external {
-    if (!keep3r.isKeeper(msg.sender)) revert NotAKeeper();
+    IKeep3rJobs _keep3r = keep3r;
+    if (!_keep3r.isKeeper(msg.sender)) revert NotAKeeper();
 
     address _signer = keccak256(_bytes).toEthSignedMessageHash().recover(_signature);
     if (!canAddressSignWork[_signer]) revert SignerCannotSignWork();
@@ -48,7 +55,7 @@ contract DCAKeep3rJob is Governable, IDCAKeep3rJob {
 
     _callSwapper(_call.swapperCall);
 
-    keep3r.worked(msg.sender);
+    _keep3r.worked(msg.sender);
   }
 
   function _callSwapper(bytes memory _call) internal virtual {
