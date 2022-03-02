@@ -30,7 +30,7 @@
   dependencies:
     regenerator-runtime "^0.13.4"
 
-"@chainlink/contracts@^0.2.2":
+"@chainlink/contracts@0.2.2":
   version "0.2.2"
   resolved "https://registry.yarnpkg.com/@chainlink/contracts/-/contracts-0.2.2.tgz#8ea2079d8b22d25807fc63b98ccd3dc0bc2a33fe"
   integrity sha512-wxXPbt7O3aZaUSG34ufFASC5amRSL6eeYCqsa+2gpqbB8Hk7B7FydEDCI5dqvAC444TlFskPHcVbizCZkRHPpw==
@@ -736,12 +736,12 @@
   resolved "https://registry.yarnpkg.com/@hutson/parse-repository-url/-/parse-repository-url-3.0.2.tgz#98c23c950a3d9b6c8f0daed06da6c3af06981340"
   integrity sha512-H9XAx3hc0BQHY6l+IFSWHDySypcXsvsuLhgYLUGywmJ5pswRVQJUHpOsobnLYp2ZUaUlKiKDrgWWhosOwAEM8Q==
 
-"@mean-finance/dca-v2-core@1.1.0":
-  version "1.1.0"
-  resolved "https://registry.yarnpkg.com/@mean-finance/dca-v2-core/-/dca-v2-core-1.1.0.tgz#759922f45839bc6afcb0074237a72429e7ef6b90"
-  integrity sha512-Yr687+ajfVNLEIY5l3kKUxSGgMufhhusa1RWHlofkfruuhw1KYoQTFlgtehc1RDeRSIMq16beZ6sSZci3l4W0w==
+"@mean-finance/dca-v2-core@1.2.0":
+  version "1.2.0"
+  resolved "https://registry.yarnpkg.com/@mean-finance/dca-v2-core/-/dca-v2-core-1.2.0.tgz#6ede5d742b9f8fff8464d4257ae88efaa3a29fc0"
+  integrity sha512-PkO3H32LQE/Bvee/IO4p5Ep/mnN1n3myEkXzotr64DuVrFPKqRqYZtJhVxY9ftptp5mMU8eAvnFHyUb0USlO0Q==
   dependencies:
-    "@chainlink/contracts" "^0.2.2"
+    "@chainlink/contracts" "0.2.2"
     "@openzeppelin/contracts" "4.4.2"
     "@uniswap/v3-periphery" "1.2.0"
     base64-sol "1.0.1"
