@@ -164,7 +164,7 @@ contract('DCAKeep3rJob', () => {
       sellToken: WETH_ADDRESS,
       buyToken: USDC_ADDRESS,
       sellAmount: weth.reward,
-      sippagePercentage: 0.001,
+      slippagePercentage: 0.001,
       takerAddress: DCAHubCompanion.address,
       skipValidation: true,
     });
