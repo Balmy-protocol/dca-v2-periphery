@@ -10,6 +10,7 @@ const deployFunction: DeployFunction = async function (hre: HardhatRuntimeEnviro
 
   const network = hre.network.name !== 'hardhat' ? hre.network.name : networkBeingForked ?? hre.network.name;
   switch (network) {
+    case 'hardhat':
     case 'mainnet':
       keep3r = '0x4a6cff9e1456eaa3b6f37572395c6fa0c959edab';
       break;
