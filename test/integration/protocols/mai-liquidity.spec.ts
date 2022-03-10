@@ -5,7 +5,8 @@ import { constants, wallet } from '@test-utils';
 import { given, then, when } from '@test-utils/bdd';
 import evm, { snapshot } from '@test-utils/evm';
 import { DCAHubCompanion, IERC20 } from '@typechained';
-import { DCAHub } from '@mean-finance/dca-v2-core/typechained';
+import { ChainlinkOracle, DCAHub } from '@mean-finance/dca-v2-core/typechained';
+import ChainlinkOracleDeployment from '@mean-finance/dca-v2-core/deployments/polygon/ChainlinkOracle.json';
 import { abi as DCA_HUB_ABI } from '@mean-finance/dca-v2-core/artifacts/contracts/DCAHub/DCAHub.sol/DCAHub.json';
 import { abi as IERC20_ABI } from '@openzeppelin/contracts/build/contracts/IERC20.json';
 import { BigNumber, utils } from 'ethers';
@@ -14,12 +15,13 @@ import { SwapInterval } from '@test-utils/interval-utils';
 import zrx from '@test-utils/zrx';
 
 const WETH_ADDRESS = '0x7ceb23fd6bc0add59e62ac25578270cff1b9f619';
-const USDC_ADDRESS = '0x2791bca1f2de4661ed88a30c99a7a9449aa84174';
+const MAI_ADDRESS = '0xa3fa99a148fa48d14ed51d610c367c61876997f1';
 const WETH_WHALE_ADDRESS = '0xdc9232e2df177d7a12fdff6ecbab114e2231198d';
 
-describe('Single pair swap with DEX', () => {
+describe('Swap through DEX for MAI pair', () => {
+  // Setup params
   let WETH: IERC20;
-  let USDC: IERC20;
+  let MAI: IERC20;
   let governor: JsonRpcSigner;
   let cindy: SignerWithAddress, recipient: SignerWithAddress;
   let DCAHubCompanion: DCAHubCompanion;
@@ -27,8 +29,16 @@ describe('Single pair swap with DEX', () => {
   let initialPerformedSwaps: number;
   let snapshotId: string;
 
-  const RATE = utils.parseEther('0.1');
+  // Deposit params
+  const RATE = utils.parseEther('20');
   const AMOUNT_OF_SWAPS = 10;
+
+  // Trade params
+  let initialHubWETHBalance: BigNumber;
+  let reward: BigNumber;
+  let toProvide: BigNumber;
+  let sentToAgg: BigNumber;
+  let receivedFromAgg: BigNumber;
 
   before(async () => {
     await evm.reset({
@@ -49,11 +59,13 @@ describe('Single pair swap with DEX', () => {
 
     // Allow one minute interval
     await DCAHub.connect(governor).addSwapIntervalsToAllowedList([SwapInterval.ONE_MINUTE.seconds]);
-    //We are setting a very high fee, so that there is a surplus in both reward and toProvide tokens
-    await DCAHub.connect(timelock).setSwapFee(20000); // 2%
+
+    // Add MAI as a stable-coin
+    const chainlinkOracle = await ethers.getContractAt<ChainlinkOracle>(ChainlinkOracleDeployment.abi, ChainlinkOracleDeployment.address);
+    await chainlinkOracle.connect(governor).addUSDStablecoins([MAI_ADDRESS]);
 
     WETH = await ethers.getContractAt(IERC20_ABI, WETH_ADDRESS);
-    USDC = await ethers.getContractAt(IERC20_ABI, USDC_ADDRESS);
+    MAI = await ethers.getContractAt(IERC20_ABI, MAI_ADDRESS);
     const wethWhale = await wallet.impersonate(WETH_WHALE_ADDRESS);
     await ethers.provider.send('hardhat_setBalance', [WETH_WHALE_ADDRESS, '0xffffffffffffffff']);
 
@@ -62,7 +74,7 @@ describe('Single pair swap with DEX', () => {
     await WETH.connect(cindy).approve(DCAHub.address, depositAmount);
     await DCAHub.connect(cindy)['deposit(address,address,uint256,uint32,uint32,address,(address,uint8[])[])'](
       WETH.address,
-      USDC.address,
+      MAI.address,
       depositAmount,
       AMOUNT_OF_SWAPS,
       SwapInterval.ONE_MINUTE.seconds,
@@ -70,104 +82,60 @@ describe('Single pair swap with DEX', () => {
       []
     );
     initialPerformedSwaps = await performedSwaps();
+    initialHubWETHBalance = await WETH.balanceOf(DCAHub.address);
+    const {
+      tokens: [weth],
+    } = await DCAHubCompanion.getNextSwapInfo([{ tokenA: WETH_ADDRESS, tokenB: MAI_ADDRESS }]);
+    const dexQuote = await zrx.quote({
+      chainId: 137,
+      sellToken: WETH_ADDRESS,
+      buyToken: MAI_ADDRESS,
+      sellAmount: weth.reward,
+      slippagePercentage: 0.005, // 0.5%
+      takerAddress: DCAHubCompanion.address,
+      skipValidation: true,
+    });
+    await DCAHubCompanion.connect(governor).defineDexSupport(dexQuote.to, true);
+    const swapTx = await DCAHubCompanion.swapWithDex(
+      dexQuote.to,
+      [WETH_ADDRESS, MAI_ADDRESS],
+      [{ indexTokenA: 0, indexTokenB: 1 }],
+      [dexQuote.data],
+      false,
+      recipient.address,
+      constants.MAX_UINT_256
+    );
+
+    ({ reward, toProvide, receivedFromAgg, sentToAgg } = await getTransfers(swapTx));
 
     snapshotId = await snapshot.take();
   });
-  beforeEach('Deploy and configure', async () => {
-    await snapshot.revert(snapshotId);
-  });
 
-  describe('swap with dex', () => {
-    swapWithDexTest({
-      dex: '0x',
-      isSwapAndTransfer: false,
-      sendLeftoverToHub: false,
+  when('we are able to find liquidity', () => {
+    given(async () => {
+      await snapshot.revert(snapshotId);
     });
-    swapWithDexTest({
-      dex: '0x',
-      isSwapAndTransfer: false,
-      sendLeftoverToHub: true,
+    then('swap is executed', async () => {
+      expect(await performedSwaps()).to.equal(initialPerformedSwaps + 1);
+    });
+    then('hub balance is correct', async () => {
+      const hubWETHBalance = await WETH.balanceOf(DCAHub.address);
+      const hubMAIBalance = await MAI.balanceOf(DCAHub.address);
+      expect(hubWETHBalance).to.equal(initialHubWETHBalance.sub(reward));
+      expect(hubMAIBalance).to.equal(toProvide);
+    });
+    then('all reward surpluss is sent to leftover recipient', async () => {
+      const recipientWETHBalance = await WETH.balanceOf(recipient.address);
+      expect(recipientWETHBalance).to.equal(reward.sub(sentToAgg));
+    });
+    then('all "toProvide" surpluss is sent to leftover recipient', async () => {
+      const recipientMAIBalance = await MAI.balanceOf(recipient.address);
+      expect(recipientMAIBalance).to.equal(receivedFromAgg.sub(toProvide));
     });
   });
-
-  function swapWithDexTest({
-    dex,
-    isSwapAndTransfer,
-    sendLeftoverToHub,
-  }: {
-    dex: string;
-    isSwapAndTransfer: boolean;
-    sendLeftoverToHub: boolean;
-  }) {
-    const title = `executing a swap with ${dex}, ${isSwapAndTransfer ? 'with' : 'without'} swap and transfer and ${
-      !sendLeftoverToHub ? 'without ' : ''
-    }sending leftover to hub`;
-    when(title, () => {
-      let initialHubWETHBalance: BigNumber, initialHubUSDCBalance: BigNumber;
-      let reward: BigNumber, toProvide: BigNumber, sentToAgg: BigNumber, receivedFromAgg: BigNumber;
-      given(async () => {
-        initialHubWETHBalance = await WETH.balanceOf(DCAHub.address);
-        initialHubUSDCBalance = await USDC.balanceOf(DCAHub.address);
-        const {
-          tokens: [, weth],
-        } = await DCAHubCompanion.getNextSwapInfo([{ tokenA: WETH_ADDRESS, tokenB: USDC_ADDRESS }]);
-        const dexQuote = await zrx.quote({
-          chainId: 137,
-          sellToken: WETH_ADDRESS,
-          buyToken: USDC_ADDRESS,
-          sellAmount: weth.reward,
-          slippagePercentage: 0.01, // 1%
-          takerAddress: DCAHubCompanion.address,
-          skipValidation: true,
-        });
-        await DCAHubCompanion.connect(governor).defineDexSupport(dexQuote.to, true);
-        const dexFunction = sendLeftoverToHub ? 'swapWithDexAndShareLeftoverWithHub' : 'swapWithDex';
-        const tokensInSwap = [USDC_ADDRESS, WETH_ADDRESS];
-        const indexesInSwap = [{ indexTokenA: 0, indexTokenB: 1 }];
-        const swapTx = await DCAHubCompanion[dexFunction](
-          dexQuote.to,
-          tokensInSwap,
-          indexesInSwap,
-          [dexQuote.data],
-          isSwapAndTransfer,
-          recipient.address,
-          constants.MAX_UINT_256
-        );
-        ({ reward, toProvide, receivedFromAgg, sentToAgg } = await getTransfers(swapTx));
-      });
-      then('swap is executed', async () => {
-        expect(await performedSwaps()).to.equal(initialPerformedSwaps + 1);
-      });
-      then('hub balance is correct', async () => {
-        const hubWETHBalance = await WETH.balanceOf(DCAHub.address);
-        const hubUSDCBalance = await USDC.balanceOf(DCAHub.address);
-        expect(hubWETHBalance).to.equal(initialHubWETHBalance.sub(reward));
-        if (!sendLeftoverToHub) {
-          expect(hubUSDCBalance).to.equal(initialHubUSDCBalance.add(toProvide));
-        } else {
-          expect(hubUSDCBalance).to.equal(initialHubUSDCBalance.add(receivedFromAgg));
-        }
-      });
-      then('all reward surpluss is sent to leftover recipient', async () => {
-        const recipientWETHBalance = await WETH.balanceOf(recipient.address);
-        expect(recipientWETHBalance).to.equal(reward.sub(sentToAgg));
-      });
-      if (!sendLeftoverToHub) {
-        then('all "toProvide" surpluss is sent to leftover recipient', async () => {
-          const recipientUSDCBalance = await USDC.balanceOf(recipient.address);
-          expect(recipientUSDCBalance).to.equal(receivedFromAgg.sub(toProvide));
-        });
-      } else {
-        then('leftover recipient has no "toProvide" balance', async () => {
-          const recipientUSDCBalance = await USDC.balanceOf(recipient.address);
-          expect(recipientUSDCBalance).to.equal(0);
-        });
-      }
-    });
-  }
 
   async function performedSwaps(): Promise<number> {
-    const { performedSwaps } = await DCAHub.swapData(USDC_ADDRESS, WETH_ADDRESS, SwapInterval.ONE_MINUTE.mask);
+    const { performedSwaps } = await DCAHub.swapData(MAI_ADDRESS, WETH_ADDRESS, SwapInterval.ONE_MINUTE.mask);
     return performedSwaps;
   }
 
@@ -199,7 +167,7 @@ describe('Single pair swap with DEX', () => {
   ) {
     const log = await findLogs(
       tx,
-      USDC.interface,
+      MAI.interface,
       'Transfer',
       (log) =>
         (!from || log.args.from === from.address) &&
