@@ -13,7 +13,7 @@ import {
 import { FakeContract, smock } from '@defi-wonderland/smock';
 import { TransactionResponse } from '@ethersproject/abstract-provider';
 import { utils } from 'ethers';
-import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signers';
+import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers';
 
 chai.use(smock.matchers);
 

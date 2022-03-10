@@ -9,7 +9,7 @@ import { DCAHub } from '@mean-finance/dca-v2-core/typechained';
 import { abi as DCA_HUB_ABI } from '@mean-finance/dca-v2-core/artifacts/contracts/DCAHub/DCAHub.sol/DCAHub.json';
 import { abi as IERC20_ABI } from '@openzeppelin/contracts/build/contracts/IERC20.json';
 import { BigNumber, utils } from 'ethers';
-import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signers';
+import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers';
 import { SwapInterval } from '@test-utils/interval-utils';
 import zrx from '@test-utils/zrx';
 
@@ -112,7 +112,7 @@ describe('Multi pair swap with DEX', () => {
             sellToken: WETH_ADDRESS,
             buyToken: USDC_ADDRESS,
             buyAmount: usdc.toProvide,
-            sippagePercentage: 0.01,
+            slippagePercentage: 0.01,
             takerAddress: DCAHubCompanion.address,
             skipValidation: true,
           }),
@@ -121,7 +121,7 @@ describe('Multi pair swap with DEX', () => {
             sellToken: WETH_ADDRESS,
             buyToken: LINK_ADDRESS,
             buyAmount: link.toProvide,
-            sippagePercentage: 0.01,
+            slippagePercentage: 0.01,
             takerAddress: DCAHubCompanion.address,
             skipValidation: true,
           }),

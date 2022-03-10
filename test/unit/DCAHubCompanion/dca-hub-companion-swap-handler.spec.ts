@@ -2,7 +2,7 @@ import chai, { expect } from 'chai';
 import { ethers } from 'hardhat';
 import { behaviours, constants, erc20, wallet } from '@test-utils';
 import { contract, given, then, when } from '@test-utils/bdd';
-import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signers';
+import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers';
 import { snapshot } from '@test-utils/evm';
 import {
   DCAHubCompanionSwapHandlerMock,

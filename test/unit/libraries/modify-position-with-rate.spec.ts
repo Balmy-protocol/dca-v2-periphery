@@ -4,7 +4,7 @@ import { contract, given, then, when } from '@test-utils/bdd';
 import { snapshot } from '@test-utils/evm';
 import { IDCAHub, ModifyPositionWithRateMock, ModifyPositionWithRateMock__factory } from '@typechained';
 import { FakeContract, smock } from '@defi-wonderland/smock';
-import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signers';
+import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers';
 import constants from '@test-utils/constants';
 
 chai.use(smock.matchers);
