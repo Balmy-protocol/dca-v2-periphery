@@ -5,8 +5,9 @@ import { constants, wallet } from '@test-utils';
 import { given, then, when } from '@test-utils/bdd';
 import evm, { snapshot } from '@test-utils/evm';
 import { DCAHubCompanion, IERC20 } from '@typechained';
-import { ChainlinkOracle, DCAHub } from '@mean-finance/dca-v2-core/typechained';
-import ChainlinkOracleDeployment from '@mean-finance/dca-v2-core/deployments/polygon/ChainlinkOracle.json';
+import { DCAHub } from '@mean-finance/dca-v2-core/typechained';
+import { ChainlinkRegistry } from '@mean-finance/chainlink-registry/typechained';
+import ChainlinkRegistryDeployment from '@mean-finance/chainlink-registry/deployments/polygon/FeedRegistry.json';
 import { abi as DCA_HUB_ABI } from '@mean-finance/dca-v2-core/artifacts/contracts/DCAHub/DCAHub.sol/DCAHub.json';
 import { abi as IERC20_ABI } from '@openzeppelin/contracts/build/contracts/IERC20.json';
 import { BigNumber, utils } from 'ethers';
@@ -30,7 +31,7 @@ describe('Swap through DEX for MAI pair', () => {
   let snapshotId: string;
 
   // Deposit params
-  const RATE = utils.parseEther('20');
+  const RATE = utils.parseEther('10');
   const AMOUNT_OF_SWAPS = 10;
 
   // Trade params
@@ -61,8 +62,17 @@ describe('Swap through DEX for MAI pair', () => {
     await DCAHub.connect(governor).addSwapIntervalsToAllowedList([SwapInterval.ONE_MINUTE.seconds]);
 
     // Add MAI as a stable-coin
-    const chainlinkOracle = await ethers.getContractAt<ChainlinkOracle>(ChainlinkOracleDeployment.abi, ChainlinkOracleDeployment.address);
-    await chainlinkOracle.connect(governor).addUSDStablecoins([MAI_ADDRESS]);
+    const chainlinkRegistry = await ethers.getContractAt<ChainlinkRegistry>(
+      ChainlinkRegistryDeployment.abi,
+      ChainlinkRegistryDeployment.address
+    );
+    await chainlinkRegistry.connect(governor).setFeedProxies([
+      {
+        base: MAI_ADDRESS,
+        quote: '0x0000000000000000000000000000000000000348', // USD
+        feed: '0xd8d483d813547CfB624b8Dc33a00F2fcbCd2D428',
+      },
+    ]);
 
     WETH = await ethers.getContractAt(IERC20_ABI, WETH_ADDRESS);
     MAI = await ethers.getContractAt(IERC20_ABI, MAI_ADDRESS);
@@ -81,6 +91,7 @@ describe('Swap through DEX for MAI pair', () => {
       cindy.address,
       []
     );
+
     initialPerformedSwaps = await performedSwaps();
     initialHubWETHBalance = await WETH.balanceOf(DCAHub.address);
     const {
