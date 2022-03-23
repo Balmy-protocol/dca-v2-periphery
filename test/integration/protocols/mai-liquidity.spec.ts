@@ -14,6 +14,7 @@ import { BigNumber, utils } from 'ethers';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers';
 import { SwapInterval } from '@test-utils/interval-utils';
 import zrx from '@test-utils/zrx';
+import { Denominations } from '@test-utils/chainlink';
 
 const WETH_ADDRESS = '0x7ceb23fd6bc0add59e62ac25578270cff1b9f619';
 const MAI_ADDRESS = '0xa3fa99a148fa48d14ed51d610c367c61876997f1';
@@ -61,7 +62,7 @@ describe('Swap through DEX for MAI pair', () => {
     // Allow one minute interval
     await DCAHub.connect(governor).addSwapIntervalsToAllowedList([SwapInterval.ONE_MINUTE.seconds]);
 
-    // Add MAI as a stable-coin
+    // Add MAI feed
     const chainlinkRegistry = await ethers.getContractAt<ChainlinkRegistry>(
       ChainlinkRegistryDeployment.abi,
       ChainlinkRegistryDeployment.address
@@ -69,7 +70,7 @@ describe('Swap through DEX for MAI pair', () => {
     await chainlinkRegistry.connect(governor).setFeedProxies([
       {
         base: MAI_ADDRESS,
-        quote: '0x0000000000000000000000000000000000000348', // USD
+        quote: Denominations.USD,
         feed: '0xd8d483d813547CfB624b8Dc33a00F2fcbCd2D428',
       },
     ]);
