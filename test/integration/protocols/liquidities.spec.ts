@@ -7,8 +7,6 @@ import evm, { snapshot } from '@test-utils/evm';
 import { DCAHubCompanion, IERC20 } from '@typechained';
 import { ChainlinkOracle, DCAHub } from '@mean-finance/dca-v2-core/typechained';
 import { ChainlinkRegistry } from '@mean-finance/chainlink-registry/typechained';
-import ChainlinkRegistryDeployment from '@mean-finance/chainlink-registry/deployments/polygon/FeedRegistry.json';
-import ChainlinkOracleDeployment from '@mean-finance/dca-v2-core/deployments/polygon/ChainlinkOracle.json';
 import { abi as DCA_HUB_ABI } from '@mean-finance/dca-v2-core/artifacts/contracts/DCAHub/DCAHub.sol/DCAHub.json';
 import { abi as IERC20_ABI } from '@openzeppelin/contracts/build/contracts/IERC20.json';
 import { BigNumber, utils } from 'ethers';
@@ -17,10 +15,14 @@ import { SwapInterval } from '@test-utils/interval-utils';
 import zrx from '@test-utils/zrx';
 import { Denominations } from '@test-utils/chainlink';
 
-const WETH_ADDRESS = '0x7ceb23fd6bc0add59e62ac25578270cff1b9f619';
-const WETH_WHALE_ADDRESS = '0xdc9232e2df177d7a12fdff6ecbab114e2231198d';
+const WETH_ADDRESS_BY_NETWORK: { [network: string]: string } = {
+  polygon: '0x7ceb23fd6bc0add59e62ac25578270cff1b9f619',
+};
+const WETH_WHALE_ADDRESS_BY_NETWORK: { [network: string]: string } = {
+  polygon: '0xdc9232e2df177d7a12fdff6ecbab114e2231198d',
+};
 
-describe.skip('Jarvis liquidity', () => {
+describe.only('Liquidities tests', () => {
   // Setup params
   let WETH: IERC20;
   let governor: JsonRpcSigner;
@@ -37,106 +39,105 @@ describe.skip('Jarvis liquidity', () => {
   const AMOUNT_OF_SWAPS = 10;
   const depositAmount = RATE.mul(AMOUNT_OF_SWAPS);
 
-  before(async () => {
+  context('on Polygon', () => {
+    before(async () => {
+      snapshotId = await liquidityTestSetup({ network: 'polygon' });
+    });
+    describe('Jarvis', () => {
+      testJarvisLiquidity({
+        ticker: 'jEUR',
+        tokenAddress: '0x4e3decbb3645551b8a19f0ea1678079fcb33fb4c',
+        denomination: Denominations.EUR,
+        chainlinkFeed: '0x73366Fe0AA0Ded304479862808e02506FE556a98',
+      });
+
+      testJarvisLiquidity({
+        ticker: 'jCHF',
+        tokenAddress: '0xbd1463f02f61676d53fd183c2b19282bff93d099',
+        denomination: Denominations.CHF,
+        chainlinkFeed: '0xc76f762CedF0F78a439727861628E0fdfE1e70c2',
+      });
+
+      testJarvisLiquidity({
+        ticker: 'jGBP',
+        tokenAddress: '0x767058f11800fba6a682e73a6e79ec5eb74fac8c',
+        denomination: Denominations.GBP,
+        chainlinkFeed: '0x099a2540848573e94fb1Ca0Fa420b00acbBc845a',
+      });
+    });
+    describe.only('QiDAO', () => {
+      testTokenLiquidity({
+        ticker: 'MAI',
+        tokenAddress: '0xa3fa99a148fa48d14ed51d610c367c61876997f1',
+        network: 'polygon',
+        oracleSetup: () =>
+          chainlinkRegistry.connect(governor).setFeedProxies([
+            {
+              base: '0xa3fa99a148fa48d14ed51d610c367c61876997f1',
+              quote: Denominations.USD,
+              feed: '0xd8d483d813547CfB624b8Dc33a00F2fcbCd2D428',
+            },
+          ]),
+      });
+    });
+  });
+
+  async function liquidityTestSetup({ network, swapFee }: { network: string; swapFee?: number }): Promise<string> {
+    process.env.HARDHAT_DEPLOY_FORK = network;
     await evm.reset({
-      network: 'polygon',
+      network: network,
     });
     [cindy, recipient] = await ethers.getSigners();
 
-    await deployments.fixture('DCAHubCompanion', { keepExistingDeployments: false });
+    await deployments.run(['DCAHubCompanion'], { resetMemory: false, deletePreviousDeployments: false, writeDeploymentsToFiles: false });
     DCAHub = await ethers.getContract('DCAHub');
     DCAHubCompanion = await ethers.getContract('DCAHubCompanion');
 
     const namedAccounts = await getNamedAccounts();
     const governorAddress = namedAccounts.governor;
     governor = await wallet.impersonate(governorAddress);
-    const timelock = await wallet.impersonate('0xE0F0eeA2bdaFCB913A2b2b7938C0Fce1A39f5754');
-    await ethers.provider.send('hardhat_setBalance', [governorAddress, '0xffffffffffffffff']);
-    await ethers.provider.send('hardhat_setBalance', [timelock._address, '0xffffffffffffffff']);
+    await wallet.setBalance({ account: governorAddress, balance: constants.MAX_UINT_256 });
+    const timelockContract = await ethers.getContract('Timelock');
+    const timelock = await wallet.impersonate(timelockContract.address);
+    await wallet.setBalance({ account: timelock._address, balance: constants.MAX_UINT_256 });
 
     // Allow one minute interval
     await DCAHub.connect(governor).addSwapIntervalsToAllowedList([SwapInterval.ONE_MINUTE.seconds]);
-
-    await DCAHub.connect(timelock).setSwapFee(50000); // 5%
+    if (swapFee) await DCAHub.connect(timelock).setSwapFee(swapFee);
 
     // Init chainlink registry
-    chainlinkRegistry = await ethers.getContractAt<ChainlinkRegistry>(ChainlinkRegistryDeployment.abi, ChainlinkRegistryDeployment.address);
+    chainlinkRegistry = await ethers.getContract<ChainlinkRegistry>('FeedRegistry');
 
     // Init chainlink oracle
-    chainlinkOracle = await ethers.getContractAt<ChainlinkOracle>(ChainlinkOracleDeployment.abi, ChainlinkOracleDeployment.address);
+    chainlinkOracle = await ethers.getContract<ChainlinkOracle>('ChainlinkOracle');
 
-    WETH = await ethers.getContractAt(IERC20_ABI, WETH_ADDRESS);
-    const wethWhale = await wallet.impersonate(WETH_WHALE_ADDRESS);
-    await ethers.provider.send('hardhat_setBalance', [WETH_WHALE_ADDRESS, depositAmount.mul(10).toHexString().replace('0x0', '0x')]);
+    WETH = await ethers.getContractAt(IERC20_ABI, WETH_ADDRESS_BY_NETWORK[network]);
+    const wethWhale = await wallet.impersonate(WETH_WHALE_ADDRESS_BY_NETWORK[network]);
+    await wallet.setBalance({ account: WETH_WHALE_ADDRESS_BY_NETWORK[network], balance: constants.MAX_UINT_256 });
 
     await WETH.connect(wethWhale).transfer(cindy.address, depositAmount);
     await WETH.connect(cindy).approve(DCAHub.address, depositAmount);
 
-    snapshotId = await snapshot.take();
-  });
+    return await snapshot.take();
+  }
 
-  testJarvisTokenLiquidity({
-    jToken: 'jEUR',
-    jTokenAddress: '0x4e3decbb3645551b8a19f0ea1678079fcb33fb4c',
-    denomination: Denominations.EUR,
-    chainlinkFeed: '0x73366Fe0AA0Ded304479862808e02506FE556a98',
-  });
-
-  testJarvisTokenLiquidity({
-    jToken: 'jCHF',
-    jTokenAddress: '0xbd1463f02f61676d53fd183c2b19282bff93d099',
-    denomination: Denominations.CHF,
-    chainlinkFeed: '0xc76f762CedF0F78a439727861628E0fdfE1e70c2',
-  });
-
-  testJarvisTokenLiquidity({
-    jToken: 'jGBP',
-    jTokenAddress: '0x767058f11800fba6a682e73a6e79ec5eb74fac8c',
-    denomination: Denominations.GBP,
-    chainlinkFeed: '0x099a2540848573e94fb1Ca0Fa420b00acbBc845a',
-  });
-
-  // testJarvisTokenLiquidity({
-  //   jToken: 'jCAD',
-  //   jTokenAddress: '0x8ca194a3b22077359b5732de53373d4afc11dee3',
-  //   denomination: Denominations.CAD,
-  //   chainlinkFeed: '0xACA44ABb8B04D07D883202F99FA5E3c53ed57Fb5',
-  // });
-
-  // testJarvisTokenLiquidity({
-  //   jToken: 'jSGD',
-  //   jTokenAddress: '0xa926db7a4cc0cb1736d5ac60495ca8eb7214b503',
-  //   denomination: Denominations.SGD,
-  //   chainlinkFeed: '0x8CE3cAc0E6635ce04783709ca3CC4F5fc5304299',
-  // });
-
-  // testJarvisTokenLiquidity({
-  //   jToken: 'jJPY',
-  //   jTokenAddress: '0x8343091f2499fd4b6174a46d067a920a3b851ff9',
-  //   denomination: Denominations.JPY,
-  //   chainlinkFeed: '0xD647a6fC9BC6402301583C91decC5989d8Bc382D',
-  // });
-
-  async function testJarvisTokenLiquidity({
-    jToken,
-    jTokenAddress,
+  async function testJarvisLiquidity({
+    ticker,
+    tokenAddress,
     denomination,
     chainlinkFeed,
   }: {
-    jToken: string;
-    jTokenAddress: string;
+    ticker: string;
+    tokenAddress: string;
     denomination: Denominations;
     chainlinkFeed: string;
   }): Promise<void> {
-    let initialHubWETHBalance: BigNumber;
-    let reward: BigNumber;
-    let toProvide: BigNumber;
-    let JTOKEN: IERC20;
-    describe(`WETH / ${jToken}`, () => {
-      given(async () => {
-        await snapshot.revert(snapshotId);
-        JTOKEN = await ethers.getContractAt(IERC20_ABI, jTokenAddress);
-        // Add jToken/USD feed
+    await testTokenLiquidity({
+      ticker,
+      tokenAddress,
+      network: 'polygon',
+      oracleSetup: async () => {
+        // Add token/USD feed
         await chainlinkRegistry.connect(governor).setFeedProxies([
           {
             base: denomination,
@@ -144,31 +145,56 @@ describe.skip('Jarvis liquidity', () => {
             feed: chainlinkFeed,
           },
         ]);
-        // Add jToken = FIAT_CURRENCY mapping
-        await chainlinkOracle.connect(governor).addMappings([jTokenAddress], [denomination]);
+        // Add token = FIAT_CURRENCY mapping
+        await chainlinkOracle.connect(governor).addMappings([tokenAddress], [denomination]);
+      },
+    });
+  }
+
+  async function testTokenLiquidity({
+    ticker,
+    tokenAddress,
+    oracleSetup,
+    network,
+    slippage,
+  }: {
+    ticker: string;
+    tokenAddress: string;
+    oracleSetup: () => Promise<any>;
+    network: string;
+    slippage?: number;
+  }): Promise<void> {
+    let initialHubWETHBalance: BigNumber;
+    let reward: BigNumber;
+    let toProvide: BigNumber;
+    let token: IERC20;
+    describe(`WETH/${ticker}`, () => {
+      const WETH_ADDRESS = WETH_ADDRESS_BY_NETWORK[network];
+      given(async () => {
+        await snapshot.revert(snapshotId);
+        token = await ethers.getContractAt(IERC20_ABI, tokenAddress);
+        await oracleSetup();
         await DCAHub.connect(cindy)['deposit(address,address,uint256,uint32,uint32,address,(address,uint8[])[])'](
           WETH.address,
-          jTokenAddress,
+          tokenAddress,
           depositAmount,
           AMOUNT_OF_SWAPS,
           SwapInterval.ONE_MINUTE.seconds,
           cindy.address,
           []
         );
-        const sortedTokens = jTokenAddress < WETH_ADDRESS ? [jTokenAddress, WETH_ADDRESS] : [WETH_ADDRESS, jTokenAddress];
-        const wethIndex = jTokenAddress < WETH_ADDRESS ? 1 : 0;
-        initialPerformedSwaps = await performedSwaps(jTokenAddress);
+        const sortedTokens = tokenAddress < WETH_ADDRESS ? [tokenAddress, WETH_ADDRESS] : [WETH_ADDRESS, tokenAddress];
+        const wethIndex = tokenAddress < WETH_ADDRESS ? 1 : 0;
+        initialPerformedSwaps = await performedSwaps({ tokenAddress, wethAddress: WETH_ADDRESS });
         initialHubWETHBalance = await WETH.balanceOf(DCAHub.address);
         const { tokens } = await DCAHubCompanion.getNextSwapInfo([{ tokenA: sortedTokens[0], tokenB: sortedTokens[1] }]);
         const weth = tokens[wethIndex];
-        console.log('weth reward', utils.formatEther(weth.reward));
-        console.log('j to provide', utils.formatEther(tokens[jTokenAddress < WETH_ADDRESS ? 0 : 1].toProvide));
         const dexQuote = await zrx.quote({
           chainId: 137,
           sellToken: WETH_ADDRESS,
-          buyToken: jTokenAddress,
+          buyToken: tokenAddress,
           sellAmount: weth.reward,
-          slippagePercentage: 0.04, // 4%
+          slippagePercentage: slippage ?? 0.005, // 0.5% as default
           takerAddress: DCAHubCompanion.address,
           skipValidation: true,
         });
@@ -186,19 +212,19 @@ describe.skip('Jarvis liquidity', () => {
         ({ reward, toProvide } = await getTransfers(swapTx));
       });
       then('swap is executed', async () => {
-        expect(await performedSwaps(jTokenAddress)).to.equal(initialPerformedSwaps + 1);
+        expect(await performedSwaps({ tokenAddress, wethAddress: WETH_ADDRESS })).to.equal(initialPerformedSwaps + 1);
       });
       then('hub balance is correct', async () => {
         const hubWETHBalance = await WETH.balanceOf(DCAHub.address);
-        const hubJEURBalance = await JTOKEN.balanceOf(DCAHub.address);
+        const hubTokenBalance = await token.balanceOf(DCAHub.address);
         expect(hubWETHBalance).to.equal(initialHubWETHBalance.sub(reward));
-        expect(hubJEURBalance).to.equal(toProvide);
+        expect(hubTokenBalance).to.equal(toProvide);
       });
     });
   }
 
-  async function performedSwaps(jTokenAddress: string): Promise<number> {
-    const { performedSwaps } = await DCAHub.swapData(jTokenAddress, WETH_ADDRESS, SwapInterval.ONE_MINUTE.mask);
+  async function performedSwaps({ tokenAddress, wethAddress }: { tokenAddress: string; wethAddress: string }): Promise<number> {
+    const { performedSwaps } = await DCAHub.swapData(tokenAddress, wethAddress, SwapInterval.ONE_MINUTE.mask);
     return performedSwaps;
   }
 

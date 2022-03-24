@@ -31,6 +31,7 @@ const deployFunction: DeployFunction = async function (hre: HardhatRuntimeEnviro
   }
 
   const hub = await hre.deployments.get('DCAHub');
+  console.log('dca hub', hub.address);
   await hre.deployments.deploy('DCAHubCompanion', {
     contract: 'contracts/DCAHubCompanion/DCAHubCompanion.sol:DCAHubCompanion',
     from: deployer,
