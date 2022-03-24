@@ -37,7 +37,7 @@ describe('Swap for caller', () => {
     });
     [cindy, swapper, recipient] = await ethers.getSigners();
 
-    await deployments.fixture('DCAHubCompanion', { keepExistingDeployments: false });
+    await deployments.run(['DCAHubCompanion'], { resetMemory: false, deletePreviousDeployments: false, writeDeploymentsToFiles: false });
     DCAHub = await ethers.getContract('DCAHub');
     DCAHubCompanion = await ethers.getContract('DCAHubCompanion');
 

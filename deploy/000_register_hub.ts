@@ -4,8 +4,9 @@ import { DeployFunction } from 'hardhat-deploy/types';
 import { networkBeingForked } from '@test-utils/evm';
 
 const deployFunction: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
-  let hub: string;
-
+  // const hubDeployment = await hre.deployments.getOrNull('DCAHub');
+  // if (!hubDeployment) {
+  // }
   // const network = hre.network.name !== 'hardhat' ? hre.network.name : networkBeingForked ?? hre.network.name;
   // switch (network) {
   //   case 'hardhat':
@@ -25,7 +26,6 @@ const deployFunction: DeployFunction = async function (hre: HardhatRuntimeEnviro
   //   default:
   //     throw new Error(`Unsupported chain '${hre.network.name}`);
   // }
-
   // await hre.deployments.save('DCAHub', { abi: DCA_HUB_ABI, address: hub });
 };
 deployFunction.tags = ['DCAHub'];

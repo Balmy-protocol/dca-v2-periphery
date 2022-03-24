@@ -1,13 +1,12 @@
 import { expect } from 'chai';
 import { deployments, ethers, getNamedAccounts } from 'hardhat';
 import { TransactionResponse } from '@ethersproject/providers';
-import { behaviours, constants, wallet } from '@test-utils';
+import { constants, wallet } from '@test-utils';
 import { given, then, when } from '@test-utils/bdd';
 import evm, { snapshot } from '@test-utils/evm';
 import { DCAHubCompanion, IERC20 } from '@typechained';
 import { DCAHub, DCAPermissionsManager } from '@mean-finance/dca-v2-core/typechained';
 import { abi as DCA_HUB_ABI } from '@mean-finance/dca-v2-core/artifacts/contracts/DCAHub/DCAHub.sol/DCAHub.json';
-import { abi as DCA_PERMISSION_MANAGER_ABI } from '@mean-finance/dca-v2-core/artifacts/contracts/DCAPermissionsManager/DCAPermissionsManager.sol/DCAPermissionsManager.json';
 import { abi as IERC20_ABI } from '@openzeppelin/contracts/build/contracts/IERC20.json';
 import { BigNumber, utils } from 'ethers';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers';
@@ -38,10 +37,10 @@ describe('WToken', () => {
     });
     [cindy, swapper, recipient] = await ethers.getSigners();
 
-    await deployments.fixture('DCAHubCompanion', { keepExistingDeployments: false });
+    await deployments.run(['DCAHubCompanion'], { resetMemory: false, deletePreviousDeployments: false, writeDeploymentsToFiles: false });
     DCAHub = await ethers.getContract('DCAHub');
     DCAHubCompanion = await ethers.getContract('DCAHubCompanion');
-    DCAPermissionManager = await ethers.getContractAt(DCA_PERMISSION_MANAGER_ABI, await DCAHub.permissionManager());
+    DCAPermissionManager = await ethers.getContract('PermissionsManager');
 
     const namedAccounts = await getNamedAccounts();
     const governorAddress = namedAccounts.governor;

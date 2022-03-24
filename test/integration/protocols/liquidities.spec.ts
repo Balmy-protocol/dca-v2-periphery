@@ -22,7 +22,7 @@ const WETH_WHALE_ADDRESS_BY_NETWORK: { [network: string]: string } = {
   polygon: '0xdc9232e2df177d7a12fdff6ecbab114e2231198d',
 };
 
-describe.only('Liquidities tests', () => {
+describe('Liquidities tests', () => {
   // Setup params
   let WETH: IERC20;
   let governor: JsonRpcSigner;
@@ -83,7 +83,6 @@ describe.only('Liquidities tests', () => {
   });
 
   async function liquidityTestSetup({ network, swapFee }: { network: string; swapFee?: number }): Promise<string> {
-    process.env.HARDHAT_DEPLOY_FORK = network;
     await evm.reset({
       network: network,
     });
