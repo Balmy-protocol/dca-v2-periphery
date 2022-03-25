@@ -36,7 +36,7 @@ describe('Single pair swap with DEX', () => {
     });
     [cindy, recipient] = await ethers.getSigners();
 
-    await deployments.fixture('DCAHubCompanion', { keepExistingDeployments: false });
+    await deployments.run(['DCAHubCompanion'], { resetMemory: false, deletePreviousDeployments: false, writeDeploymentsToFiles: false });
     DCAHub = await ethers.getContract('DCAHub');
     DCAHubCompanion = await ethers.getContract('DCAHubCompanion');
 

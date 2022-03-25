@@ -1,4 +1,4 @@
-import { Wallet } from 'ethers';
+import { BigNumber, Wallet } from 'ethers';
 import { getAddress } from 'ethers/lib/utils';
 import { ethers, network } from 'hardhat';
 import { randomHex } from 'web3-utils';
@@ -17,11 +17,16 @@ const generateRandom = async () => {
   return wallet;
 };
 
+const setBalance = async ({ account, balance }: { account: string; balance: BigNumber }) => {
+  await ethers.provider.send('hardhat_setBalance', [account, balance.toHexString().replace('0x0', '0x')]);
+};
+
 // Note: we are hardcoding the random address to make tests deterministic. We couldn't generate a random address by using a seed
 export const generateRandomAddress = () => '0x37601c8d013fA4DFA82e9C0d416b70143f4cbFcF';
 
 export default {
   impersonate,
+  setBalance,
   generateRandom,
   generateRandomAddress,
 };

@@ -38,7 +38,7 @@ contract('BetaMigrator', () => {
     });
     [positionOwner, swapper] = await ethers.getSigners();
 
-    await deployments.fixture('BetaMigrator', { keepExistingDeployments: false });
+    await deployments.run(['BetaMigrator'], { resetMemory: false, deletePreviousDeployments: false, writeDeploymentsToFiles: false });
     DCAHub = await ethers.getContract('DCAHub');
     migrator = await ethers.getContract('BetaMigrator');
     betaDCAHub = await ethers.getContractAt(DCA_HUB_ABI, await migrator.betaHub());
