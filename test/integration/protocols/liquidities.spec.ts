@@ -87,7 +87,6 @@ describe('Liquidities tests', () => {
       network: network,
     });
     [cindy, recipient] = await ethers.getSigners();
-
     await deployments.run(['DCAHubCompanion'], { resetMemory: false, deletePreviousDeployments: false, writeDeploymentsToFiles: false });
     DCAHub = await ethers.getContract('DCAHub');
     DCAHubCompanion = await ethers.getContract('DCAHubCompanion');
@@ -164,6 +163,7 @@ describe('Liquidities tests', () => {
     slippage?: number;
   }): Promise<void> {
     let initialHubWETHBalance: BigNumber;
+    let initialHubTokenBalance: BigNumber;
     let reward: BigNumber;
     let toProvide: BigNumber;
     let token: IERC20;
@@ -186,6 +186,7 @@ describe('Liquidities tests', () => {
         const wethIndex = tokenAddress < WETH_ADDRESS ? 1 : 0;
         initialPerformedSwaps = await performedSwaps({ tokenAddress, wethAddress: WETH_ADDRESS });
         initialHubWETHBalance = await WETH.balanceOf(DCAHub.address);
+        initialHubTokenBalance = await token.balanceOf(DCAHub.address);
         const { tokens } = await DCAHubCompanion.getNextSwapInfo([{ tokenA: sortedTokens[0], tokenB: sortedTokens[1] }]);
         const weth = tokens[wethIndex];
         const dexQuote = await zrx.quote({
@@ -213,12 +214,12 @@ describe('Liquidities tests', () => {
       then('swap is executed', async () => {
         expect(await performedSwaps({ tokenAddress, wethAddress: WETH_ADDRESS })).to.equal(initialPerformedSwaps + 1);
       });
-      // then('hub balance is correct', async () => {
-      //   const hubWETHBalance = await WETH.balanceOf(DCAHub.address);
-      //   const hubTokenBalance = await token.balanceOf(DCAHub.address);
-      //   expect(hubWETHBalance, 'Hub WETH balance is incorrect').to.equal(initialHubWETHBalance.sub(reward));
-      //   expect(hubTokenBalance, `Hub ${ticker} balance is incorrect`).to.equal(toProvide);
-      // });
+      then('hub balance is correct', async () => {
+        const hubWETHBalance = await WETH.balanceOf(DCAHub.address);
+        const hubTokenBalance = await token.balanceOf(DCAHub.address);
+        expect(hubWETHBalance, 'Hub WETH balance is incorrect').to.equal(initialHubWETHBalance.sub(reward));
+        expect(hubTokenBalance, `Hub ${ticker} balance is incorrect`).to.equal(initialHubTokenBalance.add(toProvide));
+      });
     });
   }
 
