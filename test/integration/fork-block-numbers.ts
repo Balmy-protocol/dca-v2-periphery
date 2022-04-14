@@ -3,6 +3,7 @@ const forkBlockNumber = {
   wtoken: 3856700,
   multicall: 3856700,
   'beta-migrator': 3856700,
+  'keep3r-job': 14585044,
 };
 
 export default forkBlockNumber;
