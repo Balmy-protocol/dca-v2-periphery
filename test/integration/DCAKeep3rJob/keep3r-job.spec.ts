@@ -7,21 +7,22 @@ import { expect } from 'chai';
 import { DCAHubCompanion, DCAKeep3rJob, IDCAHub, IERC20 } from '@typechained';
 import { SwapInterval } from '@test-utils/interval-utils';
 import evm, { snapshot } from '@test-utils/evm';
-import zrx from '@test-utils/zrx';
 import { contract, given, then, when } from '@test-utils/bdd';
 import { wallet, constants } from '@test-utils';
 import KEEP3R_ABI from '../abis/Keep3r.json';
 import UNI_V3_MANAGER_ABI from '../abis/UniV3PairManager.json';
 import moment from 'moment';
+import forkBlockNumber from '@integration/fork-block-numbers';
+import { OracleAggregator } from '@mean-finance/dca-v2-core/typechained';
 
 const WETH_ADDRESS = '0xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2';
 const USDC_ADDRESS = '0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48';
 const KP3R_ADDRESS = '0x1ceb5cb57c4d4e2b2433641b95dd330a33185a44';
-const UNISWAP_V3_PAIR_MANAGER = '0xfbba1784163212e7b639ed9e434e3aed48036b34';
+const UNISWAP_V3_PAIR_MANAGER = '0x3f6740b5898c5D3650ec6eAce9a649Ac791e44D7';
 const WETH_WHALE_ADDRESS = '0xf04a5cc80b1e94c69b48f5ee68a08cd2f09a7c3e';
 const KP3R_WHALE_ADDRESS = '0x2fc52c61fb0c03489649311989ce2689d93dc1a2';
 
-contract.skip('DCAKeep3rJob', () => {
+contract('DCAKeep3rJob', () => {
   let WETH: IERC20, K3PR: IERC20;
   let DCAKeep3rJob: DCAKeep3rJob;
   let DCAHubCompanion: DCAHubCompanion;
@@ -39,14 +40,18 @@ contract.skip('DCAKeep3rJob', () => {
   before(async () => {
     await evm.reset({
       network: 'mainnet',
+      blockNumber: forkBlockNumber['keep3r-job'],
     });
 
-    await deployments.fixture(['DCAHubCompanion', 'DCAKeep3rJob'], { keepExistingDeployments: false });
+    await deployments.run(['DCAHubCompanion', 'DCAKeep3rJob'], {
+      resetMemory: false,
+      deletePreviousDeployments: false,
+      writeDeploymentsToFiles: false,
+    });
 
     DCAHub = await ethers.getContract('DCAHub');
     DCAHubCompanion = await ethers.getContract('DCAHubCompanion');
     DCAKeep3rJob = await ethers.getContract('DCAKeep3rJob');
-    keep3rProtocol = await ethers.getContractAt(KEEP3R_ABI, await DCAKeep3rJob.keep3r());
     uniswapv3PairManager = await ethers.getContractAt(UNI_V3_MANAGER_ABI, UNISWAP_V3_PAIR_MANAGER);
     [cindy, signer, keeper, jobOwner] = await ethers.getSigners();
 
@@ -54,17 +59,28 @@ contract.skip('DCAKeep3rJob', () => {
     const governorAddress = namedAccounts.governor;
     governor = await wallet.impersonate(governorAddress);
     await ethers.provider.send('hardhat_setBalance', [governorAddress, '0xffffffffffffffff']);
+    const timelockContract = await ethers.getContract('Timelock');
+    const timelock = await wallet.impersonate(timelockContract.address);
+    await ethers.provider.send('hardhat_setBalance', [timelockContract.address, '0xffffffffffffffff']);
     const wethWhale = await wallet.impersonate(WETH_WHALE_ADDRESS);
     await ethers.provider.send('hardhat_setBalance', [WETH_WHALE_ADDRESS, '0xffffffffffffffff']);
     const k3prWhale = await wallet.impersonate(KP3R_WHALE_ADDRESS);
     await ethers.provider.send('hardhat_setBalance', [KP3R_WHALE_ADDRESS, '0xffffffffffffffff']);
+
+    // Make platform fee bigger so we don't fail
+    await DCAHub.connect(timelock).setSwapFee(20000); // 2%
 
     // Allow one minute interval
     await DCAHub.connect(governor).addSwapIntervalsToAllowedList([SwapInterval.ONE_MINUTE.seconds]);
     // Allow signer to sign work
     await DCAKeep3rJob.connect(governor).setIfAddressCanSign(signer.address, true);
 
+    // Set Uniswap oracle so we don't have issues while moving timestamp (Chainlink has maxDelay = 1 day)
+    const oracleAggregator = await ethers.getContract<OracleAggregator>('OracleAggregator');
+    await oracleAggregator.connect(governor).setOracleForPair(WETH_ADDRESS, USDC_ADDRESS, 2);
+
     // Add job and register keeper
+    keep3rProtocol = await ethers.getContractAt(KEEP3R_ABI, await DCAKeep3rJob.keep3r());
     await keep3rProtocol.addJob(DCAKeep3rJob.address);
     await keep3rProtocol.connect(keeper).bond(KP3R_ADDRESS, 0);
     await evm.advanceTimeAndBlock(moment.duration(3, 'days').as('seconds'));
@@ -156,26 +172,19 @@ contract.skip('DCAKeep3rJob', () => {
   }
 
   async function generateCallAndSignature() {
-    const {
-      tokens: [, weth],
-    } = await DCAHubCompanion.getNextSwapInfo([{ tokenA: WETH_ADDRESS, tokenB: USDC_ADDRESS }]);
-    const dexQuote = await zrx.quote({
-      chainId: 1,
-      sellToken: WETH_ADDRESS,
-      buyToken: USDC_ADDRESS,
-      sellAmount: weth.reward,
-      slippagePercentage: 0.001,
-      takerAddress: DCAHubCompanion.address,
-      skipValidation: true,
-    });
-    await DCAHubCompanion.connect(governor).defineDexSupport(dexQuote.to, true);
+    // Static 0x QUOTE cached. Avoids calling 0x API.
+    const staticZrxQuote = {
+      to: '0xdef1c0ded9bec7f1a1670819833240f027b25eff',
+      data: '0xd9627aa40000000000000000000000000000000000000000000000000000000000000080000000000000000000000000000000000000000000000000016345785d8a00000000000000000000000000000000000000000000000000000000000011c453c200000000000000000000000000000000000000000000000000000000000000010000000000000000000000000000000000000000000000000000000000000002000000000000000000000000c02aaa39b223fe8d0a0e5c4f27ead9083c756cc2000000000000000000000000a0b86991c6218b36c1d19d4a2e9eb0ce3606eb48869584cd00000000000000000000000010000000000000000000000000000000000000110000000000000000000000000000000000000000000000ca215e32d16258615e',
+    };
+    await DCAHubCompanion.connect(governor).defineDexSupport(staticZrxQuote.to, true);
     const tokensInSwap = [USDC_ADDRESS, WETH_ADDRESS];
     const indexesInSwap = [{ indexTokenA: 0, indexTokenB: 1 }];
     const { data } = await DCAHubCompanion.populateTransaction.swapWithDex(
-      dexQuote.to,
+      staticZrxQuote.to,
       tokensInSwap,
       indexesInSwap,
-      [dexQuote.data],
+      [staticZrxQuote.data],
       false,
       constants.NOT_ZERO_ADDRESS,
       constants.MAX_UINT_256
@@ -194,6 +203,7 @@ contract.skip('DCAKeep3rJob', () => {
     const signature = await signer.signMessage(ethers.utils.arrayify(messageHash));
     return { bytes, signature };
   }
+
   function encode(data: string) {
     const coder = new ethers.utils.AbiCoder();
     return coder.encode(['tuple(bytes, uint256, uint256, uint256)'], [[data, 0, chainId, constants.MAX_UINT_256]]);
