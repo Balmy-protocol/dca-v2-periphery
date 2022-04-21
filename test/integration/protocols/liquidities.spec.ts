@@ -201,6 +201,7 @@ describe('Liquidities tests', () => {
         await DCAHubCompanion.connect(governor).defineDexSupport(dexQuote.to, true);
         const swapTx = await DCAHubCompanion.swapWithDex(
           dexQuote.to,
+          dexQuote.allowanceTarget,
           [sortedTokens[0], sortedTokens[1]],
           [{ indexTokenA: 0, indexTokenB: 1 }],
           [dexQuote.data],

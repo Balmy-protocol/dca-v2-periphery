@@ -126,6 +126,7 @@ describe('Single pair swap with DEX', () => {
         const indexesInSwap = [{ indexTokenA: 0, indexTokenB: 1 }];
         const swapTx = await DCAHubCompanion[dexFunction](
           dexQuote.to,
+          dexQuote.allowanceTarget,
           tokensInSwap,
           indexesInSwap,
           [dexQuote.data],

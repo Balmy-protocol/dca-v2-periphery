@@ -135,6 +135,7 @@ describe('Multi pair swap with DEX', () => {
         ];
         const swapTx = await DCAHubCompanion.swapWithDex(
           dexAddress,
+          dexQuotes[0].allowanceTarget,
           tokensInSwap,
           indexesInSwap,
           dexQuotes.map(({ data }) => data),
