@@ -19,7 +19,7 @@ const USDC_ADDRESS = '0x7f5c764cbc14f9669b88837ca1490cca17c31607';
 const WETH_WHALE_ADDRESS = '0xaa30d6bba6285d0585722e2440ff89e23ef68864';
 const USDC_WHALE_ADDRESS = '0xad7b4c162707e0b2b5f6fddbd3f8538a5fba0d60';
 
-describe('Multicall', () => {
+describe.only('Multicall', () => {
   let WETH: IERC20, USDC: IERC20;
   let positionOwner: SignerWithAddress, swapper: SignerWithAddress, recipient: SignerWithAddress;
   let DCAHubCompanion: DCAHubCompanion;
