@@ -38,7 +38,7 @@ describe('Multi pair swap with DEX', () => {
     });
     [cindy, recipient] = await ethers.getSigners();
 
-    await deployments.run(['DCAHubCompanion'], {
+    await deployments.run(['DCAHub', 'DCAHubCompanion'], {
       resetMemory: false,
       deletePreviousDeployments: true,
       writeDeploymentsToFiles: false,

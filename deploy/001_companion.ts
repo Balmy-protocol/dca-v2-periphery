@@ -6,7 +6,6 @@ const deployFunction: DeployFunction = async function (hre: HardhatRuntimeEnviro
   const { deployer, governor } = await hre.getNamedAccounts();
 
   let wProtocolToken: string;
-
   const network = hre.network.name !== 'hardhat' ? hre.network.name : networkBeingForked ?? hre.network.name;
   switch (network) {
     case 'hardhat':
@@ -29,7 +28,6 @@ const deployFunction: DeployFunction = async function (hre: HardhatRuntimeEnviro
     default:
       throw new Error(`Unsupported chain '${hre.network.name}`);
   }
-
   const hub = await hre.deployments.get('DCAHub');
   await hre.deployments.deploy('DCAHubCompanion', {
     contract: 'contracts/DCAHubCompanion/DCAHubCompanion.sol:DCAHubCompanion',
@@ -38,6 +36,6 @@ const deployFunction: DeployFunction = async function (hre: HardhatRuntimeEnviro
     log: true,
   });
 };
-deployFunction.dependencies = ['DCACore'];
+
 deployFunction.tags = ['DCAHubCompanion'];
 export default deployFunction;
