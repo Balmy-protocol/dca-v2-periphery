@@ -13,9 +13,9 @@ import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers';
 import { SwapInterval } from '@test-utils/interval-utils';
 import zrx from '@test-utils/zrx';
 
-const WETH_ADDRESS = '0x7ceb23fd6bc0add59e62ac25578270cff1b9f619';
-const USDC_ADDRESS = '0x2791bca1f2de4661ed88a30c99a7a9449aa84174';
-const WETH_WHALE_ADDRESS = '0xdc9232e2df177d7a12fdff6ecbab114e2231198d';
+const WETH_ADDRESS = '0xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2';
+const USDC_ADDRESS = '0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48';
+const WETH_WHALE_ADDRESS = '0xf04a5cc80b1e94c69b48f5ee68a08cd2f09a7c3e';
 
 describe('Single pair swap with DEX', () => {
   let WETH: IERC20;
@@ -32,20 +32,26 @@ describe('Single pair swap with DEX', () => {
 
   before(async () => {
     await evm.reset({
-      network: 'polygon',
+      network: 'mainnet',
+      skipHardhatDeployFork: true,
     });
     [cindy, recipient] = await ethers.getSigners();
 
-    await deployments.run(['DCAHubCompanion'], { resetMemory: false, deletePreviousDeployments: false, writeDeploymentsToFiles: false });
+    await deployments.run(['DCAHubCompanion'], {
+      resetMemory: false,
+      deletePreviousDeployments: true,
+      writeDeploymentsToFiles: false,
+    });
     DCAHub = await ethers.getContract('DCAHub');
     DCAHubCompanion = await ethers.getContract('DCAHubCompanion');
 
     const namedAccounts = await getNamedAccounts();
     const governorAddress = namedAccounts.governor;
     governor = await wallet.impersonate(governorAddress);
-    const timelock = await wallet.impersonate('0xE0F0eeA2bdaFCB913A2b2b7938C0Fce1A39f5754');
     await ethers.provider.send('hardhat_setBalance', [governorAddress, '0xffffffffffffffff']);
-    await ethers.provider.send('hardhat_setBalance', [timelock._address, '0xffffffffffffffff']);
+    const timelockContract = await ethers.getContract('Timelock');
+    const timelock = await wallet.impersonate(timelockContract.address);
+    await ethers.provider.send('hardhat_setBalance', [timelockContract.address, '0xffffffffffffffff']);
 
     // Allow one minute interval
     await DCAHub.connect(governor).addSwapIntervalsToAllowedList([SwapInterval.ONE_MINUTE.seconds]);
@@ -103,16 +109,17 @@ describe('Single pair swap with DEX', () => {
       !sendLeftoverToHub ? 'without ' : ''
     }sending leftover to hub`;
     when(title, () => {
-      let initialHubWETHBalance: BigNumber, initialHubUSDCBalance: BigNumber;
+      let initialHubWETHBalance: BigNumber, initialHubUSDCBalance: BigNumber, initialRecipientUSDCBalance: BigNumber;
       let reward: BigNumber, toProvide: BigNumber, sentToAgg: BigNumber, receivedFromAgg: BigNumber;
       given(async () => {
         initialHubWETHBalance = await WETH.balanceOf(DCAHub.address);
         initialHubUSDCBalance = await USDC.balanceOf(DCAHub.address);
+        initialRecipientUSDCBalance = await USDC.balanceOf(recipient.address);
         const {
           tokens: [, weth],
         } = await DCAHubCompanion.getNextSwapInfo([{ tokenA: WETH_ADDRESS, tokenB: USDC_ADDRESS }]);
         const dexQuote = await zrx.quote({
-          chainId: 137,
+          chainId: 1,
           sellToken: WETH_ADDRESS,
           buyToken: USDC_ADDRESS,
           sellAmount: weth.reward,
@@ -156,12 +163,12 @@ describe('Single pair swap with DEX', () => {
       if (!sendLeftoverToHub) {
         then('all "toProvide" surpluss is sent to leftover recipient', async () => {
           const recipientUSDCBalance = await USDC.balanceOf(recipient.address);
-          expect(recipientUSDCBalance).to.equal(receivedFromAgg.sub(toProvide));
+          expect(recipientUSDCBalance.sub(initialRecipientUSDCBalance)).to.equal(receivedFromAgg.sub(toProvide));
         });
       } else {
         then('leftover recipient has no "toProvide" balance', async () => {
           const recipientUSDCBalance = await USDC.balanceOf(recipient.address);
-          expect(recipientUSDCBalance).to.equal(0);
+          expect(recipientUSDCBalance).to.equal(initialRecipientUSDCBalance);
         });
       }
     });
