@@ -14,10 +14,10 @@ import { SwapInterval } from '@test-utils/interval-utils';
 import forkBlockNumber from '@integration/fork-block-numbers';
 import { fromRpcSig } from 'ethereumjs-util';
 
-const WETH_ADDRESS = '0x4200000000000000000000000000000000000006';
-const USDC_ADDRESS = '0x7f5c764cbc14f9669b88837ca1490cca17c31607';
-const WETH_WHALE_ADDRESS = '0xaa30d6bba6285d0585722e2440ff89e23ef68864';
-const USDC_WHALE_ADDRESS = '0xad7b4c162707e0b2b5f6fddbd3f8538a5fba0d60';
+const WETH_ADDRESS = '0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2';
+const USDC_ADDRESS = '0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48';
+const WETH_WHALE_ADDRESS = '0xf04a5cc80b1e94c69b48f5ee68a08cd2f09a7c3e';
+const USDC_WHALE_ADDRESS = '0xcffad3200574698b78f32232aa9d63eabd290703';
 
 describe('Multicall', () => {
   let WETH: IERC20, USDC: IERC20;
@@ -34,12 +34,17 @@ describe('Multicall', () => {
 
   before(async () => {
     await evm.reset({
-      network: 'optimism',
+      network: 'mainnet',
       blockNumber: forkBlockNumber['multicall'],
+      skipHardhatDeployFork: true,
     });
     [positionOwner, swapper, recipient] = await ethers.getSigners();
 
-    await deployments.run(['DCAHubCompanion'], { resetMemory: false, deletePreviousDeployments: false, writeDeploymentsToFiles: false });
+    await deployments.run(['DCAHub', 'DCAHubCompanion'], {
+      resetMemory: false,
+      deletePreviousDeployments: true,
+      writeDeploymentsToFiles: false,
+    });
     DCAHub = await ethers.getContract('DCAHub');
     DCAHubCompanion = await ethers.getContract('DCAHubCompanion');
     DCAPermissionManager = await ethers.getContract('PermissionsManager');
@@ -400,7 +405,7 @@ describe('Multicall', () => {
 
     await WETH.connect(swapper).approve(DCAHubCompanion.address, constants.MAX_UINT_256);
     await DCAHubCompanion.connect(swapper).swapForCaller(
-      [WETH_ADDRESS, USDC_ADDRESS],
+      [USDC_ADDRESS, WETH_ADDRESS],
       [{ indexTokenA: 0, indexTokenB: 1 }],
       [0, 0],
       [constants.MAX_UINT_256, constants.MAX_UINT_256],
@@ -473,7 +478,7 @@ describe('Multicall', () => {
     return {
       primaryType: 'PermissionPermit',
       types: { PermissionSet, PermissionPermit },
-      domain: { name: 'Mean Finance DCA', version: '1', chainId, verifyingContract: DCAPermissionManager.address },
+      domain: { name: 'Mean Finance - DCA Position', version: '1', chainId, verifyingContract: DCAPermissionManager.address },
       value: { tokenId, permissions, nonce: 0, deadline: constants.MAX_UINT_256 },
     };
   }
