@@ -64,7 +64,6 @@ describe('WToken', () => {
     WETH = await ethers.getContractAt(IERC20_ABI, WETH_ADDRESS);
     USDC = await ethers.getContractAt(IERC20_ABI, USDC_ADDRESS);
 
-    console.log('pre distribute token to users');
     // Send tokens from whales, to our users
     await distributeTokensToUsers();
 

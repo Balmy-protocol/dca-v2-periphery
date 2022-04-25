@@ -120,12 +120,12 @@ const config: HardhatUserConfig = {
   external: {
     contracts: [
       {
-        artifacts: 'node_modules/@mean-finance/dca-v2-core/artifacts',
-        deploy: 'node_modules/@mean-finance/dca-v2-core/deploy',
-      },
-      {
         artifacts: 'node_modules/@mean-finance/chainlink-registry/artifacts',
         deploy: 'node_modules/@mean-finance/chainlink-registry/deploy',
+      },
+      {
+        artifacts: 'node_modules/@mean-finance/dca-v2-core/artifacts',
+        deploy: 'node_modules/@mean-finance/dca-v2-core/deploy',
       },
     ],
     deployments: {
