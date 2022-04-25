@@ -41,8 +41,8 @@ describe('Multicall', () => {
     [positionOwner, swapper, recipient] = await ethers.getSigners();
 
     await deployments.run(['DCAHub', 'DCAHubCompanion'], {
-      resetMemory: false,
-      deletePreviousDeployments: true,
+      resetMemory: true,
+      deletePreviousDeployments: false,
       writeDeploymentsToFiles: false,
     });
     DCAHub = await ethers.getContract('DCAHub');

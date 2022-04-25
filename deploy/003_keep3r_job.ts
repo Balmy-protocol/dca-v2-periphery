@@ -24,7 +24,6 @@ const deployFunction: DeployFunction = async function (hre: HardhatRuntimeEnviro
   const keep3rJob = await hre.deployments.getOrNull('DCAKeep3rJob');
 
   if (!keep3rJob) {
-    console.log('job deployed', !!companion ? companion.address : constants.ZERO_ADDRESS);
     await hre.deployments.deploy('DCAKeep3rJob', {
       contract: 'contracts/DCAKeep3rJob/DCAKeep3rJob.sol:DCAKeep3rJob',
       from: deployer,
