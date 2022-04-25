@@ -123,6 +123,10 @@ const config: HardhatUserConfig = {
         artifacts: 'node_modules/@mean-finance/dca-v2-core/artifacts',
         deploy: 'node_modules/@mean-finance/dca-v2-core/deploy',
       },
+      {
+        artifacts: 'node_modules/@mean-finance/chainlink-registry/artifacts',
+        deploy: 'node_modules/@mean-finance/chainlink-registry/deploy',
+      },
     ],
     deployments: {
       mainnet: ['node_modules/@mean-finance/dca-v2-core/deployments/mainnet', 'node_modules/@mean-chainlink-registry-core/deployments/mainnet'],

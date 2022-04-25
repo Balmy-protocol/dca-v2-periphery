@@ -44,9 +44,9 @@ contract.skip('DCAKeep3rJob', () => {
       skipHardhatDeployFork: true,
     });
 
-    await deployments.run(['DCAHubCompanion', 'DCAKeep3rJob'], {
-      resetMemory: false,
-      deletePreviousDeployments: true,
+    await deployments.run(['DCAHub', 'DCAHubCompanion', 'DCAKeep3rJob'], {
+      resetMemory: true,
+      deletePreviousDeployments: false,
       writeDeploymentsToFiles: false,
     });
 
