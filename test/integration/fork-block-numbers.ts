@@ -3,7 +3,7 @@ const forkBlockNumber = {
   wtoken: 14650320, // Ethereum
   multicall: 14650320, // Ethereum
   'beta-migrator': 3029394, // Optimism
-  'keep3r-job': 14585044, // Ethereum
+  'keep3r-job': 14654032, // Ethereum
 };
 
 export default forkBlockNumber;

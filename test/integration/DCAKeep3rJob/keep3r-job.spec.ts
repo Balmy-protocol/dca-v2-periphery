@@ -22,7 +22,7 @@ const UNISWAP_V3_PAIR_MANAGER = '0x3f6740b5898c5D3650ec6eAce9a649Ac791e44D7';
 const WETH_WHALE_ADDRESS = '0xf04a5cc80b1e94c69b48f5ee68a08cd2f09a7c3e';
 const KP3R_WHALE_ADDRESS = '0x2fc52c61fb0c03489649311989ce2689d93dc1a2';
 
-contract.skip('DCAKeep3rJob', () => {
+contract('DCAKeep3rJob', () => {
   let WETH: IERC20, K3PR: IERC20;
   let DCAKeep3rJob: DCAKeep3rJob;
   let DCAHubCompanion: DCAHubCompanion;
@@ -82,7 +82,9 @@ contract.skip('DCAKeep3rJob', () => {
 
     // Add job and register keeper
     keep3rProtocol = await ethers.getContractAt(KEEP3R_ABI, await DCAKeep3rJob.keep3r());
+    // Add job
     await keep3rProtocol.addJob(DCAKeep3rJob.address);
+    // Activate keeper
     await keep3rProtocol.connect(keeper).bond(KP3R_ADDRESS, 0);
     await evm.advanceTimeAndBlock(moment.duration(3, 'days').as('seconds'));
     await keep3rProtocol.connect(keeper).activate(KP3R_ADDRESS);
@@ -132,14 +134,10 @@ contract.skip('DCAKeep3rJob', () => {
       let initialBonds: BigNumber, initialCredits: BigNumber;
       given(async () => {
         // Add liquidity to job and wait till credits are assigned
-        console.log('pre add liquidity to pair');
         const liquidity = await addLiquidityToPair();
-        console.log('pre approve');
         await uniswapv3PairManager.connect(jobOwner).approve(keep3rProtocol.address, liquidity);
-        console.log('pre add liquidity to job');
         await keep3rProtocol.connect(jobOwner).addLiquidityToJob(DCAKeep3rJob.address, uniswapv3PairManager.address, liquidity);
         await evm.advanceTimeAndBlock(moment.duration(5, 'days').as('seconds'));
-        console.log('until here');
 
         // Remember initial bonds and credits
         initialBonds = await keep3rProtocol.bonds(keeper.address, KP3R_ADDRESS);
@@ -173,7 +171,6 @@ contract.skip('DCAKeep3rJob', () => {
     // mint liquidity
     const liquidity = await uniswapv3PairManager.connect(jobOwner).callStatic.mint(amount, amount, 0, 0, jobOwner.address);
     await uniswapv3PairManager.connect(jobOwner).mint(amount, amount, 0, 0, jobOwner.address);
-    console.log('liq balance of', utils.formatEther(liquidity));
     return liquidity;
   }
 
@@ -182,12 +179,11 @@ contract.skip('DCAKeep3rJob', () => {
     const staticZrxQuote = {
       to: '0xdef1c0ded9bec7f1a1670819833240f027b25eff',
       allowanceTarget: '0xdef1c0ded9bec7f1a1670819833240f027b25eff',
-      data: '0xd9627aa40000000000000000000000000000000000000000000000000000000000000080000000000000000000000000000000000000000000000000016345785d8a00000000000000000000000000000000000000000000000000000000000011c453c200000000000000000000000000000000000000000000000000000000000000010000000000000000000000000000000000000000000000000000000000000002000000000000000000000000c02aaa39b223fe8d0a0e5c4f27ead9083c756cc2000000000000000000000000a0b86991c6218b36c1d19d4a2e9eb0ce3606eb48869584cd00000000000000000000000010000000000000000000000000000000000000110000000000000000000000000000000000000000000000ca215e32d16258615e',
+      data: '0xd9627aa40000000000000000000000000000000000000000000000000000000000000080000000000000000000000000000000000000000000000000016345785d8a0000000000000000000000000000000000000000000000000000000000001102caf100000000000000000000000000000000000000000000000000000000000000010000000000000000000000000000000000000000000000000000000000000002000000000000000000000000c02aaa39b223fe8d0a0e5c4f27ead9083c756cc2000000000000000000000000a0b86991c6218b36c1d19d4a2e9eb0ce3606eb48869584cd00000000000000000000000010000000000000000000000000000000000000110000000000000000000000000000000000000000000000e1119ec16b6266a0d4',
     };
     await DCAHubCompanion.connect(governor).defineDexSupport(staticZrxQuote.to, true);
     const tokensInSwap = [USDC_ADDRESS, WETH_ADDRESS];
     const indexesInSwap = [{ indexTokenA: 0, indexTokenB: 1 }];
-    console.log('pre swap with dex');
     const { data } = await DCAHubCompanion.populateTransaction.swapWithDex(
       staticZrxQuote.to,
       staticZrxQuote.allowanceTarget,
@@ -198,7 +194,6 @@ contract.skip('DCAKeep3rJob', () => {
       constants.NOT_ZERO_ADDRESS,
       constants.MAX_UINT_256
     );
-    console.log('post swap with dex');
     return sign(data!);
   }
 
