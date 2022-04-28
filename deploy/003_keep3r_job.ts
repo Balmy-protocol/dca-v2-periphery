@@ -12,7 +12,7 @@ const deployFunction: DeployFunction = async function (hre: HardhatRuntimeEnviro
   switch (network) {
     case 'hardhat':
     case 'mainnet':
-      keep3r = '0x4a6cff9e1456eaa3b6f37572395c6fa0c959edab';
+      keep3r = '0xeb02addCfD8B773A5FFA6B9d1FE99c566f8c44CC';
       break;
     default:
       console.log('Avoiding deployment of Keep3r Job');

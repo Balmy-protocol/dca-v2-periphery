@@ -55,6 +55,7 @@ abstract contract DCAHubCompanionSwapHandler is DeadlineValidation, DCAHubCompan
   /// @inheritdoc IDCAHubCompanionSwapHandler
   function swapWithDex(
     address _dex,
+    address _tokensProxy,
     address[] calldata _tokens,
     IDCAHub.PairIndexes[] calldata _pairsToSwap,
     bytes[] calldata _callsToDex,
@@ -64,6 +65,7 @@ abstract contract DCAHubCompanionSwapHandler is DeadlineValidation, DCAHubCompan
   ) external returns (IDCAHub.SwapInfo memory) {
     CallbackDataDex memory _callbackData = CallbackDataDex({
       dex: _dex,
+      tokensProxy: _tokensProxy,
       leftoverRecipient: _leftoverRecipient,
       doDexSwapsIncludeTransferToHub: _doDexSwapsIncludeTransferToHub,
       callsToDex: _callsToDex,
@@ -75,6 +77,7 @@ abstract contract DCAHubCompanionSwapHandler is DeadlineValidation, DCAHubCompan
   /// @inheritdoc IDCAHubCompanionSwapHandler
   function swapWithDexAndShareLeftoverWithHub(
     address _dex,
+    address _tokensProxy,
     address[] calldata _tokens,
     IDCAHub.PairIndexes[] calldata _pairsToSwap,
     bytes[] calldata _callsToDex,
@@ -84,6 +87,7 @@ abstract contract DCAHubCompanionSwapHandler is DeadlineValidation, DCAHubCompan
   ) external returns (IDCAHub.SwapInfo memory) {
     CallbackDataDex memory _callbackData = CallbackDataDex({
       dex: _dex,
+      tokensProxy: _tokensProxy,
       leftoverRecipient: _leftoverRecipient,
       doDexSwapsIncludeTransferToHub: _doDexSwapsIncludeTransferToHub,
       callsToDex: _callsToDex,
@@ -139,6 +143,8 @@ abstract contract DCAHubCompanionSwapHandler is DeadlineValidation, DCAHubCompan
   struct CallbackDataDex {
     // DEX's address
     address dex;
+    // Who should we approve the tokens to (as an example: Paraswap makes you approve one addres and send data to other)
+    address tokensProxy;
     // This flag is just a way to make transactions cheaper. If Mean Finance is executing the swap, then it's the same for us
     // if the leftover tokens go to the hub, or to another address. But, it's cheaper in terms of gas to send them to the hub
     bool sendToProvideLeftoverToHub;
@@ -162,15 +168,15 @@ abstract contract DCAHubCompanionSwapHandler is DeadlineValidation, DCAHubCompan
         if (!_tokenHasIssue) {
           // If the token we are going to approve doesn't have the approval issue we see in USDT, we will approve 1 extra.
           // We are doing that so that the allowance isn't fully spent, and the next approve is cheaper.
-          _token.approve(_callbackData.dex, _tokenInSwap.reward + 1);
+          _token.approve(_callbackData.tokensProxy, _tokenInSwap.reward + 1);
         } else {
           // Note: I hope USDT burns in hell
-          uint256 _allowance = _token.allowance(address(this), _callbackData.dex);
+          uint256 _allowance = _token.allowance(address(this), _callbackData.tokensProxy);
           if (_allowance < _tokenInSwap.reward) {
             if (_allowance > 0) {
-              _token.approve(_callbackData.dex, 0);
+              _token.approve(_callbackData.tokensProxy, 0);
             }
-            _token.approve(_callbackData.dex, _tokenInSwap.reward);
+            _token.approve(_callbackData.tokensProxy, _tokenInSwap.reward);
           }
         }
       }

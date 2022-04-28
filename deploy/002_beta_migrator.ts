@@ -29,6 +29,5 @@ const deployFunction: DeployFunction = async function (hre: HardhatRuntimeEnviro
   });
 };
 
-deployFunction.dependencies = ['DCAHub'];
 deployFunction.tags = ['BetaMigrator'];
 export default deployFunction;
