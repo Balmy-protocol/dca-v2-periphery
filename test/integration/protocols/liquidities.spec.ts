@@ -4,9 +4,9 @@ import { JsonRpcSigner, TransactionResponse } from '@ethersproject/providers';
 import { constants, wallet } from '@test-utils';
 import { given, then, when } from '@test-utils/bdd';
 import evm, { snapshot } from '@test-utils/evm';
-import { DCAHubCompanion, IERC20 } from '@typechained';
-import { ChainlinkOracle, DCAHub } from '@mean-finance/dca-v2-core/typechained';
-import { ChainlinkRegistry } from '@mean-finance/chainlink-registry/typechained';
+import { DCAHubCompanion, IERC20, IERC20Metadata, IERC20Metadata__factory } from '@typechained';
+import { ChainlinkOracle, ChainlinkOracle__factory, DCAHub, OracleAggregator } from '@mean-finance/dca-v2-core/typechained';
+import { ChainlinkRegistry, ChainlinkRegistry__factory } from '@mean-finance/chainlink-registry/typechained';
 import { abi as DCA_HUB_ABI } from '@mean-finance/dca-v2-core/artifacts/contracts/DCAHub/DCAHub.sol/DCAHub.json';
 import { abi as IERC20_ABI } from '@openzeppelin/contracts/build/contracts/IERC20.json';
 import { BigNumber, utils } from 'ethers';
@@ -14,6 +14,7 @@ import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers';
 import { SwapInterval } from '@test-utils/interval-utils';
 import zrx from '@test-utils/zrx';
 import { Denominations } from '@test-utils/chainlink';
+import oneinch from '@test-utils/oneinch';
 
 const WETH_ADDRESS_BY_NETWORK: { [network: string]: string } = {
   polygon: '0x7ceb23fd6bc0add59e62ac25578270cff1b9f619',
@@ -41,9 +42,10 @@ describe('Liquidities tests', () => {
 
   context('on Polygon', () => {
     before(async () => {
-      snapshotId = await liquidityTestSetup({ network: 'polygon' });
+      snapshotId = await liquidityTestSetup({ network: 'polygon', swapFee: 25000 }); // 2.5%
     });
-    describe('Jarvis', () => {
+    // Skipped until 0x re-enables Kyber on Polygon
+    describe.skip('Jarvis', () => {
       testJarvisLiquidity({
         ticker: 'jEUR',
         tokenAddress: '0x4e3decbb3645551b8a19f0ea1678079fcb33fb4c',
@@ -70,27 +72,32 @@ describe('Liquidities tests', () => {
         ticker: 'MAI',
         tokenAddress: '0xa3fa99a148fa48d14ed51d610c367c61876997f1',
         network: 'polygon',
-        oracleSetup: () =>
-          chainlinkRegistry.connect(governor).setFeedProxies([
+        oracleSetup: () => {
+          return chainlinkRegistry.connect(governor).setFeedProxies([
             {
               base: '0xa3fa99a148fa48d14ed51d610c367c61876997f1',
               quote: Denominations.USD,
               feed: '0xd8d483d813547CfB624b8Dc33a00F2fcbCd2D428',
             },
-          ]),
+          ]);
+        },
       });
     });
   });
 
   async function liquidityTestSetup({ network, swapFee }: { network: string; swapFee?: number }): Promise<string> {
     await evm.reset({
-      network: network,
+      network,
+      skipHardhatDeployFork: true,
     });
     [cindy, recipient] = await ethers.getSigners();
-    await deployments.run(['DCAHubCompanion'], { resetMemory: false, deletePreviousDeployments: false, writeDeploymentsToFiles: false });
+    await deployments.run(['DCAHub', 'DCAHubCompanion'], {
+      resetMemory: true,
+      deletePreviousDeployments: false,
+      writeDeploymentsToFiles: false,
+    });
     DCAHub = await ethers.getContract('DCAHub');
     DCAHubCompanion = await ethers.getContract('DCAHubCompanion');
-
     const namedAccounts = await getNamedAccounts();
     const governorAddress = namedAccounts.governor;
     governor = await wallet.impersonate(governorAddress);
@@ -103,11 +110,11 @@ describe('Liquidities tests', () => {
     await DCAHub.connect(governor).addSwapIntervalsToAllowedList([SwapInterval.ONE_MINUTE.seconds]);
     if (swapFee) await DCAHub.connect(timelock).setSwapFee(swapFee);
 
-    // Init chainlink registry
-    chainlinkRegistry = await ethers.getContract<ChainlinkRegistry>('FeedRegistry');
-
     // Init chainlink oracle
     chainlinkOracle = await ethers.getContract<ChainlinkOracle>('ChainlinkOracle');
+
+    // Init chainlink registry
+    chainlinkRegistry = await ethers.getContractAt<ChainlinkRegistry>(ChainlinkRegistry__factory.abi, await chainlinkOracle.registry());
 
     WETH = await ethers.getContractAt(IERC20_ABI, WETH_ADDRESS_BY_NETWORK[network]);
     const wethWhale = await wallet.impersonate(WETH_WHALE_ADDRESS_BY_NETWORK[network]);
@@ -166,12 +173,12 @@ describe('Liquidities tests', () => {
     let initialHubTokenBalance: BigNumber;
     let reward: BigNumber;
     let toProvide: BigNumber;
-    let token: IERC20;
+    let token: IERC20Metadata;
     describe(`WETH/${ticker}`, () => {
       const WETH_ADDRESS = WETH_ADDRESS_BY_NETWORK[network];
       given(async () => {
         await snapshot.revert(snapshotId);
-        token = await ethers.getContractAt(IERC20_ABI, tokenAddress);
+        token = await ethers.getContractAt(IERC20Metadata__factory.abi, tokenAddress);
         await oracleSetup();
         await DCAHub.connect(cindy)['deposit(address,address,uint256,uint32,uint32,address,(address,uint8[])[])'](
           WETH.address,
@@ -194,10 +201,20 @@ describe('Liquidities tests', () => {
           sellToken: WETH_ADDRESS,
           buyToken: tokenAddress,
           sellAmount: weth.reward,
-          slippagePercentage: slippage ?? 0.005, // 0.5% as default
+          slippagePercentage: slippage ?? 0.01, // 1% as default
           takerAddress: DCAHubCompanion.address,
           skipValidation: true,
         });
+        // const oneInchResponse = await oneinch.swap(137, {
+        //   tokenIn: WETH_ADDRESS,
+        //   tokenOut: tokenAddress,
+        //   amountIn: weth.reward,
+        //   fromAddress: DCAHubCompanion.address,
+        //   slippage: 1, // 1% as default
+        //   allowPartialFill: false,
+        //   disableEstimate: true,
+        // });
+        // const oneinchQuote = oneInchResponse.tx;
         await DCAHubCompanion.connect(governor).defineDexSupport(dexQuote.to, true);
         const swapTx = await DCAHubCompanion.swapWithDex(
           dexQuote.to,

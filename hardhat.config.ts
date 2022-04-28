@@ -118,12 +118,21 @@ const config: HardhatUserConfig = {
     apiKey: process.env.ETHERSCAN_API_KEY,
   },
   external: {
+    contracts: [
+      {
+        artifacts: 'node_modules/@mean-finance/dca-v2-core/artifacts',
+        deploy: 'node_modules/@mean-finance/dca-v2-core/deploy',
+      },
+    ],
     deployments: {
-      mainnet: ['node_modules/@mean-finance/dca-v2-core/deployments/mainnet', 'node_modules/@mean-chainlink-registry-core/deployments/mainnet'],
-      mumbai: ['node_modules/@mean-finance/dca-v2-core/deployments/mumbai', 'node_modules/@mean-chainlink-registry-core/deployments/mumbai'],
+      mainnet: [
+        'node_modules/@mean-finance/dca-v2-core/deployments/mainnet',
+        'node_modules/@mean-finance/chainlink-registry/deployments/mainnet',
+      ],
+      mumbai: ['node_modules/@mean-finance/dca-v2-core/deployments/mumbai', 'node_modules/@mean-finance/chainlink-registry/deployments/mumbai'],
       optimism: [
         'node_modules/@mean-finance/dca-v2-core/deployments/optimism',
-        'node_modules/@mean-chainlink-registry-core/deployments/optimism',
+        'node_modules/@mean-finance/chainlink-registry/deployments/optimism',
       ],
       'optimism-kovan': [
         'node_modules/@mean-finance/dca-v2-core/deployments/optimism-kovan',
