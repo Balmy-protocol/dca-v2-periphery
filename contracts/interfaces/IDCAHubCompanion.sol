@@ -128,7 +128,7 @@ interface IDCAHubCompanionSwapHandler is IDCAHubSwapCallee {
   /// @notice Executes a swap with the given DEX and sends all `reward` unspent tokens to the given recipient.
   /// All positive slippage for tokens that need to be returned to the hub is also sent to the hub
   /// @param _dex The DEX that will be used in the swap
-  /// @param _tokensProxy The spender of the tokens (we will not always need to approve the dex)
+  /// @param _tokensProxy The spender of the tokens (could be different from the dex)
   /// @param _tokens The tokens involved in the swap
   /// @param _pairsToSwap The pairs to swap
   /// @param _callsToDex The bytes to send to the DEX to execute swaps
