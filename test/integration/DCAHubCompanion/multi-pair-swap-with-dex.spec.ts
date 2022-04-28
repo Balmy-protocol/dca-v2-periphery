@@ -5,19 +5,19 @@ import { constants, wallet } from '@test-utils';
 import { given, then, when } from '@test-utils/bdd';
 import evm, { snapshot } from '@test-utils/evm';
 import { DCAHubCompanion, IERC20 } from '@typechained';
-import { DCAHub, OracleAggregator } from '@mean-finance/dca-v2-core/typechained';
+import { DCAHub } from '@mean-finance/dca-v2-core/typechained';
 import { abi as DCA_HUB_ABI } from '@mean-finance/dca-v2-core/artifacts/contracts/DCAHub/DCAHub.sol/DCAHub.json';
-import { abi as AGGREGATOR_ABI } from '@mean-finance/dca-v2-core/artifacts/contracts/oracles/OracleAggregator.sol/OracleAggregator.json';
 import { abi as IERC20_ABI } from '@openzeppelin/contracts/build/contracts/IERC20.json';
 import { BigNumber, utils } from 'ethers';
-import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signers';
+import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers';
 import { SwapInterval } from '@test-utils/interval-utils';
-import zrx from '@test-utils/zrx';
+import zrx from '@test-utils/dexes/zrx';
 
-const WETH_ADDRESS = '0x4200000000000000000000000000000000000006';
-const USDC_ADDRESS = '0x7f5c764cbc14f9669b88837ca1490cca17c31607';
-const LINK_ADDRESS = '0x350a791bfc2c21f9ed5d10980dad2e2638ffa7f6';
-const WETH_WHALE_ADDRESS = '0xaa30d6bba6285d0585722e2440ff89e23ef68864';
+const LINK_ADDRESS = '0x514910771af9ca656af840dff83e8264ecf986ca';
+const USDC_ADDRESS = '0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48';
+const WETH_ADDRESS = '0xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2';
+// LINK < USDC < WETH
+const WETH_WHALE_ADDRESS = '0xf04a5cc80b1e94c69b48f5ee68a08cd2f09a7c3e';
 
 describe('Multi pair swap with DEX', () => {
   let WETH: IERC20, USDC: IERC20, LINK: IERC20;
@@ -33,30 +33,31 @@ describe('Multi pair swap with DEX', () => {
 
   before(async () => {
     await evm.reset({
-      network: 'optimism',
+      network: 'mainnet',
+      skipHardhatDeployFork: true,
     });
     [cindy, recipient] = await ethers.getSigners();
 
-    await deployments.fixture('DCAHubCompanion', { keepExistingDeployments: false });
+    await deployments.run(['DCAHub', 'DCAHubCompanion'], {
+      resetMemory: true,
+      deletePreviousDeployments: false,
+      writeDeploymentsToFiles: false,
+    });
     DCAHub = await ethers.getContract('DCAHub');
     DCAHubCompanion = await ethers.getContract('DCAHubCompanion');
 
     const namedAccounts = await getNamedAccounts();
     const governorAddress = namedAccounts.governor;
     governor = await wallet.impersonate(governorAddress);
-    const timelock = await wallet.impersonate('0xE0F0eeA2bdaFCB913A2b2b7938C0Fce1A39f5754');
     await ethers.provider.send('hardhat_setBalance', [governorAddress, '0xffffffffffffffff']);
-    await ethers.provider.send('hardhat_setBalance', [timelock._address, '0xffffffffffffffff']);
+    const timelockContract = await ethers.getContract('Timelock');
+    const timelock = await wallet.impersonate(timelockContract.address);
+    await ethers.provider.send('hardhat_setBalance', [timelockContract.address, '0xffffffffffffffff']);
 
     // Allow one minute interval
     await DCAHub.connect(governor).addSwapIntervalsToAllowedList([SwapInterval.ONE_MINUTE.seconds]);
     //We are setting a very high fee, so that there is a surplus in both reward and toProvide tokens
     await DCAHub.connect(timelock).setSwapFee(50000); // 5%
-
-    // We will be using the Uniswap oracle for these pairs, so that the test won't fail if the Chainlink oracle does not match the market
-    const aggregator: OracleAggregator = await ethers.getContractAt(AGGREGATOR_ABI, await DCAHub.oracle());
-    await aggregator.connect(governor).setOracleForPair(WETH_ADDRESS, USDC_ADDRESS, 2);
-    await aggregator.connect(governor).setOracleForPair(LINK_ADDRESS, WETH_ADDRESS, 2);
 
     WETH = await ethers.getContractAt(IERC20_ABI, WETH_ADDRESS);
     USDC = await ethers.getContractAt(IERC20_ABI, USDC_ADDRESS);
@@ -101,46 +102,53 @@ describe('Multi pair swap with DEX', () => {
         receivedUSDCFromAgg: BigNumber,
         receivedLINKFromAgg: BigNumber,
         receivedWETHFromAgg: BigNumber[];
-      let initialHubWETHBalance: BigNumber, initialHubUSDCBalance: BigNumber, initialHubLINKBalance: BigNumber;
+      let initialHubWETHBalance: BigNumber,
+        initialHubUSDCBalance: BigNumber,
+        initialHubLINKBalance: BigNumber,
+        initialRecipientUSDCBalance: BigNumber,
+        initialRecipientLINKBalance: BigNumber;
       given(async () => {
-        initialHubWETHBalance = await WETH.balanceOf(DCAHub.address);
-        initialHubUSDCBalance = await USDC.balanceOf(DCAHub.address);
         initialHubLINKBalance = await LINK.balanceOf(DCAHub.address);
+        initialHubUSDCBalance = await USDC.balanceOf(DCAHub.address);
+        initialHubWETHBalance = await WETH.balanceOf(DCAHub.address);
+        initialRecipientLINKBalance = await LINK.balanceOf(recipient.address);
+        initialRecipientUSDCBalance = await USDC.balanceOf(recipient.address);
         const {
-          tokens: [link, , usdc],
+          tokens: [link, usdc],
         } = await DCAHubCompanion.getNextSwapInfo([
           { tokenA: WETH_ADDRESS, tokenB: USDC_ADDRESS },
           { tokenA: WETH_ADDRESS, tokenB: LINK_ADDRESS },
         ]);
         const dexQuotes = await Promise.all([
           zrx.quote({
-            chainId: 10,
+            chainId: 1,
             sellToken: WETH_ADDRESS,
             buyToken: USDC_ADDRESS,
             buyAmount: usdc.toProvide,
-            sippagePercentage: 0.01,
+            slippagePercentage: 0.01,
             takerAddress: DCAHubCompanion.address,
             skipValidation: true,
           }),
           zrx.quote({
-            chainId: 10,
+            chainId: 1,
             sellToken: WETH_ADDRESS,
             buyToken: LINK_ADDRESS,
             buyAmount: link.toProvide,
-            sippagePercentage: 0.01,
+            slippagePercentage: 0.01,
             takerAddress: DCAHubCompanion.address,
             skipValidation: true,
           }),
         ]);
         const dexAddress = dexQuotes[0].to;
         await DCAHubCompanion.connect(governor).defineDexSupport(dexAddress, true);
-        const tokensInSwap = [LINK_ADDRESS, WETH_ADDRESS, USDC_ADDRESS];
+        const tokensInSwap = [LINK_ADDRESS, USDC_ADDRESS, WETH_ADDRESS];
         const indexesInSwap = [
-          { indexTokenA: 0, indexTokenB: 1 },
+          { indexTokenA: 0, indexTokenB: 2 },
           { indexTokenA: 1, indexTokenB: 2 },
         ];
         const swapTx = await DCAHubCompanion.swapWithDex(
           dexAddress,
+          dexQuotes[0].allowanceTarget,
           tokensInSwap,
           indexesInSwap,
           dexQuotes.map(({ data }) => data),
@@ -170,9 +178,9 @@ describe('Multi pair swap with DEX', () => {
       });
       then('all "toProvide" surpluss is sent to leftover recipient', async () => {
         const recipientUSDCBalance = await USDC.balanceOf(recipient.address);
-        expect(recipientUSDCBalance).to.equal(receivedUSDCFromAgg.sub(toProvideUSDC));
+        expect(recipientUSDCBalance.sub(initialRecipientUSDCBalance)).to.equal(receivedUSDCFromAgg.sub(toProvideUSDC));
         const recipientLINKBalance = await LINK.balanceOf(recipient.address);
-        expect(recipientLINKBalance).to.equal(receivedLINKFromAgg.sub(toProvideLINK));
+        expect(recipientLINKBalance.sub(initialRecipientLINKBalance)).to.equal(receivedLINKFromAgg.sub(toProvideLINK));
       });
     });
   });
@@ -184,7 +192,7 @@ describe('Multi pair swap with DEX', () => {
 
   async function getTransfers(tx: TransactionResponse) {
     const swappedEvent = await getSwappedEvent(tx);
-    const [link, weth, usdc] = swappedEvent.args.swapInformation.tokens;
+    const [link, usdc, weth] = swappedEvent.args.swapInformation.tokens;
     const rewardWETH = weth.reward;
     const toProvideUSDC = usdc.toProvide;
     const toProvideLINK = link.toProvide;

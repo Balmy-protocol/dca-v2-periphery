@@ -17,7 +17,7 @@ export type QuoteRequest = {
   buyToken: string;
   sellAmount?: BigNumber | string;
   buyAmount?: BigNumber | string;
-  sippagePercentage?: number;
+  slippagePercentage?: number;
   gasPrice?: BigNumber | string;
   takerAddress?: string;
   excludeSources?: string[] | string;

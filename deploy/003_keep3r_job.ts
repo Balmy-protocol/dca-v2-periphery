@@ -10,8 +10,9 @@ const deployFunction: DeployFunction = async function (hre: HardhatRuntimeEnviro
 
   const network = hre.network.name !== 'hardhat' ? hre.network.name : networkBeingForked ?? hre.network.name;
   switch (network) {
+    case 'hardhat':
     case 'mainnet':
-      keep3r = '0xdc02981c9C062d48a9bD54adBf51b816623dcc6E';
+      keep3r = '0xeb02addCfD8B773A5FFA6B9d1FE99c566f8c44CC';
       break;
     default:
       console.log('Avoiding deployment of Keep3r Job');

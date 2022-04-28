@@ -34,8 +34,11 @@ const advanceBlock = async () => {
   });
 };
 
-type ForkConfig = { network: string } & Record<string, any>;
+type ForkConfig = { network: string; skipHardhatDeployFork?: boolean } & Record<string, any>;
 const reset = async (forkingConfig: ForkConfig) => {
+  if (!forkingConfig.skipHardhatDeployFork) {
+    process.env.HARDHAT_DEPLOY_FORK = forkingConfig.network;
+  }
   networkBeingForked = forkingConfig.network;
   const params = [
     {

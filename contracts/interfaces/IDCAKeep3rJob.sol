@@ -39,6 +39,10 @@ interface IDCAKeep3rJob is IGovernable {
   /// @param newSwapper The new swapper
   event NewSwapperSet(address newSwapper);
 
+  /// @notice Emitted when a new keep3r is set
+  /// @param newKeep3r The new keep3r
+  event NewKeep3rSet(IKeep3rJobs newKeep3r);
+
   /// @notice Emitted when signing permission is modified for an address
   /// @param affected The affected address
   /// @param canSign Whether the affected address can now sign work or not

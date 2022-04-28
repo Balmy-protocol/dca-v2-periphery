@@ -1,23 +1,22 @@
 import { expect } from 'chai';
 import { deployments, ethers, getNamedAccounts } from 'hardhat';
 import { TransactionResponse } from '@ethersproject/providers';
-import { behaviours, constants, wallet } from '@test-utils';
+import { constants, wallet } from '@test-utils';
 import { given, then, when } from '@test-utils/bdd';
 import evm, { snapshot } from '@test-utils/evm';
 import { DCAHubCompanion, IERC20 } from '@typechained';
-import { DCAHub, DCAPermissionsManager } from '@mean-finance/dca-v2-core/typechained';
+import { DCAHub, DCAPermissionsManager, OracleAggregator } from '@mean-finance/dca-v2-core/typechained';
 import { abi as DCA_HUB_ABI } from '@mean-finance/dca-v2-core/artifacts/contracts/DCAHub/DCAHub.sol/DCAHub.json';
-import { abi as DCA_PERMISSION_MANAGER_ABI } from '@mean-finance/dca-v2-core/artifacts/contracts/DCAPermissionsManager/DCAPermissionsManager.sol/DCAPermissionsManager.json';
 import { abi as IERC20_ABI } from '@openzeppelin/contracts/build/contracts/IERC20.json';
 import { BigNumber, utils } from 'ethers';
-import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signers';
+import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers';
 import { SwapInterval } from '@test-utils/interval-utils';
 import forkBlockNumber from '@integration/fork-block-numbers';
 
-const WETH_ADDRESS = '0x4200000000000000000000000000000000000006';
-const USDC_ADDRESS = '0x7f5c764cbc14f9669b88837ca1490cca17c31607';
-const WETH_WHALE_ADDRESS = '0xaa30d6bba6285d0585722e2440ff89e23ef68864';
-const USDC_WHALE_ADDRESS = '0xad7b4c162707e0b2b5f6fddbd3f8538a5fba0d60';
+const WETH_ADDRESS = '0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2';
+const USDC_ADDRESS = '0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48';
+const WETH_WHALE_ADDRESS = '0xf04a5cc80b1e94c69b48f5ee68a08cd2f09a7c3e';
+const USDC_WHALE_ADDRESS = '0xcffad3200574698b78f32232aa9d63eabd290703';
 
 describe('WToken', () => {
   let WETH: IERC20, USDC: IERC20;
@@ -33,15 +32,21 @@ describe('WToken', () => {
 
   before(async () => {
     await evm.reset({
-      network: 'optimism',
+      network: 'mainnet',
       blockNumber: forkBlockNumber['wtoken'],
+      skipHardhatDeployFork: true,
     });
     [cindy, swapper, recipient] = await ethers.getSigners();
 
-    await deployments.fixture('DCAHubCompanion', { keepExistingDeployments: false });
+    await deployments.run(['DCAHub', 'DCAHubCompanion'], {
+      resetMemory: true,
+      deletePreviousDeployments: false,
+      writeDeploymentsToFiles: false,
+    });
+
     DCAHub = await ethers.getContract('DCAHub');
     DCAHubCompanion = await ethers.getContract('DCAHubCompanion');
-    DCAPermissionManager = await ethers.getContractAt(DCA_PERMISSION_MANAGER_ABI, await DCAHub.permissionManager());
+    DCAPermissionManager = await ethers.getContract('PermissionsManager');
 
     const namedAccounts = await getNamedAccounts();
     const governorAddress = namedAccounts.governor;
@@ -51,6 +56,10 @@ describe('WToken', () => {
 
     // Allow one minute interval
     await DCAHub.connect(governor).addSwapIntervalsToAllowedList([SwapInterval.ONE_MINUTE.seconds]);
+
+    // Set Uniswap oracle so we don't have issues while moving timestamp (Chainlink has maxDelay = 1 day)
+    const oracleAggregator = await ethers.getContract<OracleAggregator>('OracleAggregator');
+    await oracleAggregator.connect(governor).setOracleForPair(WETH_ADDRESS, USDC_ADDRESS, 2);
 
     WETH = await ethers.getContractAt(IERC20_ABI, WETH_ADDRESS);
     USDC = await ethers.getContractAt(IERC20_ABI, USDC_ADDRESS);
@@ -301,7 +310,7 @@ describe('WToken', () => {
 
       await WETH.connect(swapper).approve(DCAHubCompanion.address, constants.MAX_UINT_256);
       await DCAHubCompanion.connect(swapper).swapForCaller(
-        [WETH_ADDRESS, USDC_ADDRESS],
+        [USDC_ADDRESS, WETH_ADDRESS],
         [{ indexTokenA: 0, indexTokenB: 1 }],
         [0, 0],
         [constants.MAX_UINT_256, constants.MAX_UINT_256],

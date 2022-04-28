@@ -2,7 +2,7 @@ import chai, { expect } from 'chai';
 import { ethers } from 'hardhat';
 import { behaviours, constants, erc20, wallet } from '@test-utils';
 import { contract, given, then, when } from '@test-utils/bdd';
-import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signers';
+import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers';
 import { snapshot } from '@test-utils/evm';
 import {
   DCAHubCompanionSwapHandlerMock,
@@ -23,6 +23,7 @@ chai.use(smock.matchers);
 contract('DCAHubCompanionSwapHandler', () => {
   const ABI_CODER = new ethers.utils.AbiCoder();
   const DEX = constants.NOT_ZERO_ADDRESS;
+  const TOKENS_PROXY = wallet.generateRandomAddress();
   let swapper: SignerWithAddress, hub: SignerWithAddress, governor: SignerWithAddress;
   let DCAHub: FakeContract<IDCAHub>;
   let DCAHubCompanionSwapHandler: DCAHubCompanionSwapHandlerMock;
@@ -193,16 +194,17 @@ contract('DCAHubCompanionSwapHandler', () => {
     given(async () => await DCAHubCompanionSwapHandler.connect(governor).defineDexSupport(DEX, true));
     whenDeadlineHasExpiredThenTxReverts({
       func: 'swapWithDex',
-      args: () => [DEX, tokens, INDEXES, [], false, constants.NOT_ZERO_ADDRESS, 0],
+      args: () => [DEX, TOKENS_PROXY, tokens, INDEXES, [], false, constants.NOT_ZERO_ADDRESS, 0],
     });
     whenUnsupportedDexIsUsedThenTxReverts({
       func: 'swapWithDex',
-      args: () => [wallet.generateRandomAddress(), tokens, INDEXES, [], false, constants.NOT_ZERO_ADDRESS, constants.MAX_UINT_256],
+      args: () => [wallet.generateRandomAddress(), TOKENS_PROXY, tokens, INDEXES, [], false, constants.NOT_ZERO_ADDRESS, constants.MAX_UINT_256],
     });
     when('swap is executed without swap and transfer', () => {
       given(async () => {
         await DCAHubCompanionSwapHandler.connect(swapper).swapWithDex(
           DEX,
+          TOKENS_PROXY,
           tokens,
           INDEXES,
           [BYTES],
@@ -216,7 +218,14 @@ contract('DCAHubCompanionSwapHandler', () => {
         data: () =>
           encode({
             plan: 'dex',
-            bytes: { dex: DEX, leftoverRecipient: swapper, callsToDex: [BYTES], sendToProvideLeftoverToHub: false, swapAndTransfer: false },
+            bytes: {
+              dex: DEX,
+              tokensProxy: TOKENS_PROXY,
+              leftoverRecipient: swapper,
+              callsToDex: [BYTES],
+              sendToProvideLeftoverToHub: false,
+              swapAndTransfer: false,
+            },
           }),
       });
     });
@@ -224,6 +233,7 @@ contract('DCAHubCompanionSwapHandler', () => {
       given(async () => {
         await DCAHubCompanionSwapHandler.connect(swapper).swapWithDex(
           DEX,
+          TOKENS_PROXY,
           tokens,
           INDEXES,
           [BYTES],
@@ -237,7 +247,14 @@ contract('DCAHubCompanionSwapHandler', () => {
         data: () =>
           encode({
             plan: 'dex',
-            bytes: { dex: DEX, leftoverRecipient: swapper, callsToDex: [BYTES], sendToProvideLeftoverToHub: false, swapAndTransfer: true },
+            bytes: {
+              dex: DEX,
+              tokensProxy: TOKENS_PROXY,
+              leftoverRecipient: swapper,
+              callsToDex: [BYTES],
+              sendToProvideLeftoverToHub: false,
+              swapAndTransfer: true,
+            },
           }),
       });
     });
@@ -247,16 +264,17 @@ contract('DCAHubCompanionSwapHandler', () => {
     given(async () => await DCAHubCompanionSwapHandler.connect(governor).defineDexSupport(DEX, true));
     whenDeadlineHasExpiredThenTxReverts({
       func: 'swapWithDexAndShareLeftoverWithHub',
-      args: () => [DEX, tokens, INDEXES, [], false, constants.NOT_ZERO_ADDRESS, 0],
+      args: () => [DEX, TOKENS_PROXY, tokens, INDEXES, [], false, constants.NOT_ZERO_ADDRESS, 0],
     });
     whenUnsupportedDexIsUsedThenTxReverts({
       func: 'swapWithDexAndShareLeftoverWithHub',
-      args: () => [wallet.generateRandomAddress(), tokens, INDEXES, [], false, constants.NOT_ZERO_ADDRESS, constants.MAX_UINT_256],
+      args: () => [wallet.generateRandomAddress(), TOKENS_PROXY, tokens, INDEXES, [], false, constants.NOT_ZERO_ADDRESS, constants.MAX_UINT_256],
     });
     when('swap is executed without swap and transfer', () => {
       given(async () => {
         await DCAHubCompanionSwapHandler.connect(swapper).swapWithDexAndShareLeftoverWithHub(
           DEX,
+          TOKENS_PROXY,
           tokens,
           INDEXES,
           [BYTES],
@@ -270,7 +288,14 @@ contract('DCAHubCompanionSwapHandler', () => {
         data: () =>
           encode({
             plan: 'dex',
-            bytes: { dex: DEX, leftoverRecipient: swapper, callsToDex: [BYTES], sendToProvideLeftoverToHub: true, swapAndTransfer: false },
+            bytes: {
+              dex: DEX,
+              tokensProxy: TOKENS_PROXY,
+              leftoverRecipient: swapper,
+              callsToDex: [BYTES],
+              sendToProvideLeftoverToHub: true,
+              swapAndTransfer: false,
+            },
           }),
       });
     });
@@ -278,6 +303,7 @@ contract('DCAHubCompanionSwapHandler', () => {
       given(async () => {
         await DCAHubCompanionSwapHandler.connect(swapper).swapWithDexAndShareLeftoverWithHub(
           DEX,
+          TOKENS_PROXY,
           tokens,
           INDEXES,
           [BYTES],
@@ -291,7 +317,14 @@ contract('DCAHubCompanionSwapHandler', () => {
         data: () =>
           encode({
             plan: 'dex',
-            bytes: { dex: DEX, leftoverRecipient: swapper, callsToDex: [BYTES], sendToProvideLeftoverToHub: true, swapAndTransfer: true },
+            bytes: {
+              dex: DEX,
+              tokensProxy: TOKENS_PROXY,
+              leftoverRecipient: swapper,
+              callsToDex: [BYTES],
+              sendToProvideLeftoverToHub: true,
+              swapAndTransfer: true,
+            },
           }),
       });
     });
@@ -436,7 +469,14 @@ contract('DCAHubCompanionSwapHandler', () => {
       }) =>
         encode({
           plan: 'dex',
-          bytes: { dex: DEX, leftoverRecipient: swapper, callsToDex, swapAndTransfer, sendToProvideLeftoverToHub: sendToHubFlag },
+          bytes: {
+            dex: DEX,
+            tokensProxy: TOKENS_PROXY,
+            leftoverRecipient: swapper,
+            callsToDex,
+            swapAndTransfer,
+            sendToProvideLeftoverToHub: sendToHubFlag,
+          },
         });
 
       let tokenA: FakeContract<IERC20>;
@@ -466,7 +506,7 @@ contract('DCAHubCompanionSwapHandler', () => {
         });
         then('reward tokens are approved', () => {
           expect(tokenB.approve).to.have.been.calledOnce;
-          expect(tokenB.approve).to.have.been.calledWith(DEX, REWARD_AMOUNT_TOKEN_B + 1);
+          expect(tokenB.approve).to.have.been.calledWith(TOKENS_PROXY, REWARD_AMOUNT_TOKEN_B + 1);
         });
         then('tokens that are not reward are not approved', () => {
           expect(tokenA.approve).to.not.have.been.called;
@@ -484,7 +524,7 @@ contract('DCAHubCompanionSwapHandler', () => {
         then: '1 extra is approved',
         hasIssue: false,
         reward: 100,
-        assertion: (token) => expect(token.approve).to.have.been.calledWith(DEX, 100 + 1),
+        assertion: (token) => expect(token.approve).to.have.been.calledWith(TOKENS_PROXY, 100 + 1),
       });
 
       approveWhenHandlingSwapWithDex({
@@ -504,8 +544,8 @@ contract('DCAHubCompanionSwapHandler', () => {
         allowance: 1,
         assertion: (token) => {
           expect(token.approve).to.have.been.called.calledTwice;
-          expect(token.approve).to.have.been.calledWith(DEX, 0);
-          expect(token.approve).to.have.been.calledWith(DEX, 100);
+          expect(token.approve).to.have.been.calledWith(TOKENS_PROXY, 0);
+          expect(token.approve).to.have.been.calledWith(TOKENS_PROXY, 100);
         },
       });
 
@@ -516,7 +556,7 @@ contract('DCAHubCompanionSwapHandler', () => {
         reward: 100,
         allowance: 0,
         assertion: (token) => {
-          expect(token.approve).to.have.been.calledOnceWith(DEX, 100);
+          expect(token.approve).to.have.been.calledOnceWith(TOKENS_PROXY, 100);
         },
       });
 
@@ -706,6 +746,7 @@ contract('DCAHubCompanionSwapHandler', () => {
   type SwapForCallerData = { caller: { address: string }; msgValue: BigNumberish };
   type SwapWithDex = {
     dex: string;
+    tokensProxy: string;
     leftoverRecipient: { address: string };
     callsToDex: BytesLike[];
     sendToProvideLeftoverToHub: boolean;
@@ -729,8 +770,17 @@ contract('DCAHubCompanionSwapHandler', () => {
       swapData = ABI_CODER.encode(['tuple(address, uint256)'], [[bytes.caller.address, bytes.msgValue]]);
     } else {
       swapData = ABI_CODER.encode(
-        ['tuple(address, bool, bool, address, bytes[])'],
-        [[bytes.dex, bytes.sendToProvideLeftoverToHub, bytes.swapAndTransfer, bytes.leftoverRecipient.address, bytes.callsToDex]]
+        ['tuple(address, address, bool, bool, address, bytes[])'],
+        [
+          [
+            bytes.dex,
+            bytes.tokensProxy,
+            bytes.sendToProvideLeftoverToHub,
+            bytes.swapAndTransfer,
+            bytes.leftoverRecipient.address,
+            bytes.callsToDex,
+          ],
+        ]
       );
     }
     return ABI_CODER.encode(['tuple(uint256, bytes)'], [[swapPlan, swapData]]);

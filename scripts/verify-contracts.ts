@@ -15,6 +15,13 @@ async function main() {
       path: 'contracts/V2Migration/BetaMigrator.sol:BetaMigrator',
     });
   }
+
+  if (currentNetwork === 'mainnet') {
+    await verify({
+      name: 'DCAKeep3rJob',
+      path: 'contracts/DCAKeep3rJob/DCAKeep3rJob.sol:DCAKeep3rJob',
+    });
+  }
 }
 
 async function verify({ name, path }: { name: string; path: string }) {

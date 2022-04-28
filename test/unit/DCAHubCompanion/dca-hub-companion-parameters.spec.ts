@@ -4,7 +4,7 @@ import { behaviours, constants } from '@test-utils';
 import { contract, given, then, when } from '@test-utils/bdd';
 import { snapshot } from '@test-utils/evm';
 import { DCAHubCompanionParametersMock, DCAHubCompanionParametersMock__factory } from '@typechained';
-import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signers';
+import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers';
 import { TransactionResponse } from '@ethersproject/providers';
 
 contract('DCAHubCompanionParameters', () => {

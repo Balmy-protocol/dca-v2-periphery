@@ -9,6 +9,7 @@ import 'hardhat-gas-reporter';
 import 'hardhat-contract-sizer';
 import 'hardhat-deploy';
 import 'solidity-coverage';
+import './tasks/npm-publish-clean-typechain';
 import { HardhatUserConfig, MultiSolcUserConfig, NetworksUserConfig } from 'hardhat/types';
 import { getNodeUrl, accounts } from './utils/network';
 import 'tsconfig-paths/register';
@@ -73,6 +74,11 @@ const networks: NetworksUserConfig = process.env.TEST
         accounts: accounts('mumbai'),
         tags: ['staging'],
       },
+      polygon: {
+        url: 'https://polygon-rpc.com',
+        accounts: accounts('polygon'),
+        tags: ['production'],
+      },
     };
 
 const config: HardhatUserConfig = {
@@ -81,7 +87,7 @@ const config: HardhatUserConfig = {
     timeout: process.env.MOCHA_TIMEOUT || 300000,
   },
   namedAccounts: {
-    deployer: 0,
+    deployer: 4,
     governor: '0x1a00e1E311009E56e3b0B9Ed6F86f5Ce128a1C01',
   },
   networks,
@@ -110,6 +116,33 @@ const config: HardhatUserConfig = {
   },
   etherscan: {
     apiKey: process.env.ETHERSCAN_API_KEY,
+  },
+  external: {
+    contracts: [
+      {
+        artifacts: 'node_modules/@mean-finance/dca-v2-core/artifacts',
+        deploy: 'node_modules/@mean-finance/dca-v2-core/deploy',
+      },
+    ],
+    deployments: {
+      mainnet: [
+        'node_modules/@mean-finance/dca-v2-core/deployments/mainnet',
+        'node_modules/@mean-finance/chainlink-registry/deployments/mainnet',
+      ],
+      mumbai: ['node_modules/@mean-finance/dca-v2-core/deployments/mumbai', 'node_modules/@mean-finance/chainlink-registry/deployments/mumbai'],
+      optimism: [
+        'node_modules/@mean-finance/dca-v2-core/deployments/optimism',
+        'node_modules/@mean-finance/chainlink-registry/deployments/optimism',
+      ],
+      'optimism-kovan': [
+        'node_modules/@mean-finance/dca-v2-core/deployments/optimism-kovan',
+        'node_modules/@mean-finance/chainlink-registry/deployments/optimismkovan',
+      ],
+      polygon: [
+        'node_modules/@mean-finance/dca-v2-core/deployments/polygon',
+        'node_modules/@mean-finance/chainlink-registry/deployments/polygon',
+      ],
+    },
   },
   typechain: {
     outDir: 'typechained',

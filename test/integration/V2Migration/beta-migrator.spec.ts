@@ -5,11 +5,11 @@ import { constants, wallet } from '@test-utils';
 import { contract, given, then, when } from '@test-utils/bdd';
 import evm, { snapshot } from '@test-utils/evm';
 import { BetaMigrator, DCAHubCompanion__factory, IERC20 } from '@typechained';
-import { DCAHub } from '@mean-finance/dca-v2-core/typechained';
+import { DCAHub, OracleAggregator } from '@mean-finance/dca-v2-core/typechained';
 import { abi as DCA_HUB_ABI } from '@mean-finance/dca-v2-core/artifacts/contracts/DCAHub/DCAHub.sol/DCAHub.json';
 import { abi as IERC20_ABI } from '@openzeppelin/contracts/build/contracts/IERC20.json';
 import { BigNumber, utils } from 'ethers';
-import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signers';
+import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers';
 import { SwapInterval } from '@test-utils/interval-utils';
 import forkBlockNumber from '@integration/fork-block-numbers';
 import { fromRpcSig } from 'ethereumjs-util';
@@ -35,10 +35,16 @@ contract('BetaMigrator', () => {
     await evm.reset({
       network: 'optimism',
       blockNumber: forkBlockNumber['beta-migrator'],
+      skipHardhatDeployFork: true,
     });
     [positionOwner, swapper] = await ethers.getSigners();
 
-    await deployments.fixture('BetaMigrator', { keepExistingDeployments: false });
+    await deployments.run(['DCAHub', 'BetaMigrator'], {
+      resetMemory: true,
+      deletePreviousDeployments: false,
+      writeDeploymentsToFiles: false,
+    });
+
     DCAHub = await ethers.getContract('DCAHub');
     migrator = await ethers.getContract('BetaMigrator');
     betaDCAHub = await ethers.getContractAt(DCA_HUB_ABI, await migrator.betaHub());
@@ -52,6 +58,10 @@ contract('BetaMigrator', () => {
     // Allow one minute interval
     await betaDCAHub.connect(governor).addSwapIntervalsToAllowedList([SwapInterval.ONE_MINUTE.seconds]);
     await DCAHub.connect(governor).addSwapIntervalsToAllowedList([SwapInterval.ONE_MINUTE.seconds]);
+
+    // Set Uniswap oracle so we don't have issues while moving timestamp (Chainlink has maxDelay = 1 day)
+    const oracleAggregator = await ethers.getContract<OracleAggregator>('OracleAggregator');
+    await oracleAggregator.connect(governor).setOracleForPair(WETH_ADDRESS, USDC_ADDRESS, 2);
 
     WETH = await ethers.getContractAt(IERC20_ABI, WETH_ADDRESS);
     USDC = await ethers.getContractAt(IERC20_ABI, USDC_ADDRESS);
