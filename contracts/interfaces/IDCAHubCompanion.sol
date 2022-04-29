@@ -361,7 +361,6 @@ interface IDCAHubCompanionMulticallHandler {
 
 interface IDCAHubCompanion is
   IDCAHubCompanionParameters,
-  // IDCAHubCompanionSwapHandler,
   IDCAHubCompanionWTokenPositionHandler,
   IDCAHubCompanionDustHandler,
   IDCAHubCompanionLibrariesHandler,
