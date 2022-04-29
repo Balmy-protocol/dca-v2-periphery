@@ -2,7 +2,7 @@
 pragma solidity >=0.8.7 <0.9.0;
 
 import './DCAHubCompanionParameters.sol';
-import './DCAHubCompanionSwapHandler.sol';
+// import './DCAHubCompanionSwapHandler.sol';
 import './DCAHubCompanionWTokenPositionHandler.sol';
 import './DCAHubCompanionDustHandler.sol';
 import './DCAHubCompanionLibrariesHandler.sol';
@@ -10,7 +10,7 @@ import './DCAHubCompanionMulticallHandler.sol';
 
 contract DCAHubCompanion is
   DCAHubCompanionParameters,
-  DCAHubCompanionSwapHandler,
+  // DCAHubCompanionSwapHandler,
   DCAHubCompanionWTokenPositionHandler,
   DCAHubCompanionDustHandler,
   DCAHubCompanionLibrariesHandler,
