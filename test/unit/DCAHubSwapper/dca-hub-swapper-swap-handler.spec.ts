@@ -5,8 +5,8 @@ import { contract, given, then, when } from '@test-utils/bdd';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers';
 import { snapshot } from '@test-utils/evm';
 import {
-  DCAHubCompanionSwapHandlerMock,
-  DCAHubCompanionSwapHandlerMock__factory,
+  DCAHubSwapperSwapHandlerMock,
+  DCAHubSwapperSwapHandlerMock__factory,
   IDCAHub,
   IERC20,
   WrappedPlatformTokenMock,
@@ -20,14 +20,14 @@ import { BytesLike } from '@ethersproject/bytes';
 
 chai.use(smock.matchers);
 
-contract('DCAHubCompanionSwapHandler', () => {
+contract('DCAHubSwapperSwapHandler', () => {
   const ABI_CODER = new ethers.utils.AbiCoder();
   const DEX = constants.NOT_ZERO_ADDRESS;
   const TOKENS_PROXY = wallet.generateRandomAddress();
   let swapper: SignerWithAddress, hub: SignerWithAddress, governor: SignerWithAddress;
   let DCAHub: FakeContract<IDCAHub>;
-  let DCAHubCompanionSwapHandler: DCAHubCompanionSwapHandlerMock;
-  let DCAHubCompanionSwapHandlerFactory: DCAHubCompanionSwapHandlerMock__factory;
+  let DCAHubSwapperSwapHandler: DCAHubSwapperSwapHandlerMock;
+  let DCAHubSwapperSwapHandlerFactory: DCAHubSwapperSwapHandlerMock__factory;
   let wToken: TokenContract<WrappedPlatformTokenMock>;
   let tokenA: ERC20TokenContract, tokenB: ERC20TokenContract;
   let snapshotId: string;
@@ -37,15 +37,15 @@ contract('DCAHubCompanionSwapHandler', () => {
 
   before('Setup accounts and contracts', async () => {
     [, swapper, hub, governor] = await ethers.getSigners();
-    DCAHubCompanionSwapHandlerFactory = await ethers.getContractFactory(
-      'contracts/mocks/DCAHubCompanion/DCAHubCompanionSwapHandler.sol:DCAHubCompanionSwapHandlerMock'
+    DCAHubSwapperSwapHandlerFactory = await ethers.getContractFactory(
+      'contracts/mocks/DCAHubSwapper/DCAHubSwapperSwapHandler.sol:DCAHubSwapperSwapHandlerMock'
     );
     const wTokenFactory: WrappedPlatformTokenMock__factory = await ethers.getContractFactory(
       'contracts/mocks/WrappedPlatformTokenMock.sol:WrappedPlatformTokenMock'
     );
     wToken = await addExtra(await wTokenFactory.deploy('WETH', 'WETH', 18));
     DCAHub = await smock.fake('IDCAHub');
-    DCAHubCompanionSwapHandler = await DCAHubCompanionSwapHandlerFactory.deploy(DCAHub.address, wToken.address, governor.address);
+    DCAHubSwapperSwapHandler = await DCAHubSwapperSwapHandlerFactory.deploy(DCAHub.address, wToken.address, governor.address);
     const deploy = (decimals: number) => erc20.deploy({ name: 'A name', symbol: 'SYMB', decimals });
     const deployedTokens = await Promise.all([deploy(12), deploy(16)]);
     [tokenA, tokenB] = deployedTokens.sort((a, b) => a.address.localeCompare(b.address));
@@ -60,7 +60,7 @@ contract('DCAHubCompanionSwapHandler', () => {
   describe('constructor', () => {
     when('contract is initiated', () => {
       then('no DEX is initially supported', async () => {
-        expect(await DCAHubCompanionSwapHandler.isDexSupported(DEX)).to.be.false;
+        expect(await DCAHubSwapperSwapHandler.isDexSupported(DEX)).to.be.false;
       });
     });
   });
@@ -69,7 +69,7 @@ contract('DCAHubCompanionSwapHandler', () => {
     when('called with zero address', () => {
       then('reverts with message', async () => {
         await behaviours.txShouldRevertWithMessage({
-          contract: DCAHubCompanionSwapHandler.connect(governor),
+          contract: DCAHubSwapperSwapHandler.connect(governor),
           func: 'defineDexSupport',
           args: [constants.ZERO_ADDRESS, true],
           message: 'ZeroAddress',
@@ -77,23 +77,23 @@ contract('DCAHubCompanionSwapHandler', () => {
       });
     });
     when('support is added', () => {
-      given(async () => await DCAHubCompanionSwapHandler.connect(governor).defineDexSupport(DEX, true));
+      given(async () => await DCAHubSwapperSwapHandler.connect(governor).defineDexSupport(DEX, true));
       then('it is reflected correctly', async () => {
-        expect(await DCAHubCompanionSwapHandler.isDexSupported(DEX)).to.be.true;
+        expect(await DCAHubSwapperSwapHandler.isDexSupported(DEX)).to.be.true;
       });
     });
     when('support is removed', () => {
       given(async () => {
-        const contractWithGovernor = DCAHubCompanionSwapHandler.connect(governor);
+        const contractWithGovernor = DCAHubSwapperSwapHandler.connect(governor);
         await contractWithGovernor.defineDexSupport(DEX, true);
         await contractWithGovernor.defineDexSupport(DEX, false);
       });
       then('it is reflected correctly', async () => {
-        expect(await DCAHubCompanionSwapHandler.isDexSupported(DEX)).to.be.false;
+        expect(await DCAHubSwapperSwapHandler.isDexSupported(DEX)).to.be.false;
       });
     });
     behaviours.shouldBeExecutableOnlyByGovernor({
-      contract: () => DCAHubCompanionSwapHandler,
+      contract: () => DCAHubSwapperSwapHandler,
       funcAndSignature: 'defineDexSupport',
       params: () => [DEX, true],
       governor: () => governor,
@@ -129,7 +129,7 @@ contract('DCAHubCompanionSwapHandler', () => {
       });
       then('reverts with message', async () => {
         await behaviours.txShouldRevertWithMessage({
-          contract: DCAHubCompanionSwapHandler,
+          contract: DCAHubSwapperSwapHandler,
           func: 'swapForCaller',
           args: [tokens, INDEXES, [MIN_OUTPUT, MIN_OUTPUT], [MAX_INPUT, MAX_INPUT], SOME_RANDOM_ADDRESS, constants.MAX_UINT_256],
           message: 'RewardNotEnough',
@@ -160,7 +160,7 @@ contract('DCAHubCompanionSwapHandler', () => {
       });
       then('reverts with message', async () => {
         await behaviours.txShouldRevertWithMessage({
-          contract: DCAHubCompanionSwapHandler,
+          contract: DCAHubSwapperSwapHandler,
           func: 'swapForCaller',
           args: [tokens, INDEXES, [MIN_OUTPUT, MIN_OUTPUT], [MAX_INPUT, MAX_INPUT], SOME_RANDOM_ADDRESS, constants.MAX_UINT_256],
           message: 'ToProvideIsTooMuch',
@@ -169,7 +169,7 @@ contract('DCAHubCompanionSwapHandler', () => {
     });
     when('swap is executed without any value', () => {
       given(async () => {
-        await DCAHubCompanionSwapHandler.connect(swapper).swapForCaller(tokens, INDEXES, [], [], SOME_RANDOM_ADDRESS, constants.MAX_UINT_256);
+        await DCAHubSwapperSwapHandler.connect(swapper).swapForCaller(tokens, INDEXES, [], [], SOME_RANDOM_ADDRESS, constants.MAX_UINT_256);
       });
       thenHubIsCalledWith({
         rewardRecipient: SOME_RANDOM_ADDRESS,
@@ -179,7 +179,7 @@ contract('DCAHubCompanionSwapHandler', () => {
     when('swap is executed with some value', () => {
       const SENT_VALUE = 1000;
       given(async () => {
-        await DCAHubCompanionSwapHandler.connect(swapper).swapForCaller(tokens, INDEXES, [], [], SOME_RANDOM_ADDRESS, constants.MAX_UINT_256, {
+        await DCAHubSwapperSwapHandler.connect(swapper).swapForCaller(tokens, INDEXES, [], [], SOME_RANDOM_ADDRESS, constants.MAX_UINT_256, {
           value: SENT_VALUE,
         });
       });
@@ -191,7 +191,7 @@ contract('DCAHubCompanionSwapHandler', () => {
   });
   describe('swapWithDex', () => {
     const BYTES = ethers.utils.randomBytes(10);
-    given(async () => await DCAHubCompanionSwapHandler.connect(governor).defineDexSupport(DEX, true));
+    given(async () => await DCAHubSwapperSwapHandler.connect(governor).defineDexSupport(DEX, true));
     whenDeadlineHasExpiredThenTxReverts({
       func: 'swapWithDex',
       args: () => [DEX, TOKENS_PROXY, tokens, INDEXES, [], false, constants.NOT_ZERO_ADDRESS, 0],
@@ -202,7 +202,7 @@ contract('DCAHubCompanionSwapHandler', () => {
     });
     when('swap is executed without swap and transfer', () => {
       given(async () => {
-        await DCAHubCompanionSwapHandler.connect(swapper).swapWithDex(
+        await DCAHubSwapperSwapHandler.connect(swapper).swapWithDex(
           DEX,
           TOKENS_PROXY,
           tokens,
@@ -214,7 +214,7 @@ contract('DCAHubCompanionSwapHandler', () => {
         );
       });
       thenHubIsCalledWith({
-        rewardRecipient: () => DCAHubCompanionSwapHandler,
+        rewardRecipient: () => DCAHubSwapperSwapHandler,
         data: () =>
           encode({
             plan: 'dex',
@@ -231,7 +231,7 @@ contract('DCAHubCompanionSwapHandler', () => {
     });
     when('swap is executed with swap and transfer', () => {
       given(async () => {
-        await DCAHubCompanionSwapHandler.connect(swapper).swapWithDex(
+        await DCAHubSwapperSwapHandler.connect(swapper).swapWithDex(
           DEX,
           TOKENS_PROXY,
           tokens,
@@ -243,7 +243,7 @@ contract('DCAHubCompanionSwapHandler', () => {
         );
       });
       thenHubIsCalledWith({
-        rewardRecipient: () => DCAHubCompanionSwapHandler,
+        rewardRecipient: () => DCAHubSwapperSwapHandler,
         data: () =>
           encode({
             plan: 'dex',
@@ -261,7 +261,7 @@ contract('DCAHubCompanionSwapHandler', () => {
   });
   describe('swapWithDexAndShareLeftoverWithHub', () => {
     const BYTES = ethers.utils.randomBytes(10);
-    given(async () => await DCAHubCompanionSwapHandler.connect(governor).defineDexSupport(DEX, true));
+    given(async () => await DCAHubSwapperSwapHandler.connect(governor).defineDexSupport(DEX, true));
     whenDeadlineHasExpiredThenTxReverts({
       func: 'swapWithDexAndShareLeftoverWithHub',
       args: () => [DEX, TOKENS_PROXY, tokens, INDEXES, [], false, constants.NOT_ZERO_ADDRESS, 0],
@@ -272,7 +272,7 @@ contract('DCAHubCompanionSwapHandler', () => {
     });
     when('swap is executed without swap and transfer', () => {
       given(async () => {
-        await DCAHubCompanionSwapHandler.connect(swapper).swapWithDexAndShareLeftoverWithHub(
+        await DCAHubSwapperSwapHandler.connect(swapper).swapWithDexAndShareLeftoverWithHub(
           DEX,
           TOKENS_PROXY,
           tokens,
@@ -284,7 +284,7 @@ contract('DCAHubCompanionSwapHandler', () => {
         );
       });
       thenHubIsCalledWith({
-        rewardRecipient: () => DCAHubCompanionSwapHandler,
+        rewardRecipient: () => DCAHubSwapperSwapHandler,
         data: () =>
           encode({
             plan: 'dex',
@@ -301,7 +301,7 @@ contract('DCAHubCompanionSwapHandler', () => {
     });
     when('swap is executed with swap and transfer', () => {
       given(async () => {
-        await DCAHubCompanionSwapHandler.connect(swapper).swapWithDexAndShareLeftoverWithHub(
+        await DCAHubSwapperSwapHandler.connect(swapper).swapWithDexAndShareLeftoverWithHub(
           DEX,
           TOKENS_PROXY,
           tokens,
@@ -313,7 +313,7 @@ contract('DCAHubCompanionSwapHandler', () => {
         );
       });
       thenHubIsCalledWith({
-        rewardRecipient: () => DCAHubCompanionSwapHandler,
+        rewardRecipient: () => DCAHubSwapperSwapHandler,
         data: () =>
           encode({
             plan: 'dex',
@@ -333,20 +333,20 @@ contract('DCAHubCompanionSwapHandler', () => {
   describe('DCAHubSwapCall', () => {
     const AMOUNT_TO_PROVIDE_OF_WTOKEN = 200;
     let tokensInSwap: { token: string; toProvide: BigNumberish; reward: BigNumberish; platformFee: BigNumberish }[];
-    let DCAHubCompanionSwapHandler: DCAHubCompanionSwapHandlerMock;
+    let DCAHubSwapperSwapHandler: DCAHubSwapperSwapHandlerMock;
     given(async () => {
       tokensInSwap = [
         { token: wToken.address, toProvide: wToken.asUnits(AMOUNT_TO_PROVIDE_OF_WTOKEN), reward: 0, platformFee: 0 },
         { token: tokenA.address, toProvide: tokenA.asUnits(100), reward: 0, platformFee: 0 },
       ];
-      DCAHubCompanionSwapHandler = await DCAHubCompanionSwapHandlerFactory.deploy(hub.address, wToken.address, governor.address);
+      DCAHubSwapperSwapHandler = await DCAHubSwapperSwapHandlerFactory.deploy(hub.address, wToken.address, governor.address);
     });
     when('caller is not the hub', () => {
       then('reverts with message', async () => {
         await behaviours.txShouldRevertWithMessage({
-          contract: DCAHubCompanionSwapHandler,
+          contract: DCAHubSwapperSwapHandler,
           func: 'DCAHubSwapCall',
-          args: [DCAHubCompanionSwapHandler.address, tokensInSwap, [], ethers.utils.randomBytes(5)],
+          args: [DCAHubSwapperSwapHandler.address, tokensInSwap, [], ethers.utils.randomBytes(5)],
           message: 'CallbackNotCalledByHub',
         });
       });
@@ -354,7 +354,7 @@ contract('DCAHubCompanionSwapHandler', () => {
     when('sender is not this same contract', () => {
       then('reverts with message', async () => {
         await behaviours.txShouldRevertWithMessage({
-          contract: DCAHubCompanionSwapHandler.connect(hub),
+          contract: DCAHubSwapperSwapHandler.connect(hub),
           func: 'DCAHubSwapCall',
           args: [constants.NOT_ZERO_ADDRESS, tokensInSwap, [], ethers.utils.randomBytes(5)],
           message: 'SwapNotInitiatedByCompanion',
@@ -365,9 +365,9 @@ contract('DCAHubCompanionSwapHandler', () => {
       const SWAP_DATA = ABI_CODER.encode(['tuple(uint256, bytes)'], [[0, ethers.utils.randomBytes(5)]]);
       then('reverts with message', async () => {
         await behaviours.txShouldRevertWithMessage({
-          contract: DCAHubCompanionSwapHandler.connect(hub),
+          contract: DCAHubSwapperSwapHandler.connect(hub),
           func: 'DCAHubSwapCall',
-          args: [DCAHubCompanionSwapHandler.address, tokensInSwap, [], SWAP_DATA],
+          args: [DCAHubSwapperSwapHandler.address, tokensInSwap, [], SWAP_DATA],
           message: 'UnexpectedSwapPlan',
         });
       });
@@ -376,9 +376,9 @@ contract('DCAHubCompanionSwapHandler', () => {
       const SWAP_DATA = ABI_CODER.encode(['tuple(uint256, bytes)'], [[10, ethers.utils.randomBytes(5)]]);
       then('reverts with message', async () => {
         await behaviours.txShouldRevertWithMessage({
-          contract: DCAHubCompanionSwapHandler.connect(hub),
+          contract: DCAHubSwapperSwapHandler.connect(hub),
           func: 'DCAHubSwapCall',
-          args: [DCAHubCompanionSwapHandler.address, tokensInSwap, [], SWAP_DATA],
+          args: [DCAHubSwapperSwapHandler.address, tokensInSwap, [], SWAP_DATA],
           // This happens when an invalid plan (not part of the enum) is sent
           message: `Transaction reverted and Hardhat couldn't infer the reason. Please report this to help us improve Hardhat.`,
         });
@@ -390,10 +390,10 @@ contract('DCAHubCompanionSwapHandler', () => {
         let tx: Promise<TransactionResponse>;
         given(async () => {
           const sentProtocolToken = wToken.asUnits(AMOUNT_TO_PROVIDE_OF_WTOKEN).sub(1);
-          await ethers.provider.send('hardhat_setBalance', [DCAHubCompanionSwapHandler.address, ethers.utils.hexValue(sentProtocolToken)]);
+          await ethers.provider.send('hardhat_setBalance', [DCAHubSwapperSwapHandler.address, ethers.utils.hexValue(sentProtocolToken)]);
           const swapData = swapDataWithValue(sentProtocolToken);
           await mintAndApproveTokens();
-          tx = DCAHubCompanionSwapHandler.connect(hub).DCAHubSwapCall(DCAHubCompanionSwapHandler.address, tokensInSwap, [], swapData);
+          tx = DCAHubSwapperSwapHandler.connect(hub).DCAHubSwapCall(DCAHubSwapperSwapHandler.address, tokensInSwap, [], swapData);
         });
         then('tx reverts with message', async () => {
           await behaviours.checkTxRevertedWithMessage({ tx, message: 'Transaction reverted: function call failed to execute' });
@@ -423,12 +423,12 @@ contract('DCAHubCompanionSwapHandler', () => {
             sentProtocolTokenAsUnits = wToken.asUnits(sentProtocolToken);
             const swapData = swapDataWithValue(sentProtocolTokenAsUnits);
             await ethers.provider.send('hardhat_setBalance', [
-              DCAHubCompanionSwapHandler.address,
+              DCAHubSwapperSwapHandler.address,
               ethers.utils.hexValue(sentProtocolTokenAsUnits),
             ]);
             await mintAndApproveTokens();
             initialSwapperBalance = await ethers.provider.getBalance(swapper.address);
-            await DCAHubCompanionSwapHandler.connect(hub).DCAHubSwapCall(DCAHubCompanionSwapHandler.address, tokensInSwap, [], swapData);
+            await DCAHubSwapperSwapHandler.connect(hub).DCAHubSwapCall(DCAHubSwapperSwapHandler.address, tokensInSwap, [], swapData);
           });
           then('tokens are sent from the swapper to the hub correctly', async () => {
             for (const tokenInSwap of tokensInSwap) {
@@ -438,7 +438,7 @@ contract('DCAHubCompanionSwapHandler', () => {
             }
           });
           then(`companion's protocol token balance continues to be 0`, async () => {
-            const balance = await ethers.provider.getBalance(DCAHubCompanionSwapHandler.address);
+            const balance = await ethers.provider.getBalance(DCAHubSwapperSwapHandler.address);
             expect(balance).to.equal(0);
           });
           if (sentProtocolToken > AMOUNT_TO_PROVIDE_OF_WTOKEN) {
@@ -453,7 +453,7 @@ contract('DCAHubCompanionSwapHandler', () => {
         for (const tokenInSwap of tokensInSwap) {
           const token = fromAddressToToken(tokenInSwap.token);
           await token.mint(swapper.address, tokenInSwap.toProvide);
-          await token.connect(swapper).approve(DCAHubCompanionSwapHandler.address, tokenInSwap.toProvide);
+          await token.connect(swapper).approve(DCAHubSwapperSwapHandler.address, tokenInSwap.toProvide);
         }
       }
     });
@@ -497,8 +497,8 @@ contract('DCAHubCompanionSwapHandler', () => {
             { token: tokenA.address, toProvide: AMOUNT_TO_PROVIDE_TOKEN_A, reward: 0, platformFee: 0 },
             { token: tokenB.address, toProvide: 0, reward: REWARD_AMOUNT_TOKEN_B, platformFee: 0 },
           ];
-          await DCAHubCompanionSwapHandler.connect(hub).DCAHubSwapCall(
-            DCAHubCompanionSwapHandler.address,
+          await DCAHubSwapperSwapHandler.connect(hub).DCAHubSwapCall(
+            DCAHubSwapperSwapHandler.address,
             tokensInSwap,
             [],
             swapData({ callsToDex: BYTES, sendToHubFlag: true, swapAndTransfer: true })
@@ -512,7 +512,7 @@ contract('DCAHubCompanionSwapHandler', () => {
           expect(tokenA.approve).to.not.have.been.called;
         });
         then('dex calls are executed', async () => {
-          const calls = await DCAHubCompanionSwapHandler.callsToDex(DEX);
+          const calls = await DCAHubSwapperSwapHandler.callsToDex(DEX);
           for (let i = 0; i < BYTES.length; i++) {
             expect(calls[i]).to.equal(ethers.utils.hexlify(BYTES[i]));
           }
@@ -645,9 +645,9 @@ contract('DCAHubCompanionSwapHandler', () => {
           given(async () => {
             const tokensInSwap = [{ token: tokenA.address, reward: reward ?? 0, toProvide: 0, platformFee: 0 }];
             tokenA.allowance.returns(allowance ?? 0);
-            await DCAHubCompanionSwapHandler.connect(governor).setTokensWithApprovalIssues([tokenA.address], [hasIssue ?? false]);
+            await DCAHubSwapperSwapHandler.connect(governor).setTokensWithApprovalIssues([tokenA.address], [hasIssue ?? false]);
             const data = swapData({ callsToDex: [], sendToHubFlag: true, swapAndTransfer: false });
-            await DCAHubCompanionSwapHandler.connect(hub).DCAHubSwapCall(DCAHubCompanionSwapHandler.address, tokensInSwap, [], data);
+            await DCAHubSwapperSwapHandler.connect(hub).DCAHubSwapCall(DCAHubSwapperSwapHandler.address, tokensInSwap, [], data);
           });
           then(thenTitle, () => assertion(tokenA, swapper.address));
         });
@@ -675,7 +675,7 @@ contract('DCAHubCompanionSwapHandler', () => {
             const tokensInSwap = [{ token: tokenA.address, toProvide: toProvide ?? 0, reward: 0, platformFee: 0 }];
             tokenA.balanceOf.returns(balance);
             const data = swapData({ callsToDex: [], sendToHubFlag: sendToHubFlag ?? true, swapAndTransfer: swapAndTransfer ?? false });
-            await DCAHubCompanionSwapHandler.connect(hub).DCAHubSwapCall(DCAHubCompanionSwapHandler.address, tokensInSwap, [], data);
+            await DCAHubSwapperSwapHandler.connect(hub).DCAHubSwapCall(DCAHubSwapperSwapHandler.address, tokensInSwap, [], data);
           });
           then(thenTitle, () => assertion(tokenA, swapper.address));
         });
@@ -693,11 +693,11 @@ contract('DCAHubCompanionSwapHandler', () => {
     }
     throw new Error('Unknown address');
   }
-  function whenDeadlineHasExpiredThenTxReverts({ func, args }: { func: keyof DCAHubCompanionSwapHandlerMock['functions']; args: () => any[] }) {
+  function whenDeadlineHasExpiredThenTxReverts({ func, args }: { func: keyof DCAHubSwapperSwapHandlerMock['functions']; args: () => any[] }) {
     when('deadline has expired', () => {
       then('reverts with message', async () => {
         await behaviours.txShouldRevertWithMessage({
-          contract: DCAHubCompanionSwapHandler,
+          contract: DCAHubSwapperSwapHandler,
           func,
           args: args(),
           message: 'Transaction too old',
@@ -705,17 +705,11 @@ contract('DCAHubCompanionSwapHandler', () => {
       });
     });
   }
-  function whenUnsupportedDexIsUsedThenTxReverts({
-    func,
-    args,
-  }: {
-    func: keyof DCAHubCompanionSwapHandlerMock['functions'];
-    args: () => any[];
-  }) {
+  function whenUnsupportedDexIsUsedThenTxReverts({ func, args }: { func: keyof DCAHubSwapperSwapHandlerMock['functions']; args: () => any[] }) {
     when('deadline has expired', () => {
       then('reverts with message', async () => {
         await behaviours.txShouldRevertWithMessage({
-          contract: DCAHubCompanionSwapHandler,
+          contract: DCAHubSwapperSwapHandler,
           func,
           args: args(),
           message: 'UnsupportedDex',
@@ -738,7 +732,7 @@ contract('DCAHubCompanionSwapHandler', () => {
       expect(rewardRecipient).to.equal(
         typeof expectedRewardRecipient === 'string' ? expectedRewardRecipient : expectedRewardRecipient().address
       );
-      expect(callbackHandler).to.equal(DCAHubCompanionSwapHandler.address);
+      expect(callbackHandler).to.equal(DCAHubSwapperSwapHandler.address);
       expect(borrow).to.eql([constants.ZERO, constants.ZERO]);
       expect(data).to.equal(expectedData());
     });

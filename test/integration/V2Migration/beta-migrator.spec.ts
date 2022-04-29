@@ -4,7 +4,7 @@ import { TransactionResponse } from '@ethersproject/providers';
 import { constants, wallet } from '@test-utils';
 import { contract, given, then, when } from '@test-utils/bdd';
 import evm, { snapshot } from '@test-utils/evm';
-import { BetaMigrator, DCAHubCompanion__factory, IERC20 } from '@typechained';
+import { BetaMigrator, DCAHubSwapper, IERC20 } from '@typechained';
 import { DCAHub, OracleAggregator } from '@mean-finance/dca-v2-core/typechained';
 import { abi as DCA_HUB_ABI } from '@mean-finance/dca-v2-core/artifacts/contracts/DCAHub/DCAHub.sol/DCAHub.json';
 import { abi as IERC20_ABI } from '@openzeppelin/contracts/build/contracts/IERC20.json';
@@ -19,11 +19,13 @@ const USDC_ADDRESS = '0x7f5c764cbc14f9669b88837ca1490cca17c31607';
 const WETH_WHALE_ADDRESS = '0xaa30d6bba6285d0585722e2440ff89e23ef68864';
 const USDC_WHALE_ADDRESS = '0xad7b4c162707e0b2b5f6fddbd3f8538a5fba0d60';
 
-contract('BetaMigrator', () => {
+contract.skip('BetaMigrator', () => {
   let WETH: IERC20, USDC: IERC20;
   let positionOwner: SignerWithAddress, swapper: SignerWithAddress;
+  let DCAHub: DCAHub;
+  let DCAHubSwapper: DCAHubSwapper;
   let betaPermissionManager: string;
-  let DCAHub: DCAHub, betaDCAHub: DCAHub;
+  let betaDCAHub: DCAHub;
   let migrator: BetaMigrator;
   let snapshotId: string;
   let chainId: BigNumber;
@@ -39,13 +41,14 @@ contract('BetaMigrator', () => {
     });
     [positionOwner, swapper] = await ethers.getSigners();
 
-    await deployments.run(['DCAHub', 'BetaMigrator'], {
+    await deployments.run(['DCAHub', 'BetaMigrator', 'DCAHubSwapper'], {
       resetMemory: true,
       deletePreviousDeployments: false,
       writeDeploymentsToFiles: false,
     });
 
     DCAHub = await ethers.getContract('DCAHub');
+    DCAHubSwapper = await ethers.getContract('DCAHubSwapper');
     migrator = await ethers.getContract('BetaMigrator');
     betaDCAHub = await ethers.getContractAt(DCA_HUB_ABI, await migrator.betaHub());
     betaPermissionManager = await betaDCAHub.permissionManager();
@@ -137,12 +140,8 @@ contract('BetaMigrator', () => {
     const event = await getHubEvent(tx, 'Deposited');
     const positionId = event.args.positionId;
 
-    const DCAHubCompanionFactory: DCAHubCompanion__factory = await ethers.getContractFactory(
-      'contracts/DCAHubCompanion/DCAHubCompanion.sol:DCAHubCompanion'
-    );
-    const DCAHubCompanion = await DCAHubCompanionFactory.deploy(betaDCAHub.address, WETH.address, constants.NOT_ZERO_ADDRESS);
-    await WETH.connect(swapper).approve(DCAHubCompanion.address, constants.MAX_UINT_256);
-    await DCAHubCompanion.connect(swapper).swapForCaller(
+    await WETH.connect(swapper).approve(DCAHubSwapper.address, constants.MAX_UINT_256);
+    await DCAHubSwapper.connect(swapper).swapForCaller(
       [WETH_ADDRESS, USDC_ADDRESS],
       [{ indexTokenA: 0, indexTokenB: 1 }],
       [0, 0],

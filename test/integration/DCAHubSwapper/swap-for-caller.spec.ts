@@ -4,7 +4,7 @@ import { JsonRpcSigner, TransactionResponse } from '@ethersproject/providers';
 import { constants, wallet } from '@test-utils';
 import { given, then, when } from '@test-utils/bdd';
 import evm, { snapshot } from '@test-utils/evm';
-import { DCAHubCompanion, IERC20 } from '@typechained';
+import { DCAHubSwapper, DCAHubCompanion, IERC20 } from '@typechained';
 import { DCAHub } from '@mean-finance/dca-v2-core/typechained';
 import { abi as DCA_HUB_ABI } from '@mean-finance/dca-v2-core/artifacts/contracts/DCAHub/DCAHub.sol/DCAHub.json';
 import { abi as IERC20_ABI } from '@openzeppelin/contracts/build/contracts/IERC20.json';
@@ -22,6 +22,7 @@ describe('Swap for caller', () => {
   let WETH: IERC20, USDC: IERC20;
   let governor: JsonRpcSigner;
   let cindy: SignerWithAddress, swapper: SignerWithAddress, recipient: SignerWithAddress;
+  let DCAHubSwapper: DCAHubSwapper;
   let DCAHubCompanion: DCAHubCompanion;
   let DCAHub: DCAHub;
   let initialPerformedSwaps: number;
@@ -38,13 +39,14 @@ describe('Swap for caller', () => {
     });
     [cindy, swapper, recipient] = await ethers.getSigners();
 
-    await deployments.run(['DCAHub', 'DCAHubCompanion'], {
+    await deployments.run(['DCAHub', 'DCAHubCompanion', 'DCAHubSwapper'], {
       resetMemory: true,
       deletePreviousDeployments: false,
       writeDeploymentsToFiles: false,
     });
     DCAHub = await ethers.getContract('DCAHub');
     DCAHubCompanion = await ethers.getContract('DCAHubCompanion');
+    DCAHubSwapper = await ethers.getContract('DCAHubSwapper');
 
     const namedAccounts = await getNamedAccounts();
     const governorAddress = namedAccounts.governor;
@@ -62,7 +64,7 @@ describe('Swap for caller', () => {
 
     const depositAmount = RATE.mul(AMOUNT_OF_SWAPS);
     await WETH.connect(cindy).approve(DCAHub.address, depositAmount);
-    await USDC.connect(swapper).approve(DCAHubCompanion.address, BigNumber.from(10).pow(12));
+    await USDC.connect(swapper).approve(DCAHubSwapper.address, BigNumber.from(10).pow(12));
     await DCAHub.connect(cindy)['deposit(address,address,uint256,uint32,uint32,address,(address,uint8[])[])'](
       WETH.address,
       USDC.address,
@@ -88,7 +90,7 @@ describe('Swap for caller', () => {
         initialSwapperUSDCBalance = await USDC.balanceOf(swapper.address);
         initialHubWETHBalance = await WETH.balanceOf(DCAHub.address);
         initialHubUSDCBalance = await USDC.balanceOf(DCAHub.address);
-        const swapTx = await DCAHubCompanion.connect(swapper).swapForCaller(
+        const swapTx = await DCAHubSwapper.connect(swapper).swapForCaller(
           [USDC_ADDRESS, WETH_ADDRESS],
           [{ indexTokenA: 0, indexTokenB: 1 }],
           [0, 0],

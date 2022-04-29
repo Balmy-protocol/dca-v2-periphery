@@ -1,17 +1,17 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity >=0.8.7 <0.9.0;
 
-import '../../DCAHubCompanion/DCAHubCompanionSwapHandler.sol';
-import './DCAHubCompanionParameters.sol';
+import '../../DCAHubSwapper/DCAHubSwapperSwapHandler.sol';
+import './DCAHubSwapperParameters.sol';
 
-contract DCAHubCompanionSwapHandlerMock is DCAHubCompanionSwapHandler, DCAHubCompanionParametersMock {
+contract DCAHubSwapperSwapHandlerMock is DCAHubSwapperSwapHandler, DCAHubSwapperParametersMock {
   mapping(address => bytes[]) private _dexCalledWith;
 
   constructor(
     IDCAHub _hub,
     IWrappedProtocolToken _wToken,
     address _governor
-  ) DCAHubCompanionParametersMock(_hub, IDCAPermissionManager(address(1)), _wToken, _governor) {}
+  ) DCAHubSwapperParametersMock(_hub, _wToken, _governor) {}
 
   function _callDex(address _dex, bytes memory _data) internal override {
     _dexCalledWith[_dex].push(_data);
