@@ -4,7 +4,7 @@ import { JsonRpcSigner, TransactionResponse } from '@ethersproject/providers';
 import { constants, wallet } from '@test-utils';
 import { given, then, when } from '@test-utils/bdd';
 import evm, { snapshot } from '@test-utils/evm';
-import { DCAHubCompanion, IERC20 } from '@typechained';
+import { DCAHubCompanion, DCAHubSwapper, IERC20 } from '@typechained';
 import { DCAHub } from '@mean-finance/dca-v2-core/typechained';
 import { abi as DCA_HUB_ABI } from '@mean-finance/dca-v2-core/artifacts/contracts/DCAHub/DCAHub.sol/DCAHub.json';
 import { abi as IERC20_ABI } from '@openzeppelin/contracts/build/contracts/IERC20.json';
@@ -23,6 +23,7 @@ describe('Single pair swap with DEX', () => {
   let USDC: IERC20;
   let governor: JsonRpcSigner;
   let cindy: SignerWithAddress, recipient: SignerWithAddress;
+  let DCAHubSwapper: DCAHubSwapper;
   let DCAHubCompanion: DCAHubCompanion;
   let DCAHub: DCAHub;
   let initialPerformedSwaps: number;
@@ -38,13 +39,14 @@ describe('Single pair swap with DEX', () => {
     });
     [cindy, recipient] = await ethers.getSigners();
 
-    await deployments.run(['DCAHub', 'DCAHubCompanion'], {
+    await deployments.run(['DCAHub', 'DCAHubCompanion', 'DCAHubSwapper'], {
       resetMemory: true,
       deletePreviousDeployments: false,
       writeDeploymentsToFiles: false,
     });
     DCAHub = await ethers.getContract('DCAHub');
     DCAHubCompanion = await ethers.getContract('DCAHubCompanion');
+    DCAHubSwapper = await ethers.getContract('DCAHubSwapper');
 
     const namedAccounts = await getNamedAccounts();
     const governorAddress = namedAccounts.governor;
@@ -125,14 +127,14 @@ describe('Single pair swap with DEX', () => {
           buyToken: USDC_ADDRESS,
           sellAmount: weth.reward,
           slippagePercentage: 0.01, // 1%
-          takerAddress: DCAHubCompanion.address,
+          takerAddress: DCAHubSwapper.address,
           skipValidation: true,
         });
-        await DCAHubCompanion.connect(governor).defineDexSupport(dexQuote.to, true);
+        await DCAHubSwapper.connect(governor).defineDexSupport(dexQuote.to, true);
         const dexFunction = sendLeftoverToHub ? 'swapWithDexAndShareLeftoverWithHub' : 'swapWithDex';
         const tokensInSwap = [USDC_ADDRESS, WETH_ADDRESS];
         const indexesInSwap = [{ indexTokenA: 0, indexTokenB: 1 }];
-        const swapTx = await DCAHubCompanion[dexFunction](
+        const swapTx = await DCAHubSwapper[dexFunction](
           dexQuote.to,
           dexQuote.allowanceTarget,
           tokensInSwap,
@@ -188,8 +190,8 @@ describe('Single pair swap with DEX', () => {
     const reward = tokenA.reward.gt(tokenB.reward) ? tokenA.reward : tokenB.reward;
     const toProvide = tokenA.toProvide.gt(tokenB.toProvide) ? tokenA.toProvide : tokenB.toProvide;
 
-    const receivedFromAgg = await findTransferValue(tx, { notFrom: DCAHub, to: DCAHubCompanion });
-    const sentToAgg = await findTransferValue(tx, { from: DCAHubCompanion, notTo: DCAHub });
+    const receivedFromAgg = await findTransferValue(tx, { notFrom: DCAHub, to: DCAHubSwapper });
+    const sentToAgg = await findTransferValue(tx, { from: DCAHubSwapper, notTo: DCAHub });
     return { reward, toProvide, receivedFromAgg, sentToAgg };
   }
 

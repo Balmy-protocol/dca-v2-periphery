@@ -4,7 +4,7 @@ import { JsonRpcSigner, TransactionResponse } from '@ethersproject/providers';
 import { constants, wallet } from '@test-utils';
 import { given, then, when } from '@test-utils/bdd';
 import evm, { snapshot } from '@test-utils/evm';
-import { DCAHubCompanion, IERC20 } from '@typechained';
+import { DCAHubCompanion, DCAHubSwapper, IERC20 } from '@typechained';
 import { DCAHub } from '@mean-finance/dca-v2-core/typechained';
 import { abi as DCA_HUB_ABI } from '@mean-finance/dca-v2-core/artifacts/contracts/DCAHub/DCAHub.sol/DCAHub.json';
 import { abi as IERC20_ABI } from '@openzeppelin/contracts/build/contracts/IERC20.json';
@@ -25,6 +25,7 @@ describe('Multi pair swap with DEX', () => {
   let cindy: SignerWithAddress, recipient: SignerWithAddress;
   let DCAHubCompanion: DCAHubCompanion;
   let DCAHub: DCAHub;
+  let DCAHubSwapper: DCAHubSwapper;
   let initialPerformedSwaps: number;
   let snapshotId: string;
 
@@ -38,13 +39,14 @@ describe('Multi pair swap with DEX', () => {
     });
     [cindy, recipient] = await ethers.getSigners();
 
-    await deployments.run(['DCAHub', 'DCAHubCompanion'], {
+    await deployments.run(['DCAHub', 'DCAHubCompanion', 'DCAHubSwapper'], {
       resetMemory: true,
       deletePreviousDeployments: false,
       writeDeploymentsToFiles: false,
     });
     DCAHub = await ethers.getContract('DCAHub');
     DCAHubCompanion = await ethers.getContract('DCAHubCompanion');
+    DCAHubSwapper = await ethers.getContract('DCAHubSwapper');
 
     const namedAccounts = await getNamedAccounts();
     const governorAddress = namedAccounts.governor;
@@ -126,7 +128,7 @@ describe('Multi pair swap with DEX', () => {
             buyToken: USDC_ADDRESS,
             buyAmount: usdc.toProvide,
             slippagePercentage: 0.01,
-            takerAddress: DCAHubCompanion.address,
+            takerAddress: DCAHubSwapper.address,
             skipValidation: true,
           }),
           zrx.quote({
@@ -135,18 +137,18 @@ describe('Multi pair swap with DEX', () => {
             buyToken: LINK_ADDRESS,
             buyAmount: link.toProvide,
             slippagePercentage: 0.01,
-            takerAddress: DCAHubCompanion.address,
+            takerAddress: DCAHubSwapper.address,
             skipValidation: true,
           }),
         ]);
         const dexAddress = dexQuotes[0].to;
-        await DCAHubCompanion.connect(governor).defineDexSupport(dexAddress, true);
+        await DCAHubSwapper.connect(governor).defineDexSupport(dexAddress, true);
         const tokensInSwap = [LINK_ADDRESS, USDC_ADDRESS, WETH_ADDRESS];
         const indexesInSwap = [
           { indexTokenA: 0, indexTokenB: 2 },
           { indexTokenA: 1, indexTokenB: 2 },
         ];
-        const swapTx = await DCAHubCompanion.swapWithDex(
+        const swapTx = await DCAHubSwapper.swapWithDex(
           dexAddress,
           dexQuotes[0].allowanceTarget,
           tokensInSwap,
@@ -197,10 +199,10 @@ describe('Multi pair swap with DEX', () => {
     const toProvideUSDC = usdc.toProvide;
     const toProvideLINK = link.toProvide;
 
-    const [receivedUSDCFromAgg] = await findTransferValue(tx, USDC_ADDRESS, { notFrom: DCAHub, to: DCAHubCompanion });
-    const [receivedLINKFromAgg] = await findTransferValue(tx, LINK_ADDRESS, { notFrom: DCAHub, to: DCAHubCompanion });
-    const receivedWETHFromAgg = await findTransferValue(tx, WETH_ADDRESS, { notFrom: DCAHub, to: DCAHubCompanion });
-    const sentWETHToAgg = await findTransferValue(tx, WETH_ADDRESS, { from: DCAHubCompanion, notTo: [DCAHub, recipient] });
+    const [receivedUSDCFromAgg] = await findTransferValue(tx, USDC_ADDRESS, { notFrom: DCAHub, to: DCAHubSwapper });
+    const [receivedLINKFromAgg] = await findTransferValue(tx, LINK_ADDRESS, { notFrom: DCAHub, to: DCAHubSwapper });
+    const receivedWETHFromAgg = await findTransferValue(tx, WETH_ADDRESS, { notFrom: DCAHub, to: DCAHubSwapper });
+    const sentWETHToAgg = await findTransferValue(tx, WETH_ADDRESS, { from: DCAHubSwapper, notTo: [DCAHub, recipient] });
     return { rewardWETH, toProvideUSDC, toProvideLINK, receivedUSDCFromAgg, receivedLINKFromAgg, sentWETHToAgg, receivedWETHFromAgg };
   }
 

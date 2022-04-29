@@ -4,26 +4,23 @@ pragma solidity >=0.8.7 <0.9.0;
 import '@openzeppelin/contracts/token/ERC20/IERC20.sol';
 import '@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol';
 import './utils/DeadlineValidation.sol';
-import './DCAHubCompanionParameters.sol';
+import './DCAHubSwapperParameters.sol';
 
-abstract contract DCAHubCompanionSwapHandler is DeadlineValidation, DCAHubCompanionParameters, IDCAHubCompanionSwapHandler {
+abstract contract DCAHubSwapperSwapHandler is DeadlineValidation, DCAHubSwapperParameters, IDCAHubSwapperSwapHandler {
   enum SwapPlan {
     NONE,
     SWAP_FOR_CALLER,
     SWAP_WITH_DEX
   }
-
   struct SwapData {
     SwapPlan plan;
     bytes data;
   }
-
   using SafeERC20 for IERC20;
-
-  /// @inheritdoc IDCAHubCompanionSwapHandler
+  /// @inheritdoc IDCAHubSwapperSwapHandler
   mapping(address => bool) public isDexSupported;
 
-  /// @inheritdoc IDCAHubCompanionSwapHandler
+  /// @inheritdoc IDCAHubSwapperSwapHandler
   function swapForCaller(
     address[] calldata _tokens,
     IDCAHub.PairIndexes[] calldata _pairsToSwap,
@@ -41,7 +38,6 @@ abstract contract DCAHubCompanionSwapHandler is DeadlineValidation, DCAHubCompan
       _borrow,
       abi.encode(SwapData({plan: SwapPlan.SWAP_FOR_CALLER, data: abi.encode(CallbackDataCaller({caller: msg.sender, msgValue: msg.value}))}))
     );
-
     for (uint256 i; i < _swapInfo.tokens.length; i++) {
       IDCAHub.TokenInSwap memory _tokenInSwap = _swapInfo.tokens[i];
       if (_tokenInSwap.reward < _minimumOutput[i]) {
@@ -52,7 +48,7 @@ abstract contract DCAHubCompanionSwapHandler is DeadlineValidation, DCAHubCompan
     }
   }
 
-  /// @inheritdoc IDCAHubCompanionSwapHandler
+  /// @inheritdoc IDCAHubSwapperSwapHandler
   function swapWithDex(
     address _dex,
     address _tokensProxy,
@@ -74,7 +70,7 @@ abstract contract DCAHubCompanionSwapHandler is DeadlineValidation, DCAHubCompan
     return _swapWithDex(_tokens, _pairsToSwap, _callbackData, _deadline);
   }
 
-  /// @inheritdoc IDCAHubCompanionSwapHandler
+  /// @inheritdoc IDCAHubSwapperSwapHandler
   function swapWithDexAndShareLeftoverWithHub(
     address _dex,
     address _tokensProxy,
@@ -123,7 +119,6 @@ abstract contract DCAHubCompanionSwapHandler is DeadlineValidation, DCAHubCompan
   ) external {
     if (msg.sender != address(hub)) revert CallbackNotCalledByHub();
     if (_sender != address(this)) revert SwapNotInitiatedByCompanion();
-
     SwapData memory _swapData = abi.decode(_data, (SwapData));
     if (_swapData.plan == SwapPlan.SWAP_FOR_CALLER) {
       _handleSwapForCallerCallback(_tokens, _swapData.data);
@@ -134,9 +129,9 @@ abstract contract DCAHubCompanionSwapHandler is DeadlineValidation, DCAHubCompan
     }
   }
 
-  /// @inheritdoc IDCAHubCompanionSwapHandler
+  /// @inheritdoc IDCAHubSwapperSwapHandler
   function defineDexSupport(address _dex, bool _support) external onlyGovernor {
-    if (_dex == address(0)) revert IDCAHubCompanion.ZeroAddress();
+    if (_dex == address(0)) revert IDCAHubSwapper.ZeroAddress();
     isDexSupported[_dex] = _support;
   }
 
@@ -158,7 +153,6 @@ abstract contract DCAHubCompanionSwapHandler is DeadlineValidation, DCAHubCompan
 
   function _handleSwapWithDexCallback(IDCAHub.TokenInSwap[] calldata _tokens, bytes memory _data) internal {
     CallbackDataDex memory _callbackData = abi.decode(_data, (CallbackDataDex));
-
     // Approve DEX
     for (uint256 i; i < _tokens.length; i++) {
       IDCAHub.TokenInSwap memory _tokenInSwap = _tokens[i];
@@ -181,12 +175,10 @@ abstract contract DCAHubCompanionSwapHandler is DeadlineValidation, DCAHubCompan
         }
       }
     }
-
     // Execute swaps
     for (uint256 i; i < _callbackData.callsToDex.length; i++) {
       _callDex(_callbackData.dex, _callbackData.callsToDex[i]);
     }
-
     // Send remaining tokens to either hub, or leftover recipient
     for (uint256 i; i < _tokens.length; i++) {
       IERC20 _erc20 = IERC20(_tokens[i].token);
@@ -238,7 +230,6 @@ abstract contract DCAHubCompanionSwapHandler is DeadlineValidation, DCAHubCompan
         if (_token.token == address(wToken) && _callbackData.msgValue != 0) {
           // Wrap necessary
           wToken.deposit{value: _token.toProvide}();
-
           // Return any extra tokens to the original caller
           if (_callbackData.msgValue > _token.toProvide) {
             payable(_callbackData.caller).transfer(_callbackData.msgValue - _token.toProvide);

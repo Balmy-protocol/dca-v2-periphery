@@ -4,7 +4,7 @@ import { JsonRpcSigner, TransactionResponse } from '@ethersproject/providers';
 import { constants, wallet } from '@test-utils';
 import { given, then, when } from '@test-utils/bdd';
 import evm, { snapshot } from '@test-utils/evm';
-import { DCAHubCompanion, IERC20, IERC20Metadata, IERC20Metadata__factory } from '@typechained';
+import { DCAHubCompanion, DCAHubSwapper, IERC20Metadata, IERC20Metadata__factory } from '@typechained';
 import { DCAHub } from '@mean-finance/dca-v2-core/typechained';
 import { abi as DCA_HUB_ABI } from '@mean-finance/dca-v2-core/artifacts/contracts/DCAHub/DCAHub.sol/DCAHub.json';
 import { BigNumber, utils } from 'ethers';
@@ -21,11 +21,12 @@ const WETH_WHALE_ADDRESS_BY_NETWORK: { [network: string]: string } = {
   polygon: '0xdc9232e2df177d7a12fdff6ecbab114e2231198d',
 };
 
-describe('Liquidities tests', () => {
+describe('Dexes', () => {
   // Setup params
   let WETH: IERC20Metadata;
   let governor: JsonRpcSigner;
   let sender: SignerWithAddress, recipient: SignerWithAddress;
+  let DCAHubSwapper: DCAHubSwapper;
   let DCAHubCompanion: DCAHubCompanion;
   let DCAHub: DCAHub;
   let initialPerformedSwaps: number;
@@ -40,27 +41,25 @@ describe('Liquidities tests', () => {
     before(async () => {
       snapshotId = await liquidityTestSetup({ network: 'polygon', swapFee: 25000 }); // 2.5%
     });
-    describe('QiDAO', () => {
-      testDex({
-        dex: 'Paraswap',
-        ticker: 'MAI',
-        tokenAddress: '0xa3fa99a148fa48d14ed51d610c367c61876997f1',
-        network: 'polygon',
-        getQuoteData: async (tokenIn: IERC20Metadata, tokenOut: IERC20Metadata, amountToSell: BigNumber) => {
-          return await paraswap.swap({
-            network: '137',
-            srcToken: tokenIn.address,
-            srcDecimals: await tokenIn.decimals(),
-            destToken: tokenOut.address,
-            destDecimals: await tokenOut.decimals(),
-            amount: amountToSell.toString(),
-            side: 'SELL',
-            txOrigin: sender.address,
-            userAddress: DCAHubCompanion.address,
-            receiver: DCAHubCompanion.address,
-          });
-        },
-      });
+    testDex({
+      dex: 'Paraswap',
+      ticker: 'MAI',
+      tokenAddress: '0xa3fa99a148fa48d14ed51d610c367c61876997f1',
+      network: 'polygon',
+      getQuoteData: async (tokenIn: IERC20Metadata, tokenOut: IERC20Metadata, amountToSell: BigNumber) => {
+        return await paraswap.swap({
+          network: '137',
+          srcToken: tokenIn.address,
+          srcDecimals: await tokenIn.decimals(),
+          destToken: tokenOut.address,
+          destDecimals: await tokenOut.decimals(),
+          amount: amountToSell.toString(),
+          side: 'SELL',
+          txOrigin: sender.address,
+          userAddress: DCAHubSwapper.address,
+          receiver: DCAHubSwapper.address,
+        });
+      },
     });
   });
 
@@ -70,13 +69,14 @@ describe('Liquidities tests', () => {
       skipHardhatDeployFork: true,
     });
     [sender, recipient] = await ethers.getSigners();
-    await deployments.run(['DCAHub', 'DCAHubCompanion'], {
+    await deployments.run(['DCAHub', 'DCAHubCompanion', 'DCAHubSwapper'], {
       resetMemory: true,
       deletePreviousDeployments: false,
       writeDeploymentsToFiles: false,
     });
     DCAHub = await ethers.getContract('DCAHub');
     DCAHubCompanion = await ethers.getContract('DCAHubCompanion');
+    DCAHubSwapper = await ethers.getContract('DCAHubSwapper');
     const namedAccounts = await getNamedAccounts();
     const governorAddress = namedAccounts.governor;
     governor = await wallet.impersonate(governorAddress);
@@ -147,8 +147,8 @@ describe('Liquidities tests', () => {
         const { tokens } = await DCAHubCompanion.getNextSwapInfo([{ tokenA: sortedTokens[0], tokenB: sortedTokens[1] }]);
         const weth = tokens[wethIndex];
         const dexQuote = await getQuoteData(WETH, token, weth.reward);
-        await DCAHubCompanion.connect(governor).defineDexSupport(dexQuote.to, true);
-        const swapTx = await DCAHubCompanion.swapWithDex(
+        await DCAHubSwapper.connect(governor).defineDexSupport(dexQuote.to, true);
+        const swapTx = await DCAHubSwapper.swapWithDex(
           dexQuote.to,
           dexQuote.allowanceTarget,
           [sortedTokens[0], sortedTokens[1]],
@@ -186,8 +186,8 @@ describe('Liquidities tests', () => {
     const reward = tokenA.reward.gt(tokenB.reward) ? tokenA.reward : tokenB.reward;
     const toProvide = tokenA.toProvide.gt(tokenB.toProvide) ? tokenA.toProvide : tokenB.toProvide;
 
-    const receivedFromAgg = await findTransferValue(tx, { notFrom: DCAHub, to: DCAHubCompanion });
-    const sentToAgg = await findTransferValue(tx, { from: DCAHubCompanion, notTo: DCAHub });
+    const receivedFromAgg = await findTransferValue(tx, { notFrom: DCAHub, to: DCAHubSwapper });
+    const sentToAgg = await findTransferValue(tx, { from: DCAHubSwapper, notTo: DCAHub });
     return { reward, toProvide, receivedFromAgg, sentToAgg };
   }
 

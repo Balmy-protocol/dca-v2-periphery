@@ -4,7 +4,7 @@ import { BigNumber, Contract, utils } from 'ethers';
 import { deployments, ethers, getNamedAccounts } from 'hardhat';
 import { abi as IERC20_ABI } from '@openzeppelin/contracts/build/contracts/IERC20.json';
 import { expect } from 'chai';
-import { DCAHubCompanion, DCAKeep3rJob, IDCAHub, IERC20 } from '@typechained';
+import { DCAHubSwapper, DCAKeep3rJob, IDCAHub, IERC20 } from '@typechained';
 import { SwapInterval } from '@test-utils/interval-utils';
 import evm, { snapshot } from '@test-utils/evm';
 import { contract, given, then, when } from '@test-utils/bdd';
@@ -25,7 +25,7 @@ const KP3R_WHALE_ADDRESS = '0x2fc52c61fb0c03489649311989ce2689d93dc1a2';
 contract('DCAKeep3rJob', () => {
   let WETH: IERC20, K3PR: IERC20;
   let DCAKeep3rJob: DCAKeep3rJob;
-  let DCAHubCompanion: DCAHubCompanion;
+  let DCAHubSwapper: DCAHubSwapper;
   let DCAHub: IDCAHub;
   let keep3rProtocol: Contract;
   let uniswapv3PairManager: Contract;
@@ -44,14 +44,14 @@ contract('DCAKeep3rJob', () => {
       skipHardhatDeployFork: true,
     });
 
-    await deployments.run(['DCAHub', 'DCAHubCompanion', 'DCAKeep3rJob'], {
+    await deployments.run(['DCAHub', 'DCAHubSwapper', 'DCAKeep3rJob'], {
       resetMemory: true,
       deletePreviousDeployments: false,
       writeDeploymentsToFiles: false,
     });
 
     DCAHub = await ethers.getContract('DCAHub');
-    DCAHubCompanion = await ethers.getContract('DCAHubCompanion');
+    DCAHubSwapper = await ethers.getContract('DCAHubSwapper');
     DCAKeep3rJob = await ethers.getContract('DCAKeep3rJob');
     uniswapv3PairManager = await ethers.getContractAt(UNI_V3_MANAGER_ABI, UNISWAP_V3_PAIR_MANAGER);
     [cindy, signer, keeper, jobOwner] = await ethers.getSigners();
@@ -181,10 +181,10 @@ contract('DCAKeep3rJob', () => {
       allowanceTarget: '0xdef1c0ded9bec7f1a1670819833240f027b25eff',
       data: '0xd9627aa40000000000000000000000000000000000000000000000000000000000000080000000000000000000000000000000000000000000000000016345785d8a0000000000000000000000000000000000000000000000000000000000001102caf100000000000000000000000000000000000000000000000000000000000000010000000000000000000000000000000000000000000000000000000000000002000000000000000000000000c02aaa39b223fe8d0a0e5c4f27ead9083c756cc2000000000000000000000000a0b86991c6218b36c1d19d4a2e9eb0ce3606eb48869584cd00000000000000000000000010000000000000000000000000000000000000110000000000000000000000000000000000000000000000e1119ec16b6266a0d4',
     };
-    await DCAHubCompanion.connect(governor).defineDexSupport(staticZrxQuote.to, true);
+    await DCAHubSwapper.connect(governor).defineDexSupport(staticZrxQuote.to, true);
     const tokensInSwap = [USDC_ADDRESS, WETH_ADDRESS];
     const indexesInSwap = [{ indexTokenA: 0, indexTokenB: 1 }];
-    const { data } = await DCAHubCompanion.populateTransaction.swapWithDex(
+    const { data } = await DCAHubSwapper.populateTransaction.swapWithDex(
       staticZrxQuote.to,
       staticZrxQuote.allowanceTarget,
       tokensInSwap,

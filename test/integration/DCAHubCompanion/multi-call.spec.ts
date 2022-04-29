@@ -4,7 +4,7 @@ import { TransactionResponse } from '@ethersproject/providers';
 import { constants, wallet } from '@test-utils';
 import { given, then, when } from '@test-utils/bdd';
 import evm, { snapshot } from '@test-utils/evm';
-import { DCAHubCompanion, IERC20 } from '@typechained';
+import { DCAHubCompanion, DCAHubSwapper, IERC20 } from '@typechained';
 import { DCAHub, DCAPermissionsManager } from '@mean-finance/dca-v2-core/typechained';
 import { abi as DCA_HUB_ABI } from '@mean-finance/dca-v2-core/artifacts/contracts/DCAHub/DCAHub.sol/DCAHub.json';
 import { abi as IERC20_ABI } from '@openzeppelin/contracts/build/contracts/IERC20.json';
@@ -25,6 +25,7 @@ describe('Multicall', () => {
   let DCAHubCompanion: DCAHubCompanion;
   let DCAPermissionManager: DCAPermissionsManager;
   let DCAHub: DCAHub;
+  let DCAHubSwapper: DCAHubSwapper;
   let initialRecipientProtocolBalance: BigNumber;
   let chainId: BigNumber;
   let snapshotId: string;
@@ -40,20 +41,21 @@ describe('Multicall', () => {
     });
     [positionOwner, swapper, recipient] = await ethers.getSigners();
 
-    await deployments.run(['DCAHub', 'DCAHubCompanion'], {
+    await deployments.run(['DCAHub', 'DCAHubCompanion', 'DCAHubSwapper'], {
       resetMemory: true,
       deletePreviousDeployments: false,
       writeDeploymentsToFiles: false,
     });
     DCAHub = await ethers.getContract('DCAHub');
     DCAHubCompanion = await ethers.getContract('DCAHubCompanion');
+    DCAHubSwapper = await ethers.getContract('DCAHubSwapper');
     DCAPermissionManager = await ethers.getContract('PermissionsManager');
 
     const namedAccounts = await getNamedAccounts();
     const governorAddress = namedAccounts.governor;
     const governor = await wallet.impersonate(governorAddress);
     await ethers.provider.send('hardhat_setBalance', [governorAddress, '0xffffffffffffffff']);
-    await ethers.provider.send('hardhat_setBalance', [DCAHubCompanion.address, '0x0']); // For some reason the Companion sometimes starts with some balance, so we remove it
+    await ethers.provider.send('hardhat_setBalance', [DCAHubSwapper.address, '0x0']); // For some reason the Companion sometimes starts with some balance, so we remove it
 
     // Allow one minute interval
     await DCAHub.connect(governor).addSwapIntervalsToAllowedList([SwapInterval.ONE_MINUTE.seconds]);
@@ -403,8 +405,8 @@ describe('Multicall', () => {
     const event = await getHubEvent(tx, 'Deposited');
     const positionId = event.args.positionId;
 
-    await WETH.connect(swapper).approve(DCAHubCompanion.address, constants.MAX_UINT_256);
-    await DCAHubCompanion.connect(swapper).swapForCaller(
+    await WETH.connect(swapper).approve(DCAHubSwapper.address, constants.MAX_UINT_256);
+    await DCAHubSwapper.connect(swapper).swapForCaller(
       [USDC_ADDRESS, WETH_ADDRESS],
       [{ indexTokenA: 0, indexTokenB: 1 }],
       [0, 0],

@@ -36,7 +36,6 @@ export type SwapResponse = {
 
 export const swap = async (swapParams: SwapParams): Promise<SwapResponse> => {
   const priceResponse = await axios.get(`https://apiv5.paraswap.io/prices?${qs.stringify(swapParams)}`);
-  console.log('price response', priceResponse.data);
   const transactionQueryParams = {
     // gasPrice: utils.parseUnits('50', 'gwei').toNumber(), Optional
     ignoreChecks: true,
