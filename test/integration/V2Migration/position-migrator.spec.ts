@@ -4,7 +4,7 @@ import { TransactionResponse } from '@ethersproject/providers';
 import { constants, wallet } from '@test-utils';
 import { contract, given, then, when } from '@test-utils/bdd';
 import evm, { snapshot } from '@test-utils/evm';
-import { BetaMigrator, DCAHubSwapper, IERC20 } from '@typechained';
+import { PositionMigrator, DCAHubSwapper__factory, IERC20 } from '@typechained';
 import { DCAHub, OracleAggregator } from '@mean-finance/dca-v2-core/typechained';
 import { abi as DCA_HUB_ABI } from '@mean-finance/dca-v2-core/artifacts/contracts/DCAHub/DCAHub.sol/DCAHub.json';
 import { abi as IERC20_ABI } from '@openzeppelin/contracts/build/contracts/IERC20.json';
@@ -18,15 +18,14 @@ const WETH_ADDRESS = '0x4200000000000000000000000000000000000006';
 const USDC_ADDRESS = '0x7f5c764cbc14f9669b88837ca1490cca17c31607';
 const WETH_WHALE_ADDRESS = '0xaa30d6bba6285d0585722e2440ff89e23ef68864';
 const USDC_WHALE_ADDRESS = '0xad7b4c162707e0b2b5f6fddbd3f8538a5fba0d60';
+const BETA_HUB = '0x24F85583FAa9F8BD0B8Aa7B1D1f4f53F0F450038';
+const VULN_HUB = '0x230C63702D1B5034461ab2ca889a30E343D81349';
 
-contract.skip('BetaMigrator', () => {
+contract('PositionMigrator', () => {
   let WETH: IERC20, USDC: IERC20;
   let positionOwner: SignerWithAddress, swapper: SignerWithAddress;
-  let DCAHub: DCAHub;
-  let DCAHubSwapper: DCAHubSwapper;
-  let betaPermissionManager: string;
-  let betaDCAHub: DCAHub;
-  let migrator: BetaMigrator;
+  let vulnDCAHub: DCAHub, betaDCAHub: DCAHub, DCAHub: DCAHub;
+  let migrator: PositionMigrator;
   let snapshotId: string;
   let chainId: BigNumber;
 
@@ -36,22 +35,21 @@ contract.skip('BetaMigrator', () => {
   before(async () => {
     await evm.reset({
       network: 'optimism',
-      blockNumber: forkBlockNumber['beta-migrator'],
+      blockNumber: forkBlockNumber['position-migrator'],
       skipHardhatDeployFork: true,
     });
     [positionOwner, swapper] = await ethers.getSigners();
 
-    await deployments.run(['DCAHub', 'BetaMigrator', 'DCAHubSwapper'], {
+    await deployments.run(['DCAHub', 'PositionMigrator'], {
       resetMemory: true,
       deletePreviousDeployments: false,
       writeDeploymentsToFiles: false,
     });
 
     DCAHub = await ethers.getContract('DCAHub');
-    DCAHubSwapper = await ethers.getContract('DCAHubSwapper');
-    migrator = await ethers.getContract('BetaMigrator');
-    betaDCAHub = await ethers.getContractAt(DCA_HUB_ABI, await migrator.betaHub());
-    betaPermissionManager = await betaDCAHub.permissionManager();
+    migrator = await ethers.getContract('PositionMigrator');
+    betaDCAHub = await ethers.getContractAt(DCA_HUB_ABI, BETA_HUB);
+    vulnDCAHub = await ethers.getContractAt(DCA_HUB_ABI, VULN_HUB);
 
     const namedAccounts = await getNamedAccounts();
     const governorAddress = namedAccounts.governor;
@@ -60,6 +58,7 @@ contract.skip('BetaMigrator', () => {
 
     // Allow one minute interval
     await betaDCAHub.connect(governor).addSwapIntervalsToAllowedList([SwapInterval.ONE_MINUTE.seconds]);
+    await vulnDCAHub.connect(governor).addSwapIntervalsToAllowedList([SwapInterval.ONE_MINUTE.seconds]);
     await DCAHub.connect(governor).addSwapIntervalsToAllowedList([SwapInterval.ONE_MINUTE.seconds]);
 
     // Set Uniswap oracle so we don't have issues while moving timestamp (Chainlink has maxDelay = 1 day)
@@ -80,40 +79,54 @@ contract.skip('BetaMigrator', () => {
     await snapshot.revert(snapshotId);
   });
 
-  when('migrating a position from beta', () => {
-    let betaPositionId: BigNumber, stablePositionId: BigNumber;
-    let swappedBalance: BigNumber, unswappedBalance: BigNumber;
-    let tx: TransactionResponse;
-    given(async () => {
-      ({ positionId: betaPositionId, swappedBalance, unswappedBalance } = await depositInBetaAndSwap());
-      const signature = await generateSignature(positionOwner, betaPositionId);
-      tx = await migrator.migrate(betaPositionId, signature);
-      const event = await getHubEvent(tx, 'Deposited');
-      stablePositionId = event.args.positionId;
-    });
-    then('position is terminated', async () => {
-      const userPosition = await betaDCAHub.userPosition(betaPositionId);
-      expect(userPosition.swapInterval).to.equal(0);
-    });
-    then('owner gets the swapped balance', async () => {
-      const balance = await WETH.balanceOf(positionOwner.address);
-      expect(balance).to.equal(swappedBalance);
-    });
-    then('new position is created on the stable version', async () => {
-      const { from, to, swapInterval, swapsExecuted, swapped, swapsLeft, remaining, rate } = await DCAHub.userPosition(stablePositionId);
-      expect(from.toLowerCase()).to.equal(USDC.address.toLowerCase());
-      expect(to.toLowerCase()).to.equal(WETH.address.toLowerCase());
-      expect(swapInterval).to.equal(SwapInterval.ONE_MINUTE.seconds);
-      expect(swapsExecuted).to.equal(0);
-      expect(swapped).to.equal(0);
-      expect(swapsLeft).to.equal(AMOUNT_OF_SWAPS - 1);
-      expect(remaining).to.equal(unswappedBalance);
-      expect(rate).to.equal(RATE);
-    });
-    then('event is emitted', async () => {
-      await expect(tx).to.emit(migrator, 'Migrated').withArgs(betaPositionId);
-    });
+  migratePositionTest({
+    title: 'migrating from beta version',
+    sourceHub: () => betaDCAHub,
+    targetHub: () => DCAHub,
   });
+
+  migratePositionTest({
+    title: 'migrating from vulnerable version',
+    sourceHub: () => vulnDCAHub,
+    targetHub: () => DCAHub,
+  });
+
+  function migratePositionTest({ title, sourceHub, targetHub }: { title: string; sourceHub: () => DCAHub; targetHub: () => DCAHub }) {
+    when(title, () => {
+      let sourcePositionId: BigNumber, targetPositionId: BigNumber;
+      let swappedBalance: BigNumber, unswappedBalance: BigNumber;
+      let tx: TransactionResponse;
+      given(async () => {
+        ({ positionId: sourcePositionId, swappedBalance, unswappedBalance } = await depositInHubAndSwap(sourceHub()));
+        const signature = await generateSignature(sourceHub(), positionOwner, sourcePositionId);
+        tx = await migrator.migrate(sourceHub().address, sourcePositionId, signature, targetHub().address);
+        const event = await getHubEvent(tx, 'Deposited');
+        targetPositionId = event.args.positionId;
+      });
+      then('position is terminated', async () => {
+        const userPosition = await sourceHub().userPosition(sourcePositionId);
+        expect(userPosition.swapInterval).to.equal(0);
+      });
+      then('owner gets the swapped balance', async () => {
+        const balance = await WETH.balanceOf(positionOwner.address);
+        expect(balance).to.equal(swappedBalance);
+      });
+      then('new position is created on target hub', async () => {
+        const { from, to, swapInterval, swapsExecuted, swapped, swapsLeft, remaining, rate } = await targetHub().userPosition(targetPositionId);
+        expect(from.toLowerCase()).to.equal(USDC.address.toLowerCase());
+        expect(to.toLowerCase()).to.equal(WETH.address.toLowerCase());
+        expect(swapInterval).to.equal(SwapInterval.ONE_MINUTE.seconds);
+        expect(swapsExecuted).to.equal(0);
+        expect(swapped).to.equal(0);
+        expect(swapsLeft).to.equal(AMOUNT_OF_SWAPS - 1);
+        expect(remaining).to.equal(unswappedBalance);
+        expect(rate).to.equal(RATE);
+      });
+      then('event is emitted', async () => {
+        await expect(tx).to.emit(migrator, 'Migrated').withArgs(sourceHub().address, sourcePositionId, targetHub().address, targetPositionId);
+      });
+    });
+  }
 
   async function distributeTokensToUsers() {
     const wethWhale = await wallet.impersonate(WETH_WHALE_ADDRESS);
@@ -124,9 +137,9 @@ contract.skip('BetaMigrator', () => {
     await USDC.connect(usdcWhale).transfer(positionOwner.address, BigNumber.from(10).pow(12));
   }
 
-  async function depositInBetaAndSwap() {
-    await USDC.connect(positionOwner).approve(betaDCAHub.address, constants.MAX_UINT_256);
-    const tx = await betaDCAHub
+  async function depositInHubAndSwap(hub: DCAHub) {
+    await USDC.connect(positionOwner).approve(hub.address, constants.MAX_UINT_256);
+    const tx = await hub
       .connect(positionOwner)
       ['deposit(address,address,uint256,uint32,uint32,address,(address,uint8[])[])'](
         USDC.address,
@@ -140,6 +153,10 @@ contract.skip('BetaMigrator', () => {
     const event = await getHubEvent(tx, 'Deposited');
     const positionId = event.args.positionId;
 
+    const DCAHubSwapperFactory: DCAHubSwapper__factory = await ethers.getContractFactory(
+      'contracts/DCAHubSwapper/DCAHubSwapper.sol:DCAHubSwapper'
+    );
+    const DCAHubSwapper = await DCAHubSwapperFactory.deploy(hub.address, WETH.address, constants.NOT_ZERO_ADDRESS);
     await WETH.connect(swapper).approve(DCAHubSwapper.address, constants.MAX_UINT_256);
     await DCAHubSwapper.connect(swapper).swapForCaller(
       [WETH_ADDRESS, USDC_ADDRESS],
@@ -150,7 +167,7 @@ contract.skip('BetaMigrator', () => {
       constants.MAX_UINT_256
     );
 
-    const { swapped } = await betaDCAHub.userPosition(positionId);
+    const { swapped } = await hub.userPosition(positionId);
     return { positionId, swappedBalance: swapped, unswappedBalance: RATE.mul(AMOUNT_OF_SWAPS - 1) };
   }
 
@@ -179,9 +196,9 @@ contract.skip('BetaMigrator', () => {
     return Promise.reject();
   }
 
-  async function generateSignature(signer: SignerWithAddress, tokenId: BigNumber) {
+  async function generateSignature(sourceHub: DCAHub, signer: SignerWithAddress, tokenId: BigNumber) {
     const permissions = [{ operator: migrator.address, permissions: [Permission.TERMINATE] }];
-    const { v, r, s } = await getSignature(signer, tokenId, permissions);
+    const { v, r, s } = await getSignature(sourceHub, signer, tokenId, permissions);
     return {
       permissions,
       deadline: constants.MAX_UINT_256,
@@ -203,17 +220,23 @@ contract.skip('BetaMigrator', () => {
     { name: 'deadline', type: 'uint256' },
   ];
 
-  async function getSignature(signer: SignerWithAddress, tokenId: BigNumber, permissions: { operator: string; permissions: Permission[] }[]) {
-    const { domain, types, value } = buildPermitData(tokenId, permissions);
+  async function getSignature(
+    sourceHub: DCAHub,
+    signer: SignerWithAddress,
+    tokenId: BigNumber,
+    permissions: { operator: string; permissions: Permission[] }[]
+  ) {
+    const verifyingContract = await sourceHub.permissionManager();
+    const { domain, types, value } = buildPermitData(verifyingContract, tokenId, permissions);
     const signature = await signer._signTypedData(domain, types, value);
     return fromRpcSig(signature);
   }
 
-  function buildPermitData(tokenId: BigNumber, permissions: { operator: string; permissions: Permission[] }[]) {
+  function buildPermitData(verifyingContract: string, tokenId: BigNumber, permissions: { operator: string; permissions: Permission[] }[]) {
     return {
       primaryType: 'PermissionPermit',
       types: { PermissionSet, PermissionPermit },
-      domain: { name: 'Mean Finance DCA', version: '1', chainId, verifyingContract: betaPermissionManager },
+      domain: { name: 'Mean Finance DCA', version: '1', chainId, verifyingContract },
       value: { tokenId, permissions, nonce: 0, deadline: constants.MAX_UINT_256 },
     };
   }
