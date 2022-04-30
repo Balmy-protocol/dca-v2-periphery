@@ -9,10 +9,15 @@ async function main() {
     path: 'contracts/DCAHubCompanion/DCAHubCompanion.sol:DCAHubCompanion',
   });
 
-  if (currentNetwork === 'optimism-kovan' || currentNetwork === 'optimism') {
+  await verify({
+    name: 'DCAHubSwapper',
+    path: 'contracts/DCAHubSwapper/DCAHubSwapper.sol:DCAHubSwapper',
+  });
+
+  if (currentNetwork === 'optimism' || currentNetwork === 'optimism-kovan' || currentNetwork === 'polygon' || currentNetwork === 'mumbai') {
     await verify({
-      name: 'BetaMigrator',
-      path: 'contracts/V2Migration/BetaMigrator.sol:BetaMigrator',
+      name: 'PositionMigrator',
+      path: 'contracts/V2Migration/PositionMigrator.sol:PositionMigrator',
     });
   }
 
