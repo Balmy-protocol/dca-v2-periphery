@@ -140,12 +140,7 @@ interface IDCAHubSwapperSwapHandler is IDCAHubSwapCallee {
 
 interface IDCAHubSwapperDustHandler is ICollectableDust {}
 
-interface IDCAHubSwapper is
-  IDCAHubSwapperParameters,
-  IDCAHubSwapperSwapHandler,
-  IDCAHubSwapperDustHandler
-  // IDCAHubSwapperLibrariesHandler
-{
+interface IDCAHubSwapper is IDCAHubSwapperParameters, IDCAHubSwapperSwapHandler, IDCAHubSwapperDustHandler {
   /// @notice Thrown when one of the parameters is a zero address
   error ZeroAddress();
 
