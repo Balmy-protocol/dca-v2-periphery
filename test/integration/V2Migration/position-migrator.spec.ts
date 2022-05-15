@@ -13,6 +13,7 @@ import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers';
 import { SwapInterval } from '@test-utils/interval-utils';
 import forkBlockNumber from '@integration/fork-block-numbers';
 import { fromRpcSig } from 'ethereumjs-util';
+import { DeterministicFactory, DeterministicFactory__factory } from '@mean-finance/deterministic-factory/typechained';
 
 const WETH_ADDRESS = '0x4200000000000000000000000000000000000006';
 const USDC_ADDRESS = '0x7f5c764cbc14f9669b88837ca1490cca17c31607';
@@ -40,6 +41,18 @@ contract('PositionMigrator', () => {
     });
     [positionOwner, swapper] = await ethers.getSigners();
 
+    const namedAccounts = await getNamedAccounts();
+    const governorAddress = namedAccounts.governor;
+    const governor = await wallet.impersonate(governorAddress);
+    await ethers.provider.send('hardhat_setBalance', [governorAddress, '0xffffffffffffffff']);
+
+    const deterministicFactory = await ethers.getContractAt<DeterministicFactory>(
+      DeterministicFactory__factory.abi,
+      '0xbb681d77506df5CA21D2214ab3923b4C056aa3e2'
+    );
+
+    await deterministicFactory.connect(governor).grantRole(await deterministicFactory.DEPLOYER_ROLE(), namedAccounts.deployer);
+
     await deployments.run(['DCAHub', 'PositionMigrator'], {
       resetMemory: true,
       deletePreviousDeployments: false,
@@ -51,10 +64,9 @@ contract('PositionMigrator', () => {
     betaDCAHub = await ethers.getContractAt(DCA_HUB_ABI, BETA_HUB);
     vulnDCAHub = await ethers.getContractAt(DCA_HUB_ABI, VULN_HUB);
 
-    const namedAccounts = await getNamedAccounts();
-    const governorAddress = namedAccounts.governor;
-    const governor = await wallet.impersonate(governorAddress);
-    await ethers.provider.send('hardhat_setBalance', [governorAddress, '0xffffffffffffffff']);
+    // Unpause
+    await vulnDCAHub.connect(governor).unpause();
+    await betaDCAHub.connect(governor).unpause();
 
     // Allow one minute interval
     await betaDCAHub.connect(governor).addSwapIntervalsToAllowedList([SwapInterval.ONE_MINUTE.seconds]);

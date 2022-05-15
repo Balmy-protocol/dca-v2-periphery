@@ -1,6 +1,8 @@
 import { HardhatRuntimeEnvironment } from 'hardhat/types';
-import { DeployFunction } from 'hardhat-deploy/types';
+import { DeployFunction } from '@0xged/hardhat-deploy/types';
 import { networkBeingForked } from '@test-utils/evm';
+import { DCAHubCompanion__factory } from '../typechained';
+import { deployThroughDeterministicFactory } from '@mean-finance/deterministic-factory/utils/deployment';
 
 const deployFunction: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
   const { deployer, governor } = await hre.getNamedAccounts();
@@ -28,12 +30,22 @@ const deployFunction: DeployFunction = async function (hre: HardhatRuntimeEnviro
     default:
       throw new Error(`Unsupported chain '${hre.network.name}`);
   }
+
   const hub = await hre.deployments.get('DCAHub');
-  await hre.deployments.deploy('DCAHubCompanion', {
+
+  await deployThroughDeterministicFactory({
+    deployer,
+    name: 'DCAHubCompanion',
+    salt: 'MF-DCAV2-DCAHubCompanion',
     contract: 'contracts/DCAHubCompanion/DCAHubCompanion.sol:DCAHubCompanion',
-    from: deployer,
-    args: [hub.address, wProtocolToken, governor],
-    log: true,
+    bytecode: DCAHubCompanion__factory.bytecode,
+    constructorArgs: {
+      types: ['address', 'address', 'address'],
+      values: [hub.address, wProtocolToken, governor],
+    },
+    overrides: {
+      gasLimit: 6_000_000,
+    },
   });
 };
 

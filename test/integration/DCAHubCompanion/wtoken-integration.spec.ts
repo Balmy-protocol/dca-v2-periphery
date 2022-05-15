@@ -2,7 +2,7 @@ import { expect } from 'chai';
 import { deployments, ethers, getNamedAccounts } from 'hardhat';
 import { TransactionResponse } from '@ethersproject/providers';
 import { constants, wallet } from '@test-utils';
-import { given, then, when } from '@test-utils/bdd';
+import { contract, given, then, when } from '@test-utils/bdd';
 import evm, { snapshot } from '@test-utils/evm';
 import { DCAHubCompanion, DCAHubSwapper, IERC20 } from '@typechained';
 import { DCAHub, DCAPermissionsManager, OracleAggregator } from '@mean-finance/dca-v2-core/typechained';
@@ -12,13 +12,14 @@ import { BigNumber, utils } from 'ethers';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers';
 import { SwapInterval } from '@test-utils/interval-utils';
 import forkBlockNumber from '@integration/fork-block-numbers';
+import { DeterministicFactory, DeterministicFactory__factory } from '@mean-finance/deterministic-factory/typechained';
 
 const WETH_ADDRESS = '0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2';
 const USDC_ADDRESS = '0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48';
 const WETH_WHALE_ADDRESS = '0xf04a5cc80b1e94c69b48f5ee68a08cd2f09a7c3e';
 const USDC_WHALE_ADDRESS = '0xcffad3200574698b78f32232aa9d63eabd290703';
 
-describe('WToken', () => {
+contract('WToken', () => {
   let WETH: IERC20, USDC: IERC20;
   let cindy: SignerWithAddress, swapper: SignerWithAddress, recipient: SignerWithAddress;
   let DCAHubCompanion: DCAHubCompanion;
@@ -39,6 +40,18 @@ describe('WToken', () => {
     });
     [cindy, swapper, recipient] = await ethers.getSigners();
 
+    const namedAccounts = await getNamedAccounts();
+    const governorAddress = namedAccounts.governor;
+    const governor = await wallet.impersonate(governorAddress);
+    await ethers.provider.send('hardhat_setBalance', [governorAddress, '0xffffffffffffffff']);
+
+    const deterministicFactory = await ethers.getContractAt<DeterministicFactory>(
+      DeterministicFactory__factory.abi,
+      '0xbb681d77506df5CA21D2214ab3923b4C056aa3e2'
+    );
+
+    await deterministicFactory.connect(governor).grantRole(await deterministicFactory.DEPLOYER_ROLE(), namedAccounts.deployer);
+
     await deployments.run(['DCAHub', 'DCAHubCompanion', 'DCAHubSwapper'], {
       resetMemory: true,
       deletePreviousDeployments: false,
@@ -49,12 +62,6 @@ describe('WToken', () => {
     DCAHubCompanion = await ethers.getContract('DCAHubCompanion');
     DCAHubSwapper = await ethers.getContract('DCAHubSwapper');
     DCAPermissionManager = await ethers.getContract('PermissionsManager');
-
-    const namedAccounts = await getNamedAccounts();
-    const governorAddress = namedAccounts.governor;
-    const governor = await wallet.impersonate(governorAddress);
-    await ethers.provider.send('hardhat_setBalance', [governorAddress, '0xffffffffffffffff']);
-    await ethers.provider.send('hardhat_setBalance', [DCAHubSwapper.address, '0x0']); // For some reason the Companion sometimes starts with some balance, so we remove it
 
     // Allow one minute interval
     await DCAHub.connect(governor).addSwapIntervalsToAllowedList([SwapInterval.ONE_MINUTE.seconds]);

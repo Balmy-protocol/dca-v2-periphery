@@ -1,13 +1,21 @@
 import { HardhatRuntimeEnvironment } from 'hardhat/types';
-import { DeployFunction } from 'hardhat-deploy/types';
+import { DeployFunction } from '@0xged/hardhat-deploy/types';
+import { deployThroughDeterministicFactory } from '@mean-finance/deterministic-factory/utils/deployment';
+import { PositionMigrator__factory } from '../typechained';
 
 const deployFunction: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
   const { deployer } = await hre.getNamedAccounts();
 
-  await hre.deployments.deploy('PositionMigrator', {
+  await deployThroughDeterministicFactory({
+    deployer,
+    name: 'PositionMigrator',
+    salt: 'MF-DCAV2-PositionMigrator',
     contract: 'contracts/V2Migration/PositionMigrator.sol:PositionMigrator',
-    from: deployer,
-    log: true,
+    bytecode: PositionMigrator__factory.bytecode,
+    constructorArgs: {
+      types: [],
+      values: [],
+    },
   });
 };
 
