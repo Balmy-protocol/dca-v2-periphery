@@ -9,12 +9,15 @@ async function main() {
     path: 'contracts/DCAHubCompanion/DCAHubCompanion.sol:DCAHubCompanion',
   });
 
-  if (currentNetwork === 'optimism-kovan' || currentNetwork === 'optimism') {
-    await verify({
-      name: 'BetaMigrator',
-      path: 'contracts/V2Migration/BetaMigrator.sol:BetaMigrator',
-    });
-  }
+  await verify({
+    name: 'DCAHubSwapper',
+    path: 'contracts/DCAHubSwapper/DCAHubSwapper.sol:DCAHubSwapper',
+  });
+
+  await verify({
+    name: 'PositionMigrator',
+    path: 'contracts/V2Migration/PositionMigrator.sol:PositionMigrator',
+  });
 
   if (currentNetwork === 'mainnet') {
     await verify({

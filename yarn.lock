@@ -816,10 +816,10 @@
   dependencies:
     "@chainlink/contracts" "^0.2.2"
 
-"@mean-finance/dca-v2-core@2.0.0-rc4":
-  version "2.0.0-rc4"
-  resolved "https://registry.yarnpkg.com/@mean-finance/dca-v2-core/-/dca-v2-core-2.0.0-rc4.tgz#7c03fdc99e2d1bb9724d9720899e94581172be73"
-  integrity sha512-Otfixj7TOzLCCCQgG8i+wmpG3M6Tc6uFZxj+pZ23TrDU3HCWnd8ft98w7h6WpZmNFUr75EgA/1bD0+9TCx0XMQ==
+"@mean-finance/dca-v2-core@2.0.0-rc5":
+  version "2.0.0-rc5"
+  resolved "https://registry.yarnpkg.com/@mean-finance/dca-v2-core/-/dca-v2-core-2.0.0-rc5.tgz#c9ea29a5f71712bb612b4cf69f36786d7489ef97"
+  integrity sha512-jR67oqsO5oNNzqsID/lmZiKRAg31l/iDVdgot1k+Y8XOvgKi0afi0qBNfUiVSYfeUrGeD6zmt2Wdq0cnjbgezw==
   dependencies:
     "@chainlink/contracts" "0.2.2"
     "@mean-finance/deterministic-factory" "1.1.0"
