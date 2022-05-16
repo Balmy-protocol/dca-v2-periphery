@@ -43,6 +43,7 @@ const deployFunction: DeployFunction = async function (hre: HardhatRuntimeEnviro
       types: ['address', 'address', 'address'],
       values: [hub.address, wProtocolToken, governor],
     },
+    log: !process.env.TEST,
     overrides: {
       gasLimit: 6_000_000,
     },

@@ -70,7 +70,7 @@ const networks: NetworksUserConfig = process.env.TEST
         tags: ['production'],
       },
       mumbai: {
-        url: 'https://rpc-mumbai.matic.today',
+        url: getNodeUrl('mumbai'),
         accounts: accounts('mumbai'),
         tags: ['staging'],
       },
@@ -118,12 +118,6 @@ const config: HardhatUserConfig = {
     apiKey: process.env.ETHERSCAN_API_KEY,
   },
   external: {
-    contracts: [
-      {
-        artifacts: 'node_modules/@mean-finance/dca-v2-core/artifacts',
-        deploy: 'node_modules/@mean-finance/dca-v2-core/deploy',
-      },
-    ],
     deployments: {
       mainnet: [
         'node_modules/@mean-finance/dca-v2-core/deployments/mainnet',
@@ -151,6 +145,12 @@ const config: HardhatUserConfig = {
 };
 
 if (process.env.TEST) {
+  config.external!.contracts = [
+    {
+      artifacts: 'node_modules/@mean-finance/dca-v2-core/artifacts',
+      deploy: 'node_modules/@mean-finance/dca-v2-core/deploy',
+    },
+  ];
   const solidity = config.solidity as MultiSolcUserConfig;
   solidity.compilers.forEach((_, i) => {
     solidity.compilers[i].settings! = {
