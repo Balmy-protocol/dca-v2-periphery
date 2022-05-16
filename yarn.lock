@@ -2,6 +2,34 @@
 # yarn lockfile v1
 
 
+"@0xged/hardhat-deploy@0.11.4":
+  version "0.11.4"
+  resolved "https://registry.yarnpkg.com/@0xged/hardhat-deploy/-/hardhat-deploy-0.11.4.tgz#cfcf42461089fe9a703245916dd006686ae680c8"
+  integrity sha512-n1fqwWclX72Zmo7Rj9BVCc4uq9OHW/fwKTYYd28xObX5o4bSa9ELy0eLqQOGD52LNd7AcWnvGzDnbnnVg3JYGQ==
+  dependencies:
+    "@ethersproject/abi" "^5.4.0"
+    "@ethersproject/abstract-signer" "^5.4.1"
+    "@ethersproject/address" "^5.4.0"
+    "@ethersproject/bignumber" "^5.4.1"
+    "@ethersproject/bytes" "^5.4.0"
+    "@ethersproject/constants" "^5.4.0"
+    "@ethersproject/contracts" "^5.4.1"
+    "@ethersproject/providers" "^5.4.4"
+    "@ethersproject/solidity" "^5.4.0"
+    "@ethersproject/transactions" "^5.4.0"
+    "@ethersproject/wallet" "^5.4.0"
+    "@types/qs" "^6.9.7"
+    axios "^0.21.1"
+    chalk "^4.1.2"
+    chokidar "^3.5.2"
+    debug "^4.3.2"
+    enquirer "^2.3.6"
+    form-data "^4.0.0"
+    fs-extra "^10.0.0"
+    match-all "^1.2.6"
+    murmur-128 "^0.2.1"
+    qs "^6.9.4"
+
 "@babel/code-frame@^7.0.0":
   version "7.16.7"
   resolved "https://registry.yarnpkg.com/@babel/code-frame/-/code-frame-7.16.7.tgz#44416b6bd7624b998f5b1af5d470856c40138789"
@@ -781,22 +809,39 @@
   resolved "https://registry.yarnpkg.com/@hutson/parse-repository-url/-/parse-repository-url-3.0.2.tgz#98c23c950a3d9b6c8f0daed06da6c3af06981340"
   integrity sha512-H9XAx3hc0BQHY6l+IFSWHDySypcXsvsuLhgYLUGywmJ5pswRVQJUHpOsobnLYp2ZUaUlKiKDrgWWhosOwAEM8Q==
 
-"@mean-finance/chainlink-registry@1.0.1-rc1":
-  version "1.0.1-rc1"
-  resolved "https://registry.yarnpkg.com/@mean-finance/chainlink-registry/-/chainlink-registry-1.0.1-rc1.tgz#fd56fc224af29298e245ece37a47b157ddfea15d"
-  integrity sha512-Py0NkdCxIyQmSquaqN7GnecT47d7LdQfT9aW3TKhI0C4OeEgtQW7Eic7+7LksbC2luIge4B70ublgsNtnWRyGA==
+"@mean-finance/chainlink-registry@1.0.1":
+  version "1.0.1"
+  resolved "https://registry.yarnpkg.com/@mean-finance/chainlink-registry/-/chainlink-registry-1.0.1.tgz#4f143fe15ac1f09c076fb76efcd8293532ed6d06"
+  integrity sha512-OWQVUy+zRoDxlEr9SfXOISi1tSaF8aTGR5K0QgInFMfPxpkDmAa0Stt3dxtrdLTo/q9YQpHcQtcAv3p+DGcKdQ==
   dependencies:
     "@chainlink/contracts" "^0.2.2"
 
-"@mean-finance/dca-v2-core@1.3.0-rc2":
-  version "1.3.0-rc2"
-  resolved "https://registry.yarnpkg.com/@mean-finance/dca-v2-core/-/dca-v2-core-1.3.0-rc2.tgz#5029d4f0d9e2a1052cdcc39fca9606dc0ca924f7"
-  integrity sha512-iO7ucWE+t36qKbaKz6tWMK1XPAs4laZnDLpnmNDI8OSwEo9TsoZ3TalRk7GEPZ9TvZ9WCMgHoxTR+m72skfTaA==
+"@mean-finance/dca-v2-core@2.0.0-rc3":
+  version "2.0.0-rc3"
+  resolved "https://registry.yarnpkg.com/@mean-finance/dca-v2-core/-/dca-v2-core-2.0.0-rc3.tgz#89feb878594f3ccd76a6b188fa72166f426c27ef"
+  integrity sha512-OgcbRbCg+sVdjIeS/tlt67N8wx8OFueivOTeO0Sdn8gZOh14wuUWNKBmsYbkpHREV2JX7QW/vw7yFQKrIBvkpA==
   dependencies:
     "@chainlink/contracts" "0.2.2"
+    "@mean-finance/deterministic-factory" "1.1.0-rc1"
     "@openzeppelin/contracts" "4.4.2"
     "@uniswap/v3-periphery" "1.2.0"
     base64-sol "1.0.1"
+
+"@mean-finance/deterministic-factory@1.1.0":
+  version "1.1.0"
+  resolved "https://registry.yarnpkg.com/@mean-finance/deterministic-factory/-/deterministic-factory-1.1.0.tgz#b45e259493838c59cced2033ffbbfc689c47b529"
+  integrity sha512-uS+aBh0o3NFvR7NshsDBDsNo2z5bmOyK8Pl45p5VBQnSvP6PnwUVj7mFSHykEf+H9EudqGC6T6+UEFmAO1m+TA==
+  dependencies:
+    "@openzeppelin/contracts" "4.6.0"
+    "@rari-capital/solmate" "6.2.0"
+
+"@mean-finance/deterministic-factory@1.1.0-rc1":
+  version "1.1.0-rc1"
+  resolved "https://registry.yarnpkg.com/@mean-finance/deterministic-factory/-/deterministic-factory-1.1.0-rc1.tgz#887434addeb25e9111379d612bffe7ab449f6dbc"
+  integrity sha512-NbgK7pYXeVejZcI4RaRrhE+EXsbiTbmVfzUPDgS3Cg05cJOEcVzJQT/0Aruky8hWiFSIoaOy3P8fdNscHoOmXg==
+  dependencies:
+    "@openzeppelin/contracts" "4.6.0"
+    "@rari-capital/solmate" "6.2.0"
 
 "@metamask/eth-sig-util@^4.0.0":
   version "4.0.0"
@@ -886,6 +931,16 @@
   version "4.4.2"
   resolved "https://registry.yarnpkg.com/@openzeppelin/contracts/-/contracts-4.4.2.tgz#4e889c9c66e736f7de189a53f8ba5b8d789425c2"
   integrity sha512-NyJV7sJgoGYqbtNUWgzzOGW4T6rR19FmX1IJgXGdapGPWsuMelGJn9h03nos0iqfforCbCB0iYIR0MtIuIFLLw==
+
+"@openzeppelin/contracts@4.6.0":
+  version "4.6.0"
+  resolved "https://registry.yarnpkg.com/@openzeppelin/contracts/-/contracts-4.6.0.tgz#c91cf64bc27f573836dba4122758b4743418c1b3"
+  integrity sha512-8vi4d50NNya/bQqCmaVzvHNmwHvS0OBKb7HNtuNwEE3scXWrP31fKQoGxNMT+KbzmrNZzatE3QK5p2gFONI/hg==
+
+"@rari-capital/solmate@6.2.0":
+  version "6.2.0"
+  resolved "https://registry.yarnpkg.com/@rari-capital/solmate/-/solmate-6.2.0.tgz#4f70dc236606c27ec2cb1b4261dd830235d01fe4"
+  integrity sha512-g94F+Ra9ixyJyNgvnOIufNjUz488uEG0nxIEEtJ7+g+tA1XGUupRB2kB5b+VO7WYO26RNOVD2fW6xE4e14iWpg==
 
 "@resolver-engine/core@^0.3.3":
   version "0.3.3"
@@ -5582,34 +5637,6 @@ hardhat-contract-sizer@2.0.3:
   dependencies:
     cli-table3 "^0.6.0"
     colors "^1.4.0"
-
-hardhat-deploy@0.11.4:
-  version "0.11.4"
-  resolved "https://registry.yarnpkg.com/hardhat-deploy/-/hardhat-deploy-0.11.4.tgz#39b06d3b0ad25195071cc1f2f71649b1f9f030d0"
-  integrity sha512-BNMwWqaxrwb8XKrYzmCwnUzOSKzicUBk+fwd28doUNoAGFFh8kpoypkcHMzKDVdLhnamAardcfqJet73zrZoTA==
-  dependencies:
-    "@ethersproject/abi" "^5.4.0"
-    "@ethersproject/abstract-signer" "^5.4.1"
-    "@ethersproject/address" "^5.4.0"
-    "@ethersproject/bignumber" "^5.4.1"
-    "@ethersproject/bytes" "^5.4.0"
-    "@ethersproject/constants" "^5.4.0"
-    "@ethersproject/contracts" "^5.4.1"
-    "@ethersproject/providers" "^5.4.4"
-    "@ethersproject/solidity" "^5.4.0"
-    "@ethersproject/transactions" "^5.4.0"
-    "@ethersproject/wallet" "^5.4.0"
-    "@types/qs" "^6.9.7"
-    axios "^0.21.1"
-    chalk "^4.1.2"
-    chokidar "^3.5.2"
-    debug "^4.3.2"
-    enquirer "^2.3.6"
-    form-data "^4.0.0"
-    fs-extra "^10.0.0"
-    match-all "^1.2.6"
-    murmur-128 "^0.2.1"
-    qs "^6.9.4"
 
 hardhat-gas-reporter@1.0.4:
   version "1.0.4"

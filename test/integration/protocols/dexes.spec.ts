@@ -13,6 +13,7 @@ import { SwapInterval } from '@test-utils/interval-utils';
 import zrx from '@test-utils/dexes/zrx';
 import paraswap from '@test-utils/dexes/paraswap';
 import oneinch from '@test-utils/dexes/oneinch';
+import { DeterministicFactory, DeterministicFactory__factory } from '@mean-finance/deterministic-factory/typechained';
 
 const WETH_ADDRESS_BY_NETWORK: { [network: string]: string } = {
   polygon: '0x7ceb23fd6bc0add59e62ac25578270cff1b9f619',
@@ -69,6 +70,17 @@ describe('Dexes', () => {
       skipHardhatDeployFork: true,
     });
     [sender, recipient] = await ethers.getSigners();
+    const namedAccounts = await getNamedAccounts();
+    const governorAddress = namedAccounts.governor;
+    governor = await wallet.impersonate(governorAddress);
+
+    const deterministicFactory = await ethers.getContractAt<DeterministicFactory>(
+      DeterministicFactory__factory.abi,
+      '0xbb681d77506df5CA21D2214ab3923b4C056aa3e2'
+    );
+
+    await deterministicFactory.connect(governor).grantRole(await deterministicFactory.DEPLOYER_ROLE(), namedAccounts.deployer);
+
     await deployments.run(['DCAHub', 'DCAHubCompanion', 'DCAHubSwapper'], {
       resetMemory: true,
       deletePreviousDeployments: false,
@@ -77,9 +89,6 @@ describe('Dexes', () => {
     DCAHub = await ethers.getContract('DCAHub');
     DCAHubCompanion = await ethers.getContract('DCAHubCompanion');
     DCAHubSwapper = await ethers.getContract('DCAHubSwapper');
-    const namedAccounts = await getNamedAccounts();
-    const governorAddress = namedAccounts.governor;
-    governor = await wallet.impersonate(governorAddress);
     await wallet.setBalance({ account: governorAddress, balance: constants.MAX_UINT_256 });
     const timelockContract = await ethers.getContract('Timelock');
     const timelock = await wallet.impersonate(timelockContract.address);
