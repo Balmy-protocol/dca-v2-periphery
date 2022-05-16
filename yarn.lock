@@ -809,10 +809,10 @@
   resolved "https://registry.yarnpkg.com/@hutson/parse-repository-url/-/parse-repository-url-3.0.2.tgz#98c23c950a3d9b6c8f0daed06da6c3af06981340"
   integrity sha512-H9XAx3hc0BQHY6l+IFSWHDySypcXsvsuLhgYLUGywmJ5pswRVQJUHpOsobnLYp2ZUaUlKiKDrgWWhosOwAEM8Q==
 
-"@mean-finance/chainlink-registry@1.0.1-rc3":
-  version "1.0.1-rc3"
-  resolved "https://registry.yarnpkg.com/@mean-finance/chainlink-registry/-/chainlink-registry-1.0.1-rc3.tgz#5c06187a6ed9533f98b0bbc62fae350e6ec32ac9"
-  integrity sha512-6thGW8eRZtSLTc9UWGYkQI7YcHTB2tinfahXNiX2bDFTLtd2Fe2ZQqpyzPLU1H14tUsqewbIg9V4HxX5PjBWZg==
+"@mean-finance/chainlink-registry@1.0.1":
+  version "1.0.1"
+  resolved "https://registry.yarnpkg.com/@mean-finance/chainlink-registry/-/chainlink-registry-1.0.1.tgz#4f143fe15ac1f09c076fb76efcd8293532ed6d06"
+  integrity sha512-OWQVUy+zRoDxlEr9SfXOISi1tSaF8aTGR5K0QgInFMfPxpkDmAa0Stt3dxtrdLTo/q9YQpHcQtcAv3p+DGcKdQ==
   dependencies:
     "@chainlink/contracts" "^0.2.2"
 
@@ -827,18 +827,18 @@
     "@uniswap/v3-periphery" "1.2.0"
     base64-sol "1.0.1"
 
-"@mean-finance/deterministic-factory@1.1.0-rc1":
-  version "1.1.0-rc1"
-  resolved "https://registry.yarnpkg.com/@mean-finance/deterministic-factory/-/deterministic-factory-1.1.0-rc1.tgz#887434addeb25e9111379d612bffe7ab449f6dbc"
-  integrity sha512-NbgK7pYXeVejZcI4RaRrhE+EXsbiTbmVfzUPDgS3Cg05cJOEcVzJQT/0Aruky8hWiFSIoaOy3P8fdNscHoOmXg==
+"@mean-finance/deterministic-factory@1.1.0":
+  version "1.1.0"
+  resolved "https://registry.yarnpkg.com/@mean-finance/deterministic-factory/-/deterministic-factory-1.1.0.tgz#b45e259493838c59cced2033ffbbfc689c47b529"
+  integrity sha512-uS+aBh0o3NFvR7NshsDBDsNo2z5bmOyK8Pl45p5VBQnSvP6PnwUVj7mFSHykEf+H9EudqGC6T6+UEFmAO1m+TA==
   dependencies:
     "@openzeppelin/contracts" "4.6.0"
     "@rari-capital/solmate" "6.2.0"
 
-"@mean-finance/deterministic-factory@1.1.0-rc2":
-  version "1.1.0-rc2"
-  resolved "https://registry.yarnpkg.com/@mean-finance/deterministic-factory/-/deterministic-factory-1.1.0-rc2.tgz#8c45e3510a2ad55b253855760fc1a89764cfdb03"
-  integrity sha512-Sf87q+My1UMOsM0RlqxPKDcezM5+/015yoPR8/zi7M/MD4yrXTb9oRcsvYGdDc/FwZQVCs88j2pEcA2NAl/GEw==
+"@mean-finance/deterministic-factory@1.1.0-rc1":
+  version "1.1.0-rc1"
+  resolved "https://registry.yarnpkg.com/@mean-finance/deterministic-factory/-/deterministic-factory-1.1.0-rc1.tgz#887434addeb25e9111379d612bffe7ab449f6dbc"
+  integrity sha512-NbgK7pYXeVejZcI4RaRrhE+EXsbiTbmVfzUPDgS3Cg05cJOEcVzJQT/0Aruky8hWiFSIoaOy3P8fdNscHoOmXg==
   dependencies:
     "@openzeppelin/contracts" "4.6.0"
     "@rari-capital/solmate" "6.2.0"
