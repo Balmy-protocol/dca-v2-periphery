@@ -22,7 +22,7 @@ const WETH_WHALE_ADDRESS_BY_NETWORK: { [network: string]: string } = {
   polygon: '0xdc9232e2df177d7a12fdff6ecbab114e2231198d',
 };
 
-describe('Dexes', () => {
+describe.skip('Dexes', () => {
   // Setup params
   let WETH: IERC20Metadata;
   let governor: JsonRpcSigner;
