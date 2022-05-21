@@ -6,6 +6,8 @@ import { DCAFeeManager, DCAFeeManager__factory } from '@typechained';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers';
 import { duration } from 'moment';
 import { behaviours } from '@test-utils';
+import { TransactionResponse } from '@ethersproject/abstract-provider';
+import { readArgFromEventOrFail } from '@test-utils/event-utils';
 
 contract('DCAFeeManager', () => {
   const HUB = '0x0000000000000000000000000000000000000001';
@@ -94,14 +96,22 @@ contract('DCAFeeManager', () => {
       newDistribution: Distribution;
     }) {
       when(title, () => {
+        let tx: TransactionResponse;
         given(async () => {
           if (prevDistribution) {
             await DCAFeeManager.setTargetTokensDistribution(prevDistribution);
           }
-          await DCAFeeManager.setTargetTokensDistribution(newDistribution);
+          tx = await DCAFeeManager.setTargetTokensDistribution(newDistribution);
         });
         then('distribution is set correctly', async () => {
           const distribution = await DCAFeeManager.targetTokensDistribution();
+          expectDistributionsToBeEqual(distribution, newDistribution);
+        });
+        then('event is emitted', async () => {
+          await expect(tx).to.emit(DCAFeeManager, 'NewDistribution');
+
+          // Can't compare array of objects directly, so will read the arg and compare manually
+          const distribution: Distribution = await readArgFromEventOrFail(tx, 'NewDistribution', 'distribution');
           expectDistributionsToBeEqual(distribution, newDistribution);
         });
       });
