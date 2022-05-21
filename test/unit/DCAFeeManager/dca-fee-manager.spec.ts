@@ -100,7 +100,7 @@ contract('DCAFeeManager', () => {
     when('not all shares are assigned', () => {
       then('reverts with message', async () => {
         await behaviours.txShouldRevertWithMessage({
-          contract: DCAFeeManager,
+          contract: DCAFeeManager.connect(governor),
           func: 'setTargetTokensDistribution',
           args: [
             [
@@ -133,7 +133,7 @@ contract('DCAFeeManager', () => {
     });
     shouldBeExecutableByGovernorOrAllowed({
       funcAndSignature: 'setTargetTokensDistribution',
-      params: [{ token: TOKEN_B, shares: MAX_SHARES }],
+      params: [[{ token: TOKEN_B, shares: MAX_SHARES }]],
     });
 
     function distributionTest({
@@ -149,9 +149,9 @@ contract('DCAFeeManager', () => {
         let tx: TransactionResponse;
         given(async () => {
           if (prevDistribution) {
-            await DCAFeeManager.setTargetTokensDistribution(prevDistribution);
+            await DCAFeeManager.connect(governor).setTargetTokensDistribution(prevDistribution);
           }
-          tx = await DCAFeeManager.setTargetTokensDistribution(newDistribution);
+          tx = await DCAFeeManager.connect(governor).setTargetTokensDistribution(newDistribution);
         });
         then('distribution is set correctly', async () => {
           const distribution = await DCAFeeManager.targetTokensDistribution();
@@ -185,7 +185,7 @@ contract('DCAFeeManager', () => {
     when('called from allowed', () => {
       let onlyAllowed: Promise<TransactionResponse>;
       given(async () => {
-        await DCAFeeManager.setAccess([{ user: random.address, access: true }]);
+        await DCAFeeManager.connect(governor).setAccess([{ user: random.address, access: true }]);
         onlyAllowed = (DCAFeeManager as any).connect(random)[funcAndSignature](...realParams!);
       });
       then(`tx is not reverted or not reverted with reason 'CallerMustBeOwnerOrHaveAccess'`, async () => {
