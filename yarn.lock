@@ -816,21 +816,21 @@
   dependencies:
     "@chainlink/contracts" "^0.2.2"
 
-"@mean-finance/dca-v2-core@2.0.0-rc6":
-  version "2.0.0-rc6"
-  resolved "https://registry.yarnpkg.com/@mean-finance/dca-v2-core/-/dca-v2-core-2.0.0-rc6.tgz#75c40325286cc2850b7d2a64af026725d213ea87"
-  integrity sha512-fXdW2i7rrqV3j3ZstxSVdLXMX+qyW+0EF0TYVlcTdnKQ5ft+2fm6VHEHsdNtKr1A0MATPpV6mzVdlDZMsjDaDw==
+"@mean-finance/dca-v2-core@2.0.0-rc7":
+  version "2.0.0-rc7"
+  resolved "https://registry.yarnpkg.com/@mean-finance/dca-v2-core/-/dca-v2-core-2.0.0-rc7.tgz#af140872e4b36b05ff122ec35dcc639d1436c583"
+  integrity sha512-ltrg0G30uEv7oFRf7lR0xjdy1VDryXbjNL/ZxiJVnLQgYqGfaLQLxas/pLBnDNPKkBTsENKQubORgR0W3kUUhw==
   dependencies:
     "@chainlink/contracts" "0.2.2"
-    "@mean-finance/deterministic-factory" "1.1.0"
+    "@mean-finance/deterministic-factory" "1.3.1"
     "@openzeppelin/contracts" "4.4.2"
     "@uniswap/v3-periphery" "1.2.0"
     base64-sol "1.0.1"
 
-"@mean-finance/deterministic-factory@1.1.0":
-  version "1.1.0"
-  resolved "https://registry.yarnpkg.com/@mean-finance/deterministic-factory/-/deterministic-factory-1.1.0.tgz#b45e259493838c59cced2033ffbbfc689c47b529"
-  integrity sha512-uS+aBh0o3NFvR7NshsDBDsNo2z5bmOyK8Pl45p5VBQnSvP6PnwUVj7mFSHykEf+H9EudqGC6T6+UEFmAO1m+TA==
+"@mean-finance/deterministic-factory@1.3.1":
+  version "1.3.1"
+  resolved "https://registry.yarnpkg.com/@mean-finance/deterministic-factory/-/deterministic-factory-1.3.1.tgz#c80cfadc7b2a66ecd957297d74d1649ca8235d29"
+  integrity sha512-hMuQsJq8UbQwec3guLqGDWU8lN5/w7mX/AMdsfDnCpcYDT0B6kClNiDGZwv8cJZnG+i+9TDh0i7oJdZmn0qdPg==
   dependencies:
     "@openzeppelin/contracts" "4.6.0"
     "@rari-capital/solmate" "6.2.0"

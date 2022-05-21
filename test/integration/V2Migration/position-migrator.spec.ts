@@ -73,6 +73,9 @@ contract('PositionMigrator', () => {
     await vulnDCAHub.connect(governor).addSwapIntervalsToAllowedList([SwapInterval.ONE_MINUTE.seconds]);
     await DCAHub.connect(governor).addSwapIntervalsToAllowedList([SwapInterval.ONE_MINUTE.seconds]);
 
+    // Allow tokens
+    await DCAHub.connect(governor).setAllowedTokens([WETH_ADDRESS, USDC_ADDRESS], [true, true]);
+
     // Set Uniswap oracle so we don't have issues while moving timestamp (Chainlink has maxDelay = 1 day)
     const oracleAggregator = await ethers.getContract<OracleAggregator>('OracleAggregator');
     await oracleAggregator.connect(governor).setOracleForPair(WETH_ADDRESS, USDC_ADDRESS, 2);
