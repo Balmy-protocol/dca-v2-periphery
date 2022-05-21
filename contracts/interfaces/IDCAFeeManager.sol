@@ -19,6 +19,15 @@ interface IDCAFeeManager is IGovernable {
     uint16 shares;
   }
 
+  /// @notice Represents a user and the new access that should be assigned to them
+  struct UserAccess {
+    address user;
+    bool access;
+  }
+
+  /// @notice Thrown when a user tries to execute a permissioned action without the access to do so
+  error CallerMustBeOwnerOrHaveAccess();
+
   /// @notice Thrown when a user tries to set an invalid distribution
   error InvalidAmountOfShares();
 
@@ -27,6 +36,12 @@ interface IDCAFeeManager is IGovernable {
    * @param distribution The new distribution
    */
   event NewDistribution(TargetTokenShare[] distribution);
+
+  /**
+   * @notice Emitted when access is modified for some users
+   * @param access The modified users and their new access
+   */
+  event NewAccess(UserAccess[] access);
 
   /**
    * @notice The contract's owner and other allowed users can specify the target tokens that the fees
@@ -58,6 +73,21 @@ interface IDCAFeeManager is IGovernable {
    * @return The distribution for the target tokens
    */
   function targetTokensDistribution() external view returns (TargetTokenShare[] memory);
+
+  /**
+   * @notice Returns whether the given user has access to set the target tokens distribution or
+   *         execute withdraws
+   * @param user The user to check access for
+   * @return Whether the given user has access
+   */
+  function hasAccess(address user) external view returns (bool);
+
+  /**
+   * @notice Gives or takes access to permissioned actions from users
+   * @dev Only the contract owner can execute this action
+   * @param access The users to affect, and how to affect them
+   */
+  function setAccess(UserAccess[] calldata access) external;
 
   /**
    * @notice Sets the distribution for the target tokens

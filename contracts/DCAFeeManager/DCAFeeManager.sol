@@ -11,6 +11,8 @@ contract DCAFeeManager is Governable, IDCAFeeManager {
   uint32 public constant SWAP_INTERVAL = 1 days;
   /// @inheritdoc IDCAFeeManager
   IDCAHub public immutable hub;
+  /// @inheritdoc IDCAFeeManager
+  mapping(address => bool) public hasAccess;
 
   TargetTokenShare[] internal _distribution;
 
@@ -20,7 +22,7 @@ contract DCAFeeManager is Governable, IDCAFeeManager {
     address _governor
   ) Governable(_governor) {
     hub = _hub;
-    setTargetTokensDistribution(_distributionToSet);
+    _setTargetTokensDistribution(_distributionToSet);
   }
 
   /// @inheritdoc IDCAFeeManager
@@ -29,9 +31,19 @@ contract DCAFeeManager is Governable, IDCAFeeManager {
   }
 
   /// @inheritdoc IDCAFeeManager
-  function setTargetTokensDistribution(TargetTokenShare[] memory _newDistribution) public {
-    // TODO: Make sure only specific users can set this distribution
+  function setAccess(UserAccess[] calldata _access) external onlyGovernor {
+    for (uint256 i; i < _access.length; i++) {
+      hasAccess[_access[i].user] = _access[i].access;
+    }
+    emit NewAccess(_access);
+  }
 
+  /// @inheritdoc IDCAFeeManager
+  function setTargetTokensDistribution(TargetTokenShare[] calldata _newDistribution) external onlyOwnerOrAllowed {
+    _setTargetTokensDistribution(_newDistribution);
+  }
+
+  function _setTargetTokensDistribution(TargetTokenShare[] memory _newDistribution) internal {
     uint256 _currentTargetTokens = _distribution.length;
     uint256 _min = _currentTargetTokens < _newDistribution.length ? _currentTargetTokens : _newDistribution.length;
 
@@ -57,5 +69,10 @@ contract DCAFeeManager is Governable, IDCAFeeManager {
 
     if (_assignedShares != MAX_TOKEN_TOTAL_SHARE) revert InvalidAmountOfShares();
     emit NewDistribution(_newDistribution);
+  }
+
+  modifier onlyOwnerOrAllowed() {
+    if (!isGovernor(msg.sender) && !hasAccess[msg.sender]) revert CallerMustBeOwnerOrHaveAccess();
+    _;
   }
 }
