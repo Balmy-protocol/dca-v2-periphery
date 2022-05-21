@@ -4,7 +4,7 @@ import { BigNumber, Contract, utils } from 'ethers';
 import { deployments, ethers, getNamedAccounts } from 'hardhat';
 import { abi as IERC20_ABI } from '@openzeppelin/contracts/build/contracts/IERC20.json';
 import { expect } from 'chai';
-import { DCAHubCompanion, DCAHubSwapper, DCAKeep3rJob, IDCAHub, IERC20 } from '@typechained';
+import { DCAHubCompanion, DCAHubSwapper, DCAKeep3rJob, IERC20 } from '@typechained';
 import { SwapInterval } from '@test-utils/interval-utils';
 import evm, { snapshot } from '@test-utils/evm';
 import { contract, given, then, when } from '@test-utils/bdd';
@@ -13,7 +13,7 @@ import KEEP3R_ABI from '../abis/Keep3r.json';
 import UNI_V3_MANAGER_ABI from '../abis/UniV3PairManager.json';
 import moment from 'moment';
 import forkBlockNumber from '@integration/fork-block-numbers';
-import { OracleAggregator } from '@mean-finance/dca-v2-core/typechained';
+import { DCAHub, OracleAggregator } from '@mean-finance/dca-v2-core/typechained';
 import { DeterministicFactory, DeterministicFactory__factory } from '@mean-finance/deterministic-factory/typechained';
 import zrx from '@test-utils/dexes/zrx';
 
@@ -30,7 +30,7 @@ contract('DCAKeep3rJob', () => {
   let DCAHubCompanion: DCAHubCompanion;
   let DCAKeep3rJob: DCAKeep3rJob;
   let DCAHubSwapper: DCAHubSwapper;
-  let DCAHub: IDCAHub;
+  let DCAHub: DCAHub;
   let keep3rProtocol: Contract;
   let uniswapv3PairManager: Contract;
 
@@ -84,6 +84,9 @@ contract('DCAKeep3rJob', () => {
 
     // Make platform fee bigger so we don't fail
     await DCAHub.connect(timelock).setSwapFee(20000); // 2%
+
+    // Allow tokens
+    await DCAHub.connect(governor).setAllowedTokens([WETH_ADDRESS, USDC_ADDRESS], [true, true]);
 
     // Allow one minute interval
     await DCAHub.connect(governor).addSwapIntervalsToAllowedList([SwapInterval.ONE_MINUTE.seconds]);

@@ -49,6 +49,7 @@ contract('WToken', () => {
       DeterministicFactory__factory.abi,
       '0xbb681d77506df5CA21D2214ab3923b4C056aa3e2'
     );
+    console.log(namedAccounts.governor, namedAccounts.deployer);
 
     await deterministicFactory.connect(governor).grantRole(await deterministicFactory.DEPLOYER_ROLE(), namedAccounts.deployer);
 
@@ -62,6 +63,9 @@ contract('WToken', () => {
     DCAHubCompanion = await ethers.getContract('DCAHubCompanion');
     DCAHubSwapper = await ethers.getContract('DCAHubSwapper');
     DCAPermissionManager = await ethers.getContract('PermissionsManager');
+
+    // Allow tokens
+    await DCAHub.connect(governor).setAllowedTokens([WETH_ADDRESS, USDC_ADDRESS], [true, true]);
 
     // Allow one minute interval
     await DCAHub.connect(governor).addSwapIntervalsToAllowedList([SwapInterval.ONE_MINUTE.seconds]);
