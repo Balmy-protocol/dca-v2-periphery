@@ -20,7 +20,7 @@ interface IDCAFeeManager is IGovernable {
    * @return The numeric value that represents a 100% asignment for the fee conversion distribution
    */
   // solhint-disable-next-line func-name-mixedcase
-  function MAX_TOKEN_DISTRIBUTION() external view returns (uint16);
+  function MAX_TOKEN_TOTAL_SHARE() external view returns (uint16);
 
   /**
    * @notice Returns the swap interval used for DCA swaps

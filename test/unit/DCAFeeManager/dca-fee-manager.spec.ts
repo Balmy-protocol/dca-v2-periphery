@@ -29,8 +29,8 @@ contract('DCAFeeManager', () => {
       then('hub is set correctly', async () => {
         expect(await DCAFeeManager.hub()).to.equal(HUB);
       });
-      then('max token distribution is set correctly', async () => {
-        expect(await DCAFeeManager.MAX_TOKEN_DISTRIBUTION()).to.equal(10000);
+      then('max token total share is set correctly', async () => {
+        expect(await DCAFeeManager.MAX_TOKEN_TOTAL_SHARE()).to.equal(10000);
       });
       then('swap interval is set to daily', async () => {
         expect(await DCAFeeManager.SWAP_INTERVAL()).to.equal(duration(1, 'day').asSeconds());

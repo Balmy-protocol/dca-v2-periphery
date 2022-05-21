@@ -6,7 +6,7 @@ import '../utils/Governable.sol';
 
 contract DCAFeeManager is Governable, IDCAFeeManager {
   /// @inheritdoc IDCAFeeManager
-  uint16 public constant MAX_TOKEN_DISTRIBUTION = 10000;
+  uint16 public constant MAX_TOKEN_TOTAL_SHARE = 10000;
   /// @inheritdoc IDCAFeeManager
   uint32 public constant SWAP_INTERVAL = 1 days;
   /// @inheritdoc IDCAFeeManager
