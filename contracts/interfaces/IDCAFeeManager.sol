@@ -13,6 +13,21 @@ import './utils/IGovernable.sol';
  *         of their choosing
  */
 interface IDCAFeeManager is IGovernable {
+  /// @notice Represents a share of a target token
+  struct TargetTokenShare {
+    address token;
+    uint16 shares;
+  }
+
+  /// @notice Thrown when a user tries to set an invalid distribution
+  error InvalidAmountOfShares();
+
+  /**
+   * @notice Emitted when a new distribution is set
+   * @param distribution The new distribution
+   */
+  event NewDistribution(TargetTokenShare[] distribution);
+
   /**
    * @notice The contract's owner and other allowed users can specify the target tokens that the fees
    *         should be converted to. They can also specify the percentage assigned to each token
@@ -36,4 +51,18 @@ interface IDCAFeeManager is IGovernable {
    * @return The address for the DCA Hub
    */
   function hub() external view returns (IDCAHub);
+
+  /**
+   * @notice Returns the distribution for the target tokens. Target tokens are the tokens that we
+   *         want to swap the fees to. We can assign a distribution to convert to many different tokens
+   * @return The distribution for the target tokens
+   */
+  function targetTokensDistribution() external view returns (TargetTokenShare[] memory);
+
+  /**
+   * @notice Sets the distribution for the target tokens
+   * @dev Can only be set by the owner or allowed users
+   * @param distribution The new distribution to set
+   */
+  function setTargetTokensDistribution(TargetTokenShare[] calldata distribution) external;
 }
