@@ -28,15 +28,6 @@ interface IDCAFeeManager is IGovernable {
   /// @notice Thrown when a user tries to execute a permissioned action without the access to do so
   error CallerMustBeOwnerOrHaveAccess();
 
-  /// @notice Thrown when a user tries to set an invalid distribution
-  error InvalidAmountOfShares();
-
-  /**
-   * @notice Emitted when a new distribution is set
-   * @param distribution The new distribution
-   */
-  event NewDistribution(TargetTokenShare[] distribution);
-
   /**
    * @notice Emitted when access is modified for some users
    * @param access The modified users and their new access
@@ -75,15 +66,7 @@ interface IDCAFeeManager is IGovernable {
   function wToken() external view returns (IWrappedProtocolToken);
 
   /**
-   * @notice Returns the distribution for the target tokens. Target tokens are the tokens that we
-   *         want to swap the fees to. We can assign a distribution to convert to many different tokens
-   * @return The distribution for the target tokens
-   */
-  function targetTokensDistribution() external view returns (TargetTokenShare[] memory);
-
-  /**
-   * @notice Returns whether the given user has access to set the target tokens distribution or
-   *         execute withdraws
+   * @notice Returns whether the given user has access to fill positions or execute withdraws
    * @param user The user to check access for
    * @return Whether the given user has access
    */
@@ -105,11 +88,4 @@ interface IDCAFeeManager is IGovernable {
    * @param access The users to affect, and how to affect them
    */
   function setAccess(UserAccess[] calldata access) external;
-
-  /**
-   * @notice Sets the distribution for the target tokens
-   * @dev Can only be set by the owner or allowed users
-   * @param distribution The new distribution to set
-   */
-  function setTargetTokensDistribution(TargetTokenShare[] calldata distribution) external;
 }

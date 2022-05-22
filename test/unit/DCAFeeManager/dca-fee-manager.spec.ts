@@ -19,7 +19,6 @@ contract('DCAFeeManager', () => {
   const TOKEN_B = '0x0000000000000000000000000000000000000011';
   const TOKEN_C = '0x0000000000000000000000000000000000000012';
   const MAX_SHARES = 10000;
-  const DEFAULT_DISTRIBUTION = [{ token: TOKEN_A, shares: MAX_SHARES }];
   let wToken: WrappedPlatformTokenMock;
   let DCAHub: FakeContract<IDCAHub>;
   let DCAFeeManager: DCAFeeManager;
@@ -36,7 +35,7 @@ contract('DCAFeeManager', () => {
     wToken = await wTokenFactory.deploy('WETH', 'WETH', 18);
     await setPlatformTokenBalance(wToken, utils.parseEther('100'));
     DCAFeeManagerFactory = await ethers.getContractFactory('contracts/DCAFeeManager/DCAFeeManager.sol:DCAFeeManager');
-    DCAFeeManager = await DCAFeeManagerFactory.deploy(DCAHub.address, wToken.address, DEFAULT_DISTRIBUTION, governor.address);
+    DCAFeeManager = await DCAFeeManagerFactory.deploy(DCAHub.address, wToken.address, governor.address);
     snapshotId = await snapshot.take();
   });
 
@@ -56,10 +55,6 @@ contract('DCAFeeManager', () => {
       });
       then('swap interval is set to daily', async () => {
         expect(await DCAFeeManager.SWAP_INTERVAL()).to.equal(duration(1, 'day').asSeconds());
-      });
-      then('default distribution is set correctly', async () => {
-        const distribution = await DCAFeeManager.targetTokensDistribution();
-        expectDistributionsToBeEqual(distribution, DEFAULT_DISTRIBUTION);
       });
       then('wToken is set correctly', async () => {
         expect(await DCAFeeManager.wToken()).to.equal(wToken.address);
@@ -164,87 +159,6 @@ contract('DCAFeeManager', () => {
       governor: () => governor,
     });
   });
-
-  describe('setTargetTokensDistribution', () => {
-    when('not all shares are assigned', () => {
-      then('reverts with message', async () => {
-        await behaviours.txShouldRevertWithMessage({
-          contract: DCAFeeManager.connect(governor),
-          func: 'setTargetTokensDistribution',
-          args: [
-            [
-              { token: TOKEN_A, shares: 10 },
-              { token: TOKEN_B, shares: 50 },
-            ],
-          ],
-          message: 'InvalidAmountOfShares',
-        });
-      });
-    });
-    distributionTest({
-      when: 'the number of target tokens increases',
-      newDistribution: [
-        { token: TOKEN_B, shares: MAX_SHARES / 2 },
-        { token: TOKEN_C, shares: MAX_SHARES / 2 },
-      ],
-    });
-    distributionTest({
-      when: 'the number of target tokens stays the same',
-      newDistribution: [{ token: TOKEN_B, shares: MAX_SHARES }],
-    });
-    distributionTest({
-      when: 'the number of target tokens is reduced',
-      prevDistribution: [
-        { token: TOKEN_A, shares: MAX_SHARES / 2 },
-        { token: TOKEN_B, shares: MAX_SHARES / 2 },
-      ],
-      newDistribution: [{ token: TOKEN_C, shares: MAX_SHARES }],
-    });
-    shouldOnlyBeExecutableByGovernorOrAllowed({
-      funcAndSignature: 'setTargetTokensDistribution',
-      params: [[{ token: TOKEN_B, shares: MAX_SHARES }]],
-    });
-
-    function distributionTest({
-      when: title,
-      prevDistribution,
-      newDistribution,
-    }: {
-      when: string;
-      prevDistribution?: Distribution;
-      newDistribution: Distribution;
-    }) {
-      when(title, () => {
-        let tx: TransactionResponse;
-        given(async () => {
-          if (prevDistribution) {
-            await DCAFeeManager.connect(governor).setTargetTokensDistribution(prevDistribution);
-          }
-          tx = await DCAFeeManager.connect(governor).setTargetTokensDistribution(newDistribution);
-        });
-        then('distribution is set correctly', async () => {
-          const distribution = await DCAFeeManager.targetTokensDistribution();
-          expectDistributionsToBeEqual(distribution, newDistribution);
-        });
-        then('event is emitted', async () => {
-          await expect(tx).to.emit(DCAFeeManager, 'NewDistribution');
-
-          // Can't compare array of objects directly, so will read the arg and compare manually
-          const distribution: Distribution = await readArgFromEventOrFail(tx, 'NewDistribution', 'distribution');
-          expectDistributionsToBeEqual(distribution, newDistribution);
-        });
-      });
-    }
-  });
-
-  type Distribution = { token: string; shares: number }[];
-  function expectDistributionsToBeEqual(actual: Distribution, expected: Distribution) {
-    expect(actual).to.be.lengthOf(expected.length);
-    for (let i = 0; i < actual.length; i++) {
-      expect(actual[i].token).to.be.equal(expected[i].token);
-      expect(actual[i].shares).to.be.equal(expected[i].shares);
-    }
-  }
 
   function shouldOnlyBeExecutableByGovernorOrAllowed({
     funcAndSignature,
