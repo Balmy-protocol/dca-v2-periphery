@@ -17,7 +17,7 @@ import { readArgFromEventOrFail } from '@test-utils/event-utils';
 import { TransactionResponse } from '@ethersproject/providers';
 import { IDCAFeeManager } from '@typechained/DCAFeeManager';
 import { FakeContract, smock } from '@defi-wonderland/smock';
-import { BigNumber, constants, utils } from 'ethers';
+import { BigNumber, BigNumberish, constants, utils } from 'ethers';
 
 chai.use(smock.matchers);
 
@@ -51,11 +51,13 @@ contract('DCAFeeManager', () => {
   beforeEach(async () => {
     await snapshot.revert(snapshotId);
     DCAHub.platformBalance.reset();
+    DCAHub.withdrawFromPlatformBalance.reset();
     DCAHub.withdrawSwappedMany.reset();
     DCAHub['deposit(address,address,uint256,uint32,uint32,address,(address,uint8[])[])'].reset();
     DCAHub.increasePosition.reset();
     erc20Token.allowance.reset();
     erc20Token.approve.reset();
+    erc20Token.transfer.reset();
   });
 
   describe('constructor', () => {
@@ -96,7 +98,7 @@ contract('DCAFeeManager', () => {
     });
     when('all sources have balance', () => {
       const PLATFORM_BALANCE = utils.parseEther('1');
-      const POSITION_IDS = [1, 2, 3].map(BigNumber.from);
+      const POSITION_IDS = [1, 2, 3];
       const TOTAL_BALANCE = utils.parseEther('1');
       given(async () => {
         DCAHub.platformBalance.returns(PLATFORM_BALANCE);
@@ -105,17 +107,15 @@ contract('DCAFeeManager', () => {
       });
       then('platform balance is withdrawn', () => {
         expect(DCAHub.withdrawFromPlatformBalance).to.have.have.been.calledOnce;
-        const [amountToWithdraw] = DCAHub.withdrawFromPlatformBalance.getCall(0).args as { token: string; amount: BigNumber }[][];
-        expect(amountToWithdraw).to.have.lengthOf(1);
-        expect(amountToWithdraw[0].token).to.equal(wToken.address);
-        expect(amountToWithdraw[0].amount).to.equal(PLATFORM_BALANCE);
+        const [amountToWithdraw, recipient] = DCAHub.withdrawFromPlatformBalance.getCall(0).args as [AmountToWithdraw[], string];
+        expectAmounToWithdrawToBe(amountToWithdraw, [{ token: wToken.address, amount: PLATFORM_BALANCE }]);
+        expect(recipient).to.equal(DCAFeeManager.address);
       });
       then('swapped balance is withdrawn from positions', () => {
         expect(DCAHub.withdrawSwappedMany).to.have.have.been.calledOnce;
-        const [amountToWithdraw] = DCAHub.withdrawSwappedMany.getCall(0).args as { token: string; positionIds: BigNumber[] }[][];
-        expect(amountToWithdraw).to.have.lengthOf(1);
-        expect(amountToWithdraw[0].token).to.equal(wToken.address);
-        expect(amountToWithdraw[0].positionIds).to.eql(POSITION_IDS);
+        const [positionSets, recipient] = DCAHub.withdrawSwappedMany.getCall(0).args as [PositionSet[], string];
+        expectPositionSetsToBe(positionSets, [{ token: wToken.address, positionIds: POSITION_IDS }]);
+        expect(recipient).to.equal(DCAFeeManager.address);
       });
       then('total balance is unwrapped and sent to the recipient', async () => {
         expect(await wToken.balanceOf(DCAFeeManager.address)).to.equal(0);
@@ -124,6 +124,64 @@ contract('DCAFeeManager', () => {
     });
     shouldOnlyBeExecutableByGovernorOrAllowed({
       funcAndSignature: 'withdrawProtocolToken',
+      params: [[], RECIPIENT],
+    });
+  });
+
+  describe('withdrawFromPlatformBalance', () => {
+    const RECIPIENT = wallet.generateRandomAddress();
+    when('withdraw is executed', () => {
+      const AMOUNT_TO_WITHDRAW = [{ token: TOKEN_A, amount: utils.parseEther('1') }];
+      given(async () => {
+        await DCAFeeManager.connect(governor).withdrawFromPlatformBalance(AMOUNT_TO_WITHDRAW, RECIPIENT);
+      });
+      then('hub is called correctly', () => {
+        expect(DCAHub.withdrawFromPlatformBalance).to.have.been.calledOnce;
+        const [amountToWithdraw, recipient] = DCAHub.withdrawFromPlatformBalance.getCall(0).args as [AmountToWithdraw[], string];
+        expectAmounToWithdrawToBe(amountToWithdraw, AMOUNT_TO_WITHDRAW);
+        expect(recipient).to.equal(RECIPIENT);
+      });
+    });
+    shouldOnlyBeExecutableByGovernorOrAllowed({
+      funcAndSignature: 'withdrawFromPlatformBalance',
+      params: [[], RECIPIENT],
+    });
+  });
+
+  describe('withdrawFromBalance', () => {
+    const RECIPIENT = wallet.generateRandomAddress();
+    when('withdraw is executed', () => {
+      const AMOUNT_TO_WITHDRAW = utils.parseEther('1');
+      given(async () => {
+        erc20Token.transfer.returns(true);
+        await DCAFeeManager.connect(governor).withdrawFromBalance([{ token: erc20Token.address, amount: AMOUNT_TO_WITHDRAW }], RECIPIENT);
+      });
+      then('token is called correctly', () => {
+        expect(erc20Token.transfer).to.have.been.calledOnceWith(RECIPIENT, AMOUNT_TO_WITHDRAW);
+      });
+    });
+    shouldOnlyBeExecutableByGovernorOrAllowed({
+      funcAndSignature: 'withdrawFromBalance',
+      params: [[], RECIPIENT],
+    });
+  });
+
+  describe('withdrawFromPositions', () => {
+    const RECIPIENT = wallet.generateRandomAddress();
+    when('withdraw is executed', () => {
+      const POSITION_SETS = [{ token: TOKEN_A, positionIds: [1, 2, 3] }];
+      given(async () => {
+        await DCAFeeManager.connect(governor).withdrawFromPositions(POSITION_SETS, RECIPIENT);
+      });
+      then('hub is called correctly', () => {
+        expect(DCAHub.withdrawSwappedMany).to.have.been.calledOnce;
+        const [positionSets, recipient] = DCAHub.withdrawSwappedMany.getCall(0).args as [PositionSet[], string];
+        expectPositionSetsToBe(positionSets, POSITION_SETS);
+        expect(recipient).to.equal(RECIPIENT);
+      });
+    });
+    shouldOnlyBeExecutableByGovernorOrAllowed({
+      funcAndSignature: 'withdrawFromPositions',
       params: [[], RECIPIENT],
     });
   });
@@ -358,5 +416,23 @@ contract('DCAFeeManager', () => {
   async function setPlatformTokenBalance(recipient: { address: string }, amount: BigNumber) {
     await ethers.provider.send('hardhat_setBalance', [recipient.address, ethers.utils.hexValue(amount)]);
     return BigNumber.from(amount);
+  }
+
+  type AmountToWithdraw = { token: string; amount: BigNumberish };
+  function expectAmounToWithdrawToBe(actual: AmountToWithdraw[], expected: AmountToWithdraw[]) {
+    expect(actual).to.have.lengthOf(expected.length);
+    for (let i = 0; i < actual.length; i++) {
+      expect(actual[i].token).to.equal(expected[i].token);
+      expect(actual[i].amount).to.equal(expected[i].amount);
+    }
+  }
+
+  type PositionSet = { token: string; positionIds: BigNumberish[] };
+  function expectPositionSetsToBe(actual: PositionSet[], expected: PositionSet[]) {
+    expect(actual).to.have.lengthOf(expected.length);
+    for (let i = 0; i < actual.length; i++) {
+      expect(actual[i].token).to.equal(expected[i].token);
+      expect(actual[i].positionIds).to.eql(expected[i].positionIds.map(BigNumber.from));
+    }
   }
 });

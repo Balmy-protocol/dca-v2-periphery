@@ -1,10 +1,14 @@
 // SPDX-License-Identifier: GPL-2.0-or-later
 pragma solidity >=0.8.7 <0.9.0;
 
+import '@openzeppelin/contracts/token/ERC20/IERC20.sol';
+import '@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol';
 import '../interfaces/IDCAFeeManager.sol';
 import '../utils/Governable.sol';
 
 contract DCAFeeManager is Governable, IDCAFeeManager {
+  using SafeERC20 for IERC20;
+
   /// @inheritdoc IDCAFeeManager
   uint16 public constant MAX_TOKEN_TOTAL_SHARE = 10000;
   /// @inheritdoc IDCAFeeManager
@@ -50,6 +54,23 @@ contract DCAFeeManager is Governable, IDCAFeeManager {
       wToken.withdraw(_totalBalance);
       _recipient.transfer(_totalBalance);
     }
+  }
+
+  /// @inheritdoc IDCAFeeManager
+  function withdrawFromPlatformBalance(IDCAHub.AmountOfToken[] calldata _amountToWithdraw, address _recipient) external onlyOwnerOrAllowed {
+    hub.withdrawFromPlatformBalance(_amountToWithdraw, _recipient);
+  }
+
+  /// @inheritdoc IDCAFeeManager
+  function withdrawFromBalance(IDCAHub.AmountOfToken[] calldata _amountToWithdraw, address _recipient) external onlyOwnerOrAllowed {
+    for (uint256 i; i < _amountToWithdraw.length; i++) {
+      IERC20(_amountToWithdraw[i].token).safeTransfer(_recipient, _amountToWithdraw[i].amount);
+    }
+  }
+
+  /// @inheritdoc IDCAFeeManager
+  function withdrawFromPositions(IDCAHub.PositionSet[] calldata _positionSets, address _recipient) external onlyOwnerOrAllowed {
+    hub.withdrawSwappedMany(_positionSets, _recipient);
   }
 
   /// @inheritdoc IDCAFeeManager
@@ -122,7 +143,7 @@ contract DCAFeeManager is Governable, IDCAFeeManager {
   }
 
   modifier onlyOwnerOrAllowed() {
-    if (!isGovernor(msg.sender) && !hasAccess[msg.sender]) revert CallerMustBeOwnerOrHaveAccess();
+    if (!hasAccess[msg.sender] && !isGovernor(msg.sender)) revert CallerMustBeOwnerOrHaveAccess();
     _;
   }
 }
