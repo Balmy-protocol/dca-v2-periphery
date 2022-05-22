@@ -78,7 +78,7 @@ contract('DCAFeeManager', () => {
     await WBTC.connect(cindy).approve(DCAHub.address, constants.MAX_UINT_256);
   });
 
-  it.only('swap, convert and withdraw as protocol token', async () => {
+  it('swap, convert and withdraw as protocol token', async () => {
     // Deposit
     await DCAHub.connect(cindy)['deposit(address,address,uint256,uint32,uint32,address,(address,uint8[])[])'](
       WBTC.address,
