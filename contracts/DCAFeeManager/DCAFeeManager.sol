@@ -3,10 +3,11 @@ pragma solidity >=0.8.7 <0.9.0;
 
 import '@openzeppelin/contracts/token/ERC20/IERC20.sol';
 import '@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol';
+import '@openzeppelin/contracts/utils/Multicall.sol';
 import '../interfaces/IDCAFeeManager.sol';
 import '../utils/Governable.sol';
 
-contract DCAFeeManager is Governable, IDCAFeeManager {
+contract DCAFeeManager is Governable, Multicall, IDCAFeeManager {
   using SafeERC20 for IERC20;
 
   /// @inheritdoc IDCAFeeManager

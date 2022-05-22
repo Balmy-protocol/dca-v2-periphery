@@ -4,7 +4,7 @@ import { JsonRpcSigner, TransactionResponse } from '@ethersproject/providers';
 import { constants, wallet } from '@test-utils';
 import { contract, given, then, when } from '@test-utils/bdd';
 import evm, { snapshot } from '@test-utils/evm';
-import { DCAHubSwapper, DCAHubCompanion, IERC20 } from '@typechained';
+import { DCAHubSwapper, IERC20 } from '@typechained';
 import { DCAHub } from '@mean-finance/dca-v2-core/typechained';
 import { abi as DCA_HUB_ABI } from '@mean-finance/dca-v2-core/artifacts/contracts/DCAHub/DCAHub.sol/DCAHub.json';
 import { abi as IERC20_ABI } from '@openzeppelin/contracts/build/contracts/IERC20.json';
@@ -24,7 +24,6 @@ contract('Swap for caller', () => {
   let governor: JsonRpcSigner;
   let cindy: SignerWithAddress, swapper: SignerWithAddress, recipient: SignerWithAddress;
   let DCAHubSwapper: DCAHubSwapper;
-  let DCAHubCompanion: DCAHubCompanion;
   let DCAHub: DCAHub;
   let initialPerformedSwaps: number;
   let snapshotId: string;
@@ -52,14 +51,13 @@ contract('Swap for caller', () => {
 
     await deterministicFactory.connect(governor).grantRole(await deterministicFactory.DEPLOYER_ROLE(), namedAccounts.deployer);
 
-    await deployments.run(['DCAHub', 'DCAHubCompanion', 'DCAHubSwapper'], {
+    await deployments.run(['DCAHub', 'DCAHubSwapper'], {
       resetMemory: true,
       deletePreviousDeployments: false,
       writeDeploymentsToFiles: false,
     });
 
     DCAHub = await ethers.getContract('DCAHub');
-    DCAHubCompanion = await ethers.getContract('DCAHubCompanion');
     DCAHubSwapper = await ethers.getContract('DCAHubSwapper');
 
     // Allow tokens
