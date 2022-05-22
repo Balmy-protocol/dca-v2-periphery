@@ -133,7 +133,7 @@ interface IDCAFeeManager is IGovernable {
   /**
    * @notice Takes list of position ids and terminates them. All swapped and unswapped balance is
    *         sent to the given recipient. This is meant to be used only if for some reason swaps are
-   *         longer executed
+   *         no longer executed
    * @dev Can only be executed by the owner or allowed users
    * @param positionIds The positions to terminate
    * @param recipient The address that will receive all swapped and unswapped tokens
