@@ -92,7 +92,7 @@ interface IDCAFeeManager is IGovernable {
    *         unwraps it in exchange for the protocol token, and sends it to the given recipient
    * @dev Can only be executed by the owner or allowed users
    * @param positionIds The ids of the positions that we want to withdraw wToken from. These positions
-                        have swapped other tokens in exchange for wToken
+   *                    have swapped other tokens in exchange for wToken
    * @param recipient The address of the recipient, that will receive all the protocol token balance
    */
   function withdrawProtocolToken(uint256[] calldata positionIds, address payable recipient) external;
@@ -122,13 +122,23 @@ interface IDCAFeeManager is IGovernable {
   function withdrawFromPositions(IDCAHub.PositionSet[] calldata positionSets, address recipient) external;
 
   /**
-   * @notice Takes a certain amount of the given tokens, and sets up DCA swaps for each of them. 
-             The given amounts can be distributed across different target tokens
+   * @notice Takes a certain amount of the given tokens, and sets up DCA swaps for each of them.
+   *         The given amounts can be distributed across different target tokens
    * @dev Can only be executed by the owner or allowed users
    * @param amounts Specific tokens and amounts to take from this contract and send to the hub
    * @param distribution How to distribute the source tokens across different target tokens
    */
   function fillPositions(AmountToFill[] calldata amounts, TargetTokenShare[] calldata distribution) external;
+
+  /**
+   * @notice Takes list of position ids and terminates them. All swapped and unswapped balance is
+   *         sent to the given recipient. This is meant to be used only if for some reason swaps are
+   *         longer executed
+   * @dev Can only be executed by the owner or allowed users
+   * @param positionIds The positions to terminate
+   * @param recipient The address that will receive all swapped and unswapped tokens
+   */
+  function terminatePositions(uint256[] calldata positionIds, address recipient) external;
 
   /**
    * @notice Gives or takes access to permissioned actions from users

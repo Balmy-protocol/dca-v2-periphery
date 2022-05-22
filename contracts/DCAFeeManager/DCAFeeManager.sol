@@ -99,6 +99,16 @@ contract DCAFeeManager is Governable, IDCAFeeManager {
   }
 
   /// @inheritdoc IDCAFeeManager
+  function terminatePositions(uint256[] calldata _positionIds, address _recipient) external onlyOwnerOrAllowed {
+    for (uint256 i; i < _positionIds.length; i++) {
+      uint256 _positionId = _positionIds[i];
+      IDCAHubPositionHandler.UserPosition memory _position = hub.userPosition(_positionId);
+      hub.terminate(_positionId, _recipient, _recipient);
+      delete positions[getPositionKey(address(_position.from), address(_position.to))];
+    }
+  }
+
+  /// @inheritdoc IDCAFeeManager
   function setAccess(UserAccess[] calldata _access) external onlyGovernor {
     for (uint256 i; i < _access.length; i++) {
       hasAccess[_access[i].user] = _access[i].access;

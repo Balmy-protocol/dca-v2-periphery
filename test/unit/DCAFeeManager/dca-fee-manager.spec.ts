@@ -55,6 +55,7 @@ contract('DCAFeeManager', () => {
     DCAHub.withdrawSwappedMany.reset();
     DCAHub['deposit(address,address,uint256,uint32,uint32,address,(address,uint8[])[])'].reset();
     DCAHub.increasePosition.reset();
+    DCAHub.terminate.reset();
     erc20Token.allowance.reset();
     erc20Token.approve.reset();
     erc20Token.transfer.reset();
@@ -319,6 +320,45 @@ contract('DCAFeeManager', () => {
     shouldOnlyBeExecutableByGovernorOrAllowed({
       funcAndSignature: 'fillPositions',
       params: () => [[{ token: erc20Token.address, amount: FULL_AMOUNT, amountOfSwaps: AMOUNT_OF_SWAPS }], DISTRIBUTION],
+    });
+  });
+
+  describe('terminatePositions', () => {
+    const RECIPIENT = wallet.generateRandomAddress();
+    const POSITION_IDS = [1, 2];
+    when('function is executed', () => {
+      given(async () => {
+        DCAHub.userPosition.returns(({ _positionId }: { _positionId: BigNumber }) => ({
+          from: erc20Token.address,
+          to: _positionId.eq(1) ? TOKEN_A : TOKEN_B,
+          swapInterval: constants.Zero,
+          swapsExecuted: constants.Zero,
+          swapped: constants.Zero,
+          swapsLeft: constants.Zero,
+          remaining: constants.Zero,
+          rate: constants.Zero,
+        }));
+        await DCAFeeManager.setPosition(erc20Token.address, TOKEN_A, 1);
+        await DCAFeeManager.setPosition(erc20Token.address, TOKEN_B, 2);
+        await DCAFeeManager.connect(governor).terminatePositions(POSITION_IDS, RECIPIENT);
+      });
+      then('position 1 is terminated and deleted from fee manager', async () => {
+        expect(DCAHub.terminate).to.have.been.calledWith(1, RECIPIENT, RECIPIENT);
+        const positionKey = await DCAFeeManager.getPositionKey(erc20Token.address, TOKEN_A);
+        expect(await DCAFeeManager.positions(positionKey)).to.equal(0);
+      });
+      then('position 2 is terminated and deleted from fee manager', async () => {
+        expect(DCAHub.terminate).to.have.been.calledWith(2, RECIPIENT, RECIPIENT);
+        const positionKey = await DCAFeeManager.getPositionKey(erc20Token.address, TOKEN_B);
+        expect(await DCAFeeManager.positions(positionKey)).to.equal(0);
+      });
+      then('only two positions were terminated', () => {
+        expect(DCAHub.terminate).to.have.been.calledTwice;
+      });
+    });
+    shouldOnlyBeExecutableByGovernorOrAllowed({
+      funcAndSignature: 'terminatePositions',
+      params: [[], RECIPIENT],
     });
   });
 
