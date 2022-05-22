@@ -420,6 +420,63 @@ contract('DCAFeeManager', () => {
     });
   });
 
+  describe('availableBalances', () => {
+    when('function is executed', () => {
+      const PLATFORM_BALANCE = utils.parseEther('1');
+      const FEE_MANAGER_BALANCE = utils.parseEther('2');
+      given(async () => {
+        DCAHub.platformBalance.returns(PLATFORM_BALANCE);
+        erc20Token.balanceOf.returns(FEE_MANAGER_BALANCE);
+      });
+      then('balances are returned correctly', async () => {
+        const balances = await DCAFeeManager.availableBalances([erc20Token.address]);
+        expect(balances).to.have.lengthOf(1);
+        expect(balances[0].token).to.equal(erc20Token.address);
+        expect(balances[0].platformBalance).to.equal(PLATFORM_BALANCE);
+        expect(balances[0].feeManagerBalance).to.equal(FEE_MANAGER_BALANCE);
+      });
+    });
+  });
+
+  describe('positionBalances', () => {
+    when('function is executed', () => {
+      given(async () => {
+        DCAHub.userPosition.returns(({ _positionId }: { _positionId: BigNumber }) =>
+          _positionId.eq(1)
+            ? positionWith(TOKEN_A, TOKEN_B, utils.parseEther('1'))
+            : positionWith(TOKEN_B, erc20Token.address, utils.parseEther('3'))
+        );
+      });
+      then('balances are returned correctly', async () => {
+        const balances = await DCAFeeManager.positionBalances([1, 2]);
+        expect(balances).to.have.lengthOf(2);
+
+        expect(balances[0].positionId).to.equal(1);
+        expect(balances[0].from).to.equal(TOKEN_A);
+        expect(balances[0].to).to.equal(TOKEN_B);
+        expect(balances[0].swappedBalance).to.equal(utils.parseEther('1'));
+
+        expect(balances[1].positionId).to.equal(2);
+        expect(balances[1].from).to.equal(TOKEN_B);
+        expect(balances[1].to).to.equal(erc20Token.address);
+        expect(balances[1].swappedBalance).to.equal(utils.parseEther('3'));
+      });
+    });
+
+    function positionWith(from: string, to: string, swapped: BigNumberish) {
+      return {
+        from,
+        to,
+        swapInterval: constants.Zero,
+        swapsExecuted: constants.Zero,
+        swapped,
+        swapsLeft: constants.Zero,
+        remaining: constants.Zero,
+        rate: constants.Zero,
+      };
+    }
+  });
+
   function shouldOnlyBeExecutableByGovernorOrAllowed({
     funcAndSignature,
     params,

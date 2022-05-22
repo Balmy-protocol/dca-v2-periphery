@@ -32,6 +32,21 @@ interface IDCAFeeManager is IGovernable {
     uint256 amount;
   }
 
+  /// @notice Represents how much is available for withdraw, for a specific token
+  struct AvailableBalance {
+    address token;
+    uint256 platformBalance;
+    uint256 feeManagerBalance;
+  }
+
+  /// @notice Represents information about a specific position
+  struct PositionBalance {
+    uint256 positionId;
+    IERC20Metadata from;
+    IERC20Metadata to;
+    uint256 swappedBalance;
+  }
+
   /// @notice Thrown when a user tries to execute a permissioned action without the access to do so
   error CallerMustBeOwnerOrHaveAccess();
 
@@ -152,4 +167,20 @@ interface IDCAFeeManager is IGovernable {
    * @param token The token to set the allowance for
    */
   function resetAllowance(IERC20 token) external;
+
+  /**
+   * @notice Returns how much is available for withdraw, for the given tokens
+   * @dev This is meant for off-chan purposes
+   * @param tokens The tokens to check the balance for
+   * @return How much is available for withdraw, for the given tokens
+   */
+  function availableBalances(address[] calldata tokens) external view returns (AvailableBalance[] memory);
+
+  /**
+   * @notice Returns how much is available for withdraw, for the given positions
+   * @dev This is meant for off-chan purposes
+   * @param positionIds The positions to check the balance for
+   * @return How much is available for withdraw, for the given positions
+   */
+  function positionBalances(uint256[] calldata positionIds) external view returns (PositionBalance[] memory);
 }

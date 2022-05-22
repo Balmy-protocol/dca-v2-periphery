@@ -122,6 +122,32 @@ contract DCAFeeManager is Governable, IDCAFeeManager {
     _token.approve(address(hub), type(uint256).max);
   }
 
+  /// @inheritdoc IDCAFeeManager
+  function availableBalances(address[] calldata _tokens) external view returns (AvailableBalance[] memory _balances) {
+    _balances = new AvailableBalance[](_tokens.length);
+    for (uint256 i; i < _tokens.length; i++) {
+      _balances[i] = AvailableBalance({
+        token: _tokens[i],
+        platformBalance: hub.platformBalance(_tokens[i]),
+        feeManagerBalance: IERC20(_tokens[i]).balanceOf(address(this))
+      });
+    }
+  }
+
+  /// @inheritdoc IDCAFeeManager
+  function positionBalances(uint256[] calldata _positionIds) external view returns (PositionBalance[] memory _balances) {
+    _balances = new PositionBalance[](_positionIds.length);
+    for (uint256 i; i < _positionIds.length; i++) {
+      IDCAHubPositionHandler.UserPosition memory _userPosition = hub.userPosition(_positionIds[i]);
+      _balances[i] = PositionBalance({
+        positionId: _positionIds[i],
+        from: _userPosition.from,
+        to: _userPosition.to,
+        swappedBalance: _userPosition.swapped
+      });
+    }
+  }
+
   function getPositionKey(address _from, address _to) public pure returns (bytes32) {
     return keccak256(abi.encodePacked(_from, _to));
   }
