@@ -106,11 +106,16 @@ interface IDCAFeeManager is IGovernable {
    * @notice Withdraws all wToken balance from the platform balance and the given positions,
    *         unwraps it in exchange for the protocol token, and sends it to the given recipient
    * @dev Can only be executed by the owner or allowed users
+   * @param withdrawFromPlatform Specify if we want to withdraw from the platform balance or not
    * @param positionIds The ids of the positions that we want to withdraw wToken from. These positions
    *                    have swapped other tokens in exchange for wToken
    * @param recipient The address of the recipient, that will receive all the protocol token balance
    */
-  function withdrawProtocolToken(uint256[] calldata positionIds, address payable recipient) external;
+  function withdrawProtocolToken(
+    bool withdrawFromPlatform,
+    uint256[] calldata positionIds,
+    address payable recipient
+  ) external;
 
   /**
    * @notice Withdraws tokens from the platform balance, and sends them to the given recipient

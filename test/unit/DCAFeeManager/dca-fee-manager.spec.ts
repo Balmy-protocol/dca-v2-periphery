@@ -80,10 +80,21 @@ contract('DCAFeeManager', () => {
 
   describe('withdrawProtocolToken', () => {
     const RECIPIENT = wallet.generateRandomAddress();
+    when('we avoid withdrawing from platform balance', () => {
+      given(async () => {
+        await DCAFeeManager.connect(governor).withdrawProtocolToken(false, [], RECIPIENT);
+      });
+      then('no balance check is executed', () => {
+        expect(DCAHub.platformBalance).to.have.not.have.been.called;
+      });
+      then('no withdraw is made from the platform balance', () => {
+        expect(DCAHub.withdrawFromPlatformBalance).to.have.not.have.been.called;
+      });
+    });
     when('platform balance is zero', () => {
       given(async () => {
         DCAHub.platformBalance.returns(0);
-        await DCAFeeManager.connect(governor).withdrawProtocolToken([], RECIPIENT);
+        await DCAFeeManager.connect(governor).withdrawProtocolToken(true, [], RECIPIENT);
       });
       then('no withdraw is made from the platform balance', () => {
         expect(DCAHub.withdrawFromPlatformBalance).to.have.not.have.been.called;
@@ -91,7 +102,7 @@ contract('DCAFeeManager', () => {
     });
     when('the position ids list is empty', () => {
       given(async () => {
-        await DCAFeeManager.connect(governor).withdrawProtocolToken([], RECIPIENT);
+        await DCAFeeManager.connect(governor).withdrawProtocolToken(true, [], RECIPIENT);
       });
       then('no withdraw is executed', () => {
         expect(DCAHub.withdrawSwappedMany).to.have.not.have.been.called;
@@ -104,7 +115,7 @@ contract('DCAFeeManager', () => {
       given(async () => {
         DCAHub.platformBalance.returns(PLATFORM_BALANCE);
         await wToken.mint(DCAFeeManager.address, TOTAL_BALANCE);
-        await DCAFeeManager.connect(governor).withdrawProtocolToken(POSITION_IDS, RECIPIENT);
+        await DCAFeeManager.connect(governor).withdrawProtocolToken(true, POSITION_IDS, RECIPIENT);
       });
       then('platform balance is withdrawn', () => {
         expect(DCAHub.withdrawFromPlatformBalance).to.have.have.been.calledOnce;
@@ -125,7 +136,7 @@ contract('DCAFeeManager', () => {
     });
     shouldOnlyBeExecutableByGovernorOrAllowed({
       funcAndSignature: 'withdrawProtocolToken',
-      params: [[], RECIPIENT],
+      params: [true, [], RECIPIENT],
     });
   });
 

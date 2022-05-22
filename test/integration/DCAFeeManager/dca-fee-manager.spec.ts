@@ -135,7 +135,7 @@ contract('DCAFeeManager', () => {
     expect(wethPlatformBalance.gt(0)).to.be.true;
 
     // Execute withdraw as protocol token
-    await DCAFeeManager.connect(allowed).withdrawProtocolToken([2, 3], RECIPIENT);
+    await DCAFeeManager.connect(allowed).withdrawProtocolToken(true, [2, 3], RECIPIENT);
 
     // Make sure that everything was transferred to recipient
     const recipientBalance = await ethers.provider.getBalance(RECIPIENT);

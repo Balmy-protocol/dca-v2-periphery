@@ -33,13 +33,19 @@ contract DCAFeeManager is Governable, Multicall, IDCAFeeManager {
   }
 
   /// @inheritdoc IDCAFeeManager
-  function withdrawProtocolToken(uint256[] calldata _positionIds, address payable _recipient) external onlyOwnerOrAllowed {
+  function withdrawProtocolToken(
+    bool _withdrawFromPlatform,
+    uint256[] calldata _positionIds,
+    address payable _recipient
+  ) external onlyOwnerOrAllowed {
     // Withdraw wToken from platform balance
-    uint256 _platformBalance = hub.platformBalance(address(wToken));
-    if (_platformBalance > 0) {
-      IDCAHub.AmountOfToken[] memory _amountToWithdraw = new IDCAHub.AmountOfToken[](1);
-      _amountToWithdraw[0] = IDCAHub.AmountOfToken({token: address(wToken), amount: _platformBalance});
-      hub.withdrawFromPlatformBalance(_amountToWithdraw, address(this));
+    if (_withdrawFromPlatform) {
+      uint256 _platformBalance = hub.platformBalance(address(wToken));
+      if (_platformBalance > 0) {
+        IDCAHub.AmountOfToken[] memory _amountToWithdraw = new IDCAHub.AmountOfToken[](1);
+        _amountToWithdraw[0] = IDCAHub.AmountOfToken({token: address(wToken), amount: _platformBalance});
+        hub.withdrawFromPlatformBalance(_amountToWithdraw, address(this));
+      }
     }
 
     // Withdraw wToken from positions
