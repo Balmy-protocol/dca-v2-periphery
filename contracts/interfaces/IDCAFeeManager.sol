@@ -68,6 +68,13 @@ interface IDCAFeeManager is IGovernable {
   function hub() external view returns (IDCAHub);
 
   /**
+   * @notice Returns address for the wToken
+   * @dev This value cannot be modified after deployment
+   * @return The address for the wToken
+   */
+  function wToken() external view returns (IWrappedProtocolToken);
+
+  /**
    * @notice Returns the distribution for the target tokens. Target tokens are the tokens that we
    *         want to swap the fees to. We can assign a distribution to convert to many different tokens
    * @return The distribution for the target tokens
@@ -81,6 +88,16 @@ interface IDCAFeeManager is IGovernable {
    * @return Whether the given user has access
    */
   function hasAccess(address user) external view returns (bool);
+
+  /**
+   * @notice Withdraws all wToken balance from the platform balance and the given positions,
+   *         unwraps it in exchange for the protocol token, and sends it to the given recipient
+   * @dev Can only be executed by the owner or allowed users
+   * @param positionIds The ids of the positions that we want to withdraw wToken from. These positions
+                        have swapped other tokens in exchange for wToken
+   * @param recipient The address of the recipient, that will receive all the protocol token balance
+   */
+  function withdrawProtocolToken(uint256[] calldata positionIds, address payable recipient) external;
 
   /**
    * @notice Gives or takes access to permissioned actions from users

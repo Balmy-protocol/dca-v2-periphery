@@ -12,22 +12,51 @@ contract DCAFeeManager is Governable, IDCAFeeManager {
   /// @inheritdoc IDCAFeeManager
   IDCAHub public immutable hub;
   /// @inheritdoc IDCAFeeManager
+  IWrappedProtocolToken public immutable wToken;
+  /// @inheritdoc IDCAFeeManager
   mapping(address => bool) public hasAccess;
 
   TargetTokenShare[] internal _distribution;
 
   constructor(
     IDCAHub _hub,
+    IWrappedProtocolToken _wToken,
     TargetTokenShare[] memory _distributionToSet,
     address _governor
   ) Governable(_governor) {
     hub = _hub;
+    wToken = _wToken;
     _setTargetTokensDistribution(_distributionToSet);
   }
 
   /// @inheritdoc IDCAFeeManager
   function targetTokensDistribution() external view returns (TargetTokenShare[] memory) {
     return _distribution;
+  }
+
+  /// @inheritdoc IDCAFeeManager
+  function withdrawProtocolToken(uint256[] calldata _positionIds, address payable _recipient) external onlyOwnerOrAllowed {
+    // Withdraw wToken from platform balance
+    uint256 _platformBalance = hub.platformBalance(address(wToken));
+    if (_platformBalance > 0) {
+      IDCAHub.AmountOfToken[] memory _amountToWithdraw = new IDCAHub.AmountOfToken[](1);
+      _amountToWithdraw[0] = IDCAHub.AmountOfToken({token: address(wToken), amount: _platformBalance});
+      hub.withdrawFromPlatformBalance(_amountToWithdraw, address(this));
+    }
+
+    // Withdraw wToken from positions
+    if (_positionIds.length > 0) {
+      IDCAHub.PositionSet[] memory _positionSets = new IDCAHub.PositionSet[](1);
+      _positionSets[0] = IDCAHubPositionHandler.PositionSet({token: address(wToken), positionIds: _positionIds});
+      hub.withdrawSwappedMany(_positionSets, address(this));
+    }
+
+    // Unwrap and transfer
+    uint256 _totalBalance = wToken.balanceOf(address(this));
+    if (_totalBalance > 0) {
+      wToken.withdraw(_totalBalance);
+      _recipient.transfer(_totalBalance);
+    }
   }
 
   /// @inheritdoc IDCAFeeManager
@@ -42,6 +71,8 @@ contract DCAFeeManager is Governable, IDCAFeeManager {
   function setTargetTokensDistribution(TargetTokenShare[] calldata _newDistribution) external onlyOwnerOrAllowed {
     _setTargetTokensDistribution(_newDistribution);
   }
+
+  receive() external payable {}
 
   function _setTargetTokensDistribution(TargetTokenShare[] memory _newDistribution) internal {
     uint256 _currentTargetTokens = _distribution.length;
