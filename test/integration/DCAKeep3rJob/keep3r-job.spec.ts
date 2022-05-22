@@ -192,28 +192,21 @@ contract('DCAKeep3rJob', () => {
   }
 
   async function generateCallAndSignature() {
-    const {
-      tokens: [, weth],
-    } = await DCAHubCompanion.getNextSwapInfo([{ tokenA: WETH_ADDRESS, tokenB: USDC_ADDRESS }]);
-    const dexQuote = await zrx.quote({
-      chainId: 1,
-      sellToken: WETH_ADDRESS,
-      buyToken: USDC_ADDRESS,
-      sellAmount: weth.reward,
-      slippagePercentage: 0.01, // 1%
-      takerAddress: DCAHubSwapper.address,
-      skipValidation: true,
-    });
+    // We are hardcoding the call to 0x, so we can fork from the block number
+    const quoteData =
+      '0xd9627aa40000000000000000000000000000000000000000000000000000000000000080000000000000000000000000000000000000000000000000016345785d8a0000000000000000000000000000000000000000000000000000000000000bce50c700000000000000000000000000000000000000000000000000000000000000010000000000000000000000000000000000000000000000000000000000000002000000000000000000000000c02aaa39b223fe8d0a0e5c4f27ead9083c756cc2000000000000000000000000a0b86991c6218b36c1d19d4a2e9eb0ce3606eb48869584cd0000000000000000000000001000000000000000000000000000000000000011000000000000000000000000000000000000000000000077582d5feb628a7f8e';
+    const quoteTo = '0xdef1c0ded9bec7f1a1670819833240f027b25eff';
+    const quoteAllowanceTarget = '0xdef1c0ded9bec7f1a1670819833240f027b25eff';
 
-    await DCAHubSwapper.connect(governor).defineDexSupport(dexQuote.to, true);
+    await DCAHubSwapper.connect(governor).defineDexSupport(quoteTo, true);
     const tokensInSwap = [USDC_ADDRESS, WETH_ADDRESS];
     const indexesInSwap = [{ indexTokenA: 0, indexTokenB: 1 }];
     const { data } = await DCAHubSwapper.populateTransaction.swapWithDex(
-      dexQuote.to,
-      dexQuote.allowanceTarget,
+      quoteTo,
+      quoteAllowanceTarget,
       tokensInSwap,
       indexesInSwap,
-      [dexQuote.data],
+      [quoteData],
       false,
       constants.NOT_ZERO_ADDRESS,
       constants.MAX_UINT_256
