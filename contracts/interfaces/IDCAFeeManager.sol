@@ -146,4 +146,10 @@ interface IDCAFeeManager is IGovernable {
    * @param access The users to affect, and how to affect them
    */
   function setAccess(UserAccess[] calldata access) external;
+
+  /**
+   * @notice Sets the maximum allowance to the DCA Hub, for the given token
+   * @param token The token to set the allowance for
+   */
+  function resetAllowance(IERC20 token) external;
 }

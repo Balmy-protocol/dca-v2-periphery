@@ -407,6 +407,19 @@ contract('DCAFeeManager', () => {
     });
   });
 
+  describe('resetAllowance', () => {
+    when('function is executed', () => {
+      given(async () => {
+        await DCAFeeManager.resetAllowance(erc20Token.address);
+      });
+      then('allowance is reset', async () => {
+        expect(erc20Token.approve).to.have.been.calledTwice;
+        expect(erc20Token.approve).to.have.been.calledWith(DCAHub.address, 0);
+        expect(erc20Token.approve).to.have.been.calledWith(DCAHub.address, constants.MaxUint256);
+      });
+    });
+  });
+
   function shouldOnlyBeExecutableByGovernorOrAllowed({
     funcAndSignature,
     params,

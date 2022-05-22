@@ -116,6 +116,12 @@ contract DCAFeeManager is Governable, IDCAFeeManager {
     emit NewAccess(_access);
   }
 
+  /// @inheritdoc IDCAFeeManager
+  function resetAllowance(IERC20 _token) external {
+    _token.approve(address(hub), 0); // We do this first because some tokens (like USDT) will fail if we  don't
+    _token.approve(address(hub), type(uint256).max);
+  }
+
   function getPositionKey(address _from, address _to) public pure returns (bytes32) {
     return keccak256(abi.encodePacked(_from, _to));
   }
