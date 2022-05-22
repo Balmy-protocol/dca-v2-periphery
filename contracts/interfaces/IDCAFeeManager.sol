@@ -25,6 +25,13 @@ interface IDCAFeeManager is IGovernable {
     bool access;
   }
 
+  /// @notice Represents how much to deposit to a position, for a specific token
+  struct AmountToFill {
+    address token;
+    uint32 amountOfSwaps;
+    uint256 amount;
+  }
+
   /// @notice Thrown when a user tries to execute a permissioned action without the access to do so
   error CallerMustBeOwnerOrHaveAccess();
 
@@ -73,6 +80,14 @@ interface IDCAFeeManager is IGovernable {
   function hasAccess(address user) external view returns (bool);
 
   /**
+   * @notice Returns the position id for a given (from, to) pair
+   * @dev Key for (tokenA, tokenB) is different from the key for(tokenB, tokenA)
+   * @param pairKey The key of the pair (from, to)
+   * @return The position id for the given pair
+   */
+  function positions(bytes32 pairKey) external view returns (uint256); // key(from, to) => position id
+
+  /**
    * @notice Withdraws all wToken balance from the platform balance and the given positions,
    *         unwraps it in exchange for the protocol token, and sends it to the given recipient
    * @dev Can only be executed by the owner or allowed users
@@ -81,6 +96,15 @@ interface IDCAFeeManager is IGovernable {
    * @param recipient The address of the recipient, that will receive all the protocol token balance
    */
   function withdrawProtocolToken(uint256[] calldata positionIds, address payable recipient) external;
+
+  /**
+   * @notice Takes a certain amount of the given tokens, and sets up DCA swaps for each of them. 
+             The given amounts can be distributed across different target tokens
+   * @dev Can only be executed by the owner or allowed users
+   * @param amounts Specific tokens and amounts to take from this contract and send to the hub
+   * @param distribution How to distribute the source tokens across different target tokens
+   */
+  function fillPositions(AmountToFill[] calldata amounts, TargetTokenShare[] calldata distribution) external;
 
   /**
    * @notice Gives or takes access to permissioned actions from users
