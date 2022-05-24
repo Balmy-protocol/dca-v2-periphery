@@ -59,7 +59,7 @@
     "postpublish": "pinst --enable"
   },
   "dependencies": {
-    "@mean-finance/dca-v2-core": "2.0.0-rc8",
+    "@mean-finance/dca-v2-core": "2.0.0-rc9",
     "@mean-finance/deterministic-factory": "1.3.1"
   },
   "devDependencies": {
