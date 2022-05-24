@@ -42,7 +42,7 @@ contract('DCAFeeManager', () => {
     DCAHub = await smock.fake('IDCAHub');
     erc20Token = await smock.fake('IERC20');
     wToken = await wTokenFactory.deploy('WETH', 'WETH', 18);
-    await setPlatformTokenBalance(wToken, utils.parseEther('100'));
+    await setProtocolBalance(wToken, utils.parseEther('100'));
     DCAFeeManagerFactory = await ethers.getContractFactory('contracts/mocks/DCAFeeManager/DCAFeeManager.sol:DCAFeeManagerMock');
     DCAFeeManager = await DCAFeeManagerFactory.deploy(DCAHub.address, wToken.address, governor.address);
     snapshotId = await snapshot.take();
@@ -131,7 +131,7 @@ contract('DCAFeeManager', () => {
       });
       then('total balance is unwrapped and sent to the recipient', async () => {
         expect(await wToken.balanceOf(DCAFeeManager.address)).to.equal(0);
-        expect(await getPlatformBalance(RECIPIENT)).to.equal(TOTAL_BALANCE);
+        expect(await getProtocolBalance(RECIPIENT)).to.equal(TOTAL_BALANCE);
       });
     });
     shouldOnlyBeExecutableByGovernorOrAllowed({
@@ -530,11 +530,11 @@ contract('DCAFeeManager', () => {
     });
   }
 
-  function getPlatformBalance(address: string) {
+  function getProtocolBalance(address: string) {
     return ethers.provider.getBalance(address);
   }
 
-  async function setPlatformTokenBalance(recipient: { address: string }, amount: BigNumber) {
+  async function setProtocolBalance(recipient: { address: string }, amount: BigNumber) {
     await ethers.provider.send('hardhat_setBalance', [recipient.address, ethers.utils.hexValue(amount)]);
     return BigNumber.from(amount);
   }
