@@ -99,6 +99,7 @@ contract('DCAFeeManager', () => {
     expect(usdcBalance.feeManagerBalance).to.equal(0);
     expect(wbtcBalance.platformBalance).to.equal(0);
     expect(wbtcBalance.feeManagerBalance.gt(0)).to.be.true;
+    expect(wbtcBalance.positions).to.have.lengthOf(0);
 
     // Prepare data to withdraw USDC from platform balance
     const { data: withdrawData } = await DCAFeeManager.populateTransaction.withdrawFromPlatformBalance(
@@ -121,29 +122,31 @@ contract('DCAFeeManager', () => {
     // Execute swap
     await swap({ from: USDC, to: WETH }, { from: WBTC, to: WETH });
 
-    // Check position balances
-    const [position2, position3] = await DCAFeeManager.positionBalances([2, 3]);
-    expect(position2.from.toLowerCase()).to.equal(USDC.address.toLowerCase());
-    expect(position2.to.toLowerCase()).to.eql(WETH.address.toLowerCase());
-    expect(position2.swappedBalance.gt(0)).to.be.true;
-    expect(position3.from.toLowerCase()).to.equal(WBTC.address.toLowerCase());
-    expect(position3.to.toLowerCase()).to.equal(WETH.address.toLowerCase());
-    expect(position3.swappedBalance.gt(0)).to.be.true;
-
-    // Check platform balance
-    const wethPlatformBalance = await DCAHub.platformBalance(WETH.address);
-    expect(wethPlatformBalance.gt(0)).to.be.true;
+    // Check balances
+    const [wethBalance] = await DCAFeeManager.availableBalances([WETH.address]);
+    expect(wethBalance.platformBalance.gt(0)).to.be.true;
+    expect(wethBalance.positions).to.have.lengthOf(2);
+    const [position1, position2] = wethBalance.positions;
+    expect(position1.from.toLowerCase()).to.equal(USDC.address.toLowerCase());
+    expect(position1.to.toLowerCase()).to.eql(WETH.address.toLowerCase());
+    expect(position1.swapped.gt(0)).to.be.true;
+    expect(position1.remaining).to.equal(0);
+    expect(position2.from.toLowerCase()).to.equal(WBTC.address.toLowerCase());
+    expect(position2.to.toLowerCase()).to.equal(WETH.address.toLowerCase());
+    expect(position2.swapped.gt(0)).to.be.true;
+    expect(position2.remaining).to.equal(0);
 
     // Execute withdraw as protocol token
-    await DCAFeeManager.connect(allowed).withdrawProtocolToken(true, [2, 3], RECIPIENT);
+    await DCAFeeManager.connect(allowed).withdrawProtocolToken(true, [position1.positionId, position2.positionId], RECIPIENT);
 
     // Make sure that everything was transferred to recipient
     const recipientBalance = await ethers.provider.getBalance(RECIPIENT);
-    const [position2After, position3After] = await DCAFeeManager.positionBalances([2, 3]);
-    expect(recipientBalance).to.equal(wethPlatformBalance.add(position2.swappedBalance).add(position3.swappedBalance));
-    expect(position2After.swappedBalance).to.equal(0);
-    expect(position3After.swappedBalance).to.equal(0);
-    expect(await DCAHub.platformBalance(WETH.address)).to.equal(0);
+    const [wethBalanceAfter] = await DCAFeeManager.availableBalances([WETH.address]);
+    expect(wethBalanceAfter.platformBalance).to.equal(0);
+    const [position1After, position2After] = wethBalanceAfter.positions;
+    expect(recipientBalance).to.equal(wethBalance.platformBalance.add(position1.swapped).add(position2.swapped));
+    expect(position1After.swapped).to.equal(0);
+    expect(position2After.swapped).to.equal(0);
   });
 
   async function distributeTokensToUsers() {

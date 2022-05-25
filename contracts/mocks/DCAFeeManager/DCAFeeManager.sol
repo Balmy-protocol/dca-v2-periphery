@@ -17,4 +17,14 @@ contract DCAFeeManagerMock is DCAFeeManager {
   ) external {
     positions[getPositionKey(_from, _to)] = _positionId;
   }
+
+  function positionsWithToken(address _toToken) external view returns (uint256[] memory) {
+    return _positionsWithToken[_toToken];
+  }
+
+  function setPositionsWithToken(address _toToken, uint256[] calldata _positionIds) external {
+    for (uint256 i; i < _positionIds.length; i++) {
+      _positionsWithToken[_toToken].push(_positionIds[i]);
+    }
+  }
 }
