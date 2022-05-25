@@ -23,8 +23,6 @@ contract DCAFeeManager is Governable, Multicall, IDCAFeeManager {
   /// @inheritdoc IDCAFeeManager
   mapping(bytes32 => uint256) public positions; // key(from, to) => position id
 
-  mapping(address => uint256[]) internal _positionsWithToken; // token address => all positions with address as to
-
   constructor(
     IDCAHub _hub,
     IWrappedProtocolToken _wToken,
@@ -135,24 +133,24 @@ contract DCAFeeManager is Governable, Multicall, IDCAFeeManager {
   function availableBalances(address[] calldata _tokens) external view returns (AvailableBalance[] memory _balances) {
     _balances = new AvailableBalance[](_tokens.length);
     for (uint256 i; i < _tokens.length; i++) {
-      address _token = _tokens[i];
-      uint256[] memory _positionIds = _positionsWithToken[_token];
-      PositionBalance[] memory _positions = new PositionBalance[](_positionIds.length);
-      for (uint256 j; j < _positionIds.length; j++) {
-        IDCAHubPositionHandler.UserPosition memory _userPosition = hub.userPosition(_positionIds[j]);
-        _positions[j] = PositionBalance({
-          positionId: _positionIds[j],
-          from: _userPosition.from,
-          to: _userPosition.to,
-          swapped: _userPosition.swapped,
-          remaining: _userPosition.remaining
-        });
-      }
       _balances[i] = AvailableBalance({
-        token: _token,
-        platformBalance: hub.platformBalance(_token),
-        feeManagerBalance: IERC20(_token).balanceOf(address(this)),
-        positions: _positions
+        token: _tokens[i],
+        platformBalance: hub.platformBalance(_tokens[i]),
+        feeManagerBalance: IERC20(_tokens[i]).balanceOf(address(this))
+      });
+    }
+  }
+
+  /// @inheritdoc IDCAFeeManager
+  function positionBalances(uint256[] calldata _positionIds) external view returns (PositionBalance[] memory _balances) {
+    _balances = new PositionBalance[](_positionIds.length);
+    for (uint256 i; i < _positionIds.length; i++) {
+      IDCAHubPositionHandler.UserPosition memory _userPosition = hub.userPosition(_positionIds[i]);
+      _balances[i] = PositionBalance({
+        positionId: _positionIds[i],
+        from: _userPosition.from,
+        to: _userPosition.to,
+        swappedBalance: _userPosition.swapped
       });
     }
   }
@@ -182,7 +180,6 @@ contract DCAFeeManager is Governable, Multicall, IDCAFeeManager {
         uint256 _newPositionId
       ) {
         positions[_key] = _newPositionId;
-        _positionsWithToken[_to].push(_newPositionId);
       } catch {
         _failed = true;
       }

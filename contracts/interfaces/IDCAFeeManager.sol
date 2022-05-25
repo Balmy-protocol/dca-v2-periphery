@@ -37,7 +37,6 @@ interface IDCAFeeManager is IGovernable {
     address token;
     uint256 platformBalance;
     uint256 feeManagerBalance;
-    PositionBalance[] positions;
   }
 
   /// @notice Represents information about a specific position
@@ -45,8 +44,7 @@ interface IDCAFeeManager is IGovernable {
     uint256 positionId;
     IERC20Metadata from;
     IERC20Metadata to;
-    uint256 swapped;
-    uint256 remaining;
+    uint256 swappedBalance;
   }
 
   /// @notice Thrown when a user tries to execute a permissioned action without the access to do so
@@ -182,4 +180,12 @@ interface IDCAFeeManager is IGovernable {
    * @return How much is available for withdraw, for the given tokens
    */
   function availableBalances(address[] calldata tokens) external view returns (AvailableBalance[] memory);
+
+  /**
+   * @notice Returns how much is available for withdraw, for the given positions
+   * @dev This is meant for off-chan purposes
+   * @param positionIds The positions to check the balance for
+   * @return How much is available for withdraw, for the given positions
+   */
+  function positionBalances(uint256[] calldata positionIds) external view returns (PositionBalance[] memory);
 }
