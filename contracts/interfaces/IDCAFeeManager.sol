@@ -13,6 +13,51 @@ import './utils/IGovernable.sol';
  *         of their choosing
  */
 interface IDCAFeeManager is IGovernable {
+  /// @notice Represents a share of a target token
+  struct TargetTokenShare {
+    address token;
+    uint16 shares;
+  }
+
+  /// @notice Represents a user and the new access that should be assigned to them
+  struct UserAccess {
+    address user;
+    bool access;
+  }
+
+  /// @notice Represents how much to deposit to a position, for a specific token
+  struct AmountToFill {
+    address token;
+    uint32 amountOfSwaps;
+    uint256 amount;
+  }
+
+  /// @notice Represents how much is available for withdraw, for a specific token
+  struct AvailableBalance {
+    address token;
+    uint256 platformBalance;
+    uint256 feeManagerBalance;
+    PositionBalance[] positions;
+  }
+
+  /// @notice Represents information about a specific position
+  struct PositionBalance {
+    uint256 positionId;
+    IERC20Metadata from;
+    IERC20Metadata to;
+    uint256 swapped;
+    uint256 remaining;
+  }
+
+  /// @notice Thrown when a user tries to execute a permissioned action without the access to do so
+  error CallerMustBeOwnerOrHaveAccess();
+
+  /**
+   * @notice Emitted when access is modified for some users
+   * @param access The modified users and their new access
+   */
+  event NewAccess(UserAccess[] access);
+
   /**
    * @notice The contract's owner and other allowed users can specify the target tokens that the fees
    *         should be converted to. They can also specify the percentage assigned to each token
@@ -36,4 +81,105 @@ interface IDCAFeeManager is IGovernable {
    * @return The address for the DCA Hub
    */
   function hub() external view returns (IDCAHub);
+
+  /**
+   * @notice Returns address for the wToken
+   * @dev This value cannot be modified after deployment
+   * @return The address for the wToken
+   */
+  function wToken() external view returns (IWrappedProtocolToken);
+
+  /**
+   * @notice Returns whether the given user has access to fill positions or execute withdraws
+   * @param user The user to check access for
+   * @return Whether the given user has access
+   */
+  function hasAccess(address user) external view returns (bool);
+
+  /**
+   * @notice Returns the position id for a given (from, to) pair
+   * @dev Key for (tokenA, tokenB) is different from the key for(tokenB, tokenA)
+   * @param pairKey The key of the pair (from, to)
+   * @return The position id for the given pair
+   */
+  function positions(bytes32 pairKey) external view returns (uint256); // key(from, to) => position id
+
+  /**
+   * @notice Withdraws all wToken balance from the platform balance and the given positions,
+   *         unwraps it in exchange for the protocol token, and sends it to the given recipient
+   * @dev Can only be executed by the owner or allowed users
+   * @param withdrawFromPlatform Specify if we want to withdraw from the platform balance or not
+   * @param positionIds The ids of the positions that we want to withdraw wToken from. These positions
+   *                    have swapped other tokens in exchange for wToken
+   * @param recipient The address of the recipient, that will receive all the protocol token balance
+   */
+  function withdrawProtocolToken(
+    bool withdrawFromPlatform,
+    uint256[] calldata positionIds,
+    address payable recipient
+  ) external;
+
+  /**
+   * @notice Withdraws tokens from the platform balance, and sends them to the given recipient
+   * @dev Can only be executed by the owner or allowed users
+   * @param amountToWithdraw The tokens to withdraw, and their amounts
+   * @param recipient The address of the recipient
+   */
+  function withdrawFromPlatformBalance(IDCAHub.AmountOfToken[] calldata amountToWithdraw, address recipient) external;
+
+  /**
+   * @notice Withdraws tokens from the contract's balance, and sends them to the given recipient
+   * @dev Can only be executed by the owner or allowed users
+   * @param amountToWithdraw The tokens to withdraw, and their amounts
+   * @param recipient The address of the recipient
+   */
+  function withdrawFromBalance(IDCAHub.AmountOfToken[] calldata amountToWithdraw, address recipient) external;
+
+  /**
+   * @notice Withdraws tokens from the given positions, and sends them to the given recipient
+   * @dev Can only be executed by the owner or allowed users
+   * @param positionSets The positions to withdraw from
+   * @param recipient The address of the recipient
+   */
+  function withdrawFromPositions(IDCAHub.PositionSet[] calldata positionSets, address recipient) external;
+
+  /**
+   * @notice Takes a certain amount of the given tokens, and sets up DCA swaps for each of them.
+   *         The given amounts can be distributed across different target tokens
+   * @dev Can only be executed by the owner or allowed users
+   * @param amounts Specific tokens and amounts to take from this contract and send to the hub
+   * @param distribution How to distribute the source tokens across different target tokens
+   */
+  function fillPositions(AmountToFill[] calldata amounts, TargetTokenShare[] calldata distribution) external;
+
+  /**
+   * @notice Takes list of position ids and terminates them. All swapped and unswapped balance is
+   *         sent to the given recipient. This is meant to be used only if for some reason swaps are
+   *         no longer executed
+   * @dev Can only be executed by the owner or allowed users
+   * @param positionIds The positions to terminate
+   * @param recipient The address that will receive all swapped and unswapped tokens
+   */
+  function terminatePositions(uint256[] calldata positionIds, address recipient) external;
+
+  /**
+   * @notice Gives or takes access to permissioned actions from users
+   * @dev Only the contract owner can execute this action
+   * @param access The users to affect, and how to affect them
+   */
+  function setAccess(UserAccess[] calldata access) external;
+
+  /**
+   * @notice Sets the maximum allowance to the DCA Hub, for the given token
+   * @param token The token to set the allowance for
+   */
+  function resetAllowance(IERC20 token) external;
+
+  /**
+   * @notice Returns how much is available for withdraw, for the given tokens
+   * @dev This is meant for off-chan purposes
+   * @param tokens The tokens to check the balance for
+   * @return How much is available for withdraw, for the given tokens
+   */
+  function availableBalances(address[] calldata tokens) external view returns (AvailableBalance[] memory);
 }
