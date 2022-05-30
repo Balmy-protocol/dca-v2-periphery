@@ -6,6 +6,7 @@ import {
   DCAFeeManagerMock,
   DCAFeeManagerMock__factory,
   IDCAHub,
+  IDCAHubPositionHandler,
   IERC20,
   WrappedPlatformTokenMock,
   WrappedPlatformTokenMock__factory,
@@ -245,6 +246,10 @@ contract('DCAFeeManager', () => {
           const key = await DCAFeeManager.getPositionKey(erc20Token.address, TOKEN_B);
           expect(await DCAFeeManager.positions(key)).to.equal(POSITION_ID_TOKEN_B);
         });
+        then('position is stored for the to token', async () => {
+          const positions = await DCAFeeManager.positionsWithToken(TOKEN_B);
+          expect(positions).to.eql([BigNumber.from(POSITION_ID_TOKEN_B)]);
+        });
       });
       describe('and deposit works', () => {
         given(async () => {
@@ -287,6 +292,14 @@ contract('DCAFeeManager', () => {
         then('position is stored for the pair with token B', async () => {
           const key = await DCAFeeManager.getPositionKey(erc20Token.address, TOKEN_B);
           expect(await DCAFeeManager.positions(key)).to.equal(POSITION_ID_TOKEN_B);
+        });
+        then('position is stored for token A', async () => {
+          const positions = await DCAFeeManager.positionsWithToken(TOKEN_A);
+          expect(positions).to.eql([BigNumber.from(POSITION_ID_TOKEN_A)]);
+        });
+        then('position is stored for token B', async () => {
+          const positions = await DCAFeeManager.positionsWithToken(TOKEN_A);
+          expect(positions).to.eql([BigNumber.from(POSITION_ID_TOKEN_A)]);
         });
       });
     });
@@ -435,9 +448,14 @@ contract('DCAFeeManager', () => {
     when('function is executed', () => {
       const PLATFORM_BALANCE = utils.parseEther('1');
       const FEE_MANAGER_BALANCE = utils.parseEther('2');
+      let position1: IDCAHubPositionHandler.UserPositionStruct, position2: IDCAHubPositionHandler.UserPositionStruct;
       given(async () => {
         DCAHub.platformBalance.returns(PLATFORM_BALANCE);
         erc20Token.balanceOf.returns(FEE_MANAGER_BALANCE);
+        position1 = positionWith(TOKEN_A, erc20Token.address, utils.parseEther('1'));
+        position2 = positionWith(TOKEN_B, erc20Token.address, utils.parseEther('3'));
+        DCAHub.userPosition.returns(({ _positionId }: { _positionId: BigNumber }) => (_positionId.eq(1) ? position1 : position2));
+        await DCAFeeManager.setPositionsWithToken(erc20Token.address, [1, 2]);
       });
       then('balances are returned correctly', async () => {
         const balances = await DCAFeeManager.availableBalances([erc20Token.address]);
@@ -445,34 +463,23 @@ contract('DCAFeeManager', () => {
         expect(balances[0].token).to.equal(erc20Token.address);
         expect(balances[0].platformBalance).to.equal(PLATFORM_BALANCE);
         expect(balances[0].feeManagerBalance).to.equal(FEE_MANAGER_BALANCE);
+        expect(balances[0].positions).to.have.lengthOf(2);
+        expectUserPositionToBeEqual(balances[0].positions[0], position1, 1);
+        expectUserPositionToBeEqual(balances[0].positions[1], position2, 2);
       });
     });
-  });
 
-  describe('positionBalances', () => {
-    when('function is executed', () => {
-      given(async () => {
-        DCAHub.userPosition.returns(({ _positionId }: { _positionId: BigNumber }) =>
-          _positionId.eq(1)
-            ? positionWith(TOKEN_A, TOKEN_B, utils.parseEther('1'))
-            : positionWith(TOKEN_B, erc20Token.address, utils.parseEther('3'))
-        );
-      });
-      then('balances are returned correctly', async () => {
-        const balances = await DCAFeeManager.positionBalances([1, 2]);
-        expect(balances).to.have.lengthOf(2);
-
-        expect(balances[0].positionId).to.equal(1);
-        expect(balances[0].from).to.equal(TOKEN_A);
-        expect(balances[0].to).to.equal(TOKEN_B);
-        expect(balances[0].swappedBalance).to.equal(utils.parseEther('1'));
-
-        expect(balances[1].positionId).to.equal(2);
-        expect(balances[1].from).to.equal(TOKEN_B);
-        expect(balances[1].to).to.equal(erc20Token.address);
-        expect(balances[1].swappedBalance).to.equal(utils.parseEther('3'));
-      });
-    });
+    function expectUserPositionToBeEqual(
+      actual: IDCAFeeManager.PositionBalanceStructOutput,
+      expected: IDCAHubPositionHandler.UserPositionStruct,
+      positionId: BigNumberish
+    ) {
+      expect(actual.positionId).to.equal(positionId);
+      expect(actual.from).to.equal(expected.from);
+      expect(actual.to).to.equal(expected.to);
+      expect(actual.swapped).to.equal(expected.swapped);
+      expect(actual.remaining).to.equal(expected.remaining);
+    }
 
     function positionWith(from: string, to: string, swapped: BigNumberish) {
       return {
