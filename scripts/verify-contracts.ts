@@ -19,6 +19,11 @@ async function main() {
     path: 'contracts/V2Migration/PositionMigrator.sol:PositionMigrator',
   });
 
+  await verify({
+    name: 'DCAFeeManager',
+    path: 'contracts/DCAFeeManager/DCAFeeManager.sol:DCAFeeManager',
+  });
+
   if (currentNetwork === 'mainnet') {
     await verify({
       name: 'DCAKeep3rJob',
