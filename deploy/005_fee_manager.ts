@@ -1,6 +1,8 @@
 import { HardhatRuntimeEnvironment } from 'hardhat/types';
 import { DeployFunction } from '@0xged/hardhat-deploy/types';
 import { networkBeingForked } from '@test-utils/evm';
+import { DCAFeeManager__factory } from '@typechained';
+import { deployThroughDeterministicFactory } from '@mean-finance/deterministic-factory/utils/deployment';
 
 const deployFunction: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
   const { deployer, governor } = await hre.getNamedAccounts();
@@ -31,11 +33,17 @@ const deployFunction: DeployFunction = async function (hre: HardhatRuntimeEnviro
 
   const hub = await hre.deployments.get('DCAHub');
 
-  await hre.deployments.deploy('DCAFeeManager', {
+  await deployThroughDeterministicFactory({
+    deployer,
+    name: 'DCAFeeManager',
+    salt: 'MF-DCAV2-DCAFeeManager',
     contract: 'contracts/DCAFeeManager/DCAFeeManager.sol:DCAFeeManager',
-    from: deployer,
-    args: [hub.address, wProtocolToken, governor],
-    log: true,
+    bytecode: DCAFeeManager__factory.bytecode,
+    constructorArgs: {
+      types: ['address', 'address', 'address'],
+      values: [hub.address, wProtocolToken, governor],
+    },
+    log: !process.env.TEST,
   });
 };
 
