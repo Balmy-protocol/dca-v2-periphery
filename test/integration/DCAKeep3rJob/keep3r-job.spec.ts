@@ -27,7 +27,6 @@ const KP3R_WHALE_ADDRESS = '0x2fc52c61fb0c03489649311989ce2689d93dc1a2';
 contract('DCAKeep3rJob', () => {
   let WETH: IERC20, K3PR: IERC20;
 
-  let DCAHubCompanion: DCAHubCompanion;
   let DCAKeep3rJob: DCAKeep3rJob;
   let DCAHubSwapper: DCAHubSwapper;
   let DCAHub: DCAHub;
@@ -71,7 +70,6 @@ contract('DCAKeep3rJob', () => {
     DCAHub = await ethers.getContract('DCAHub');
     DCAHubSwapper = await ethers.getContract('DCAHubSwapper');
     DCAKeep3rJob = await ethers.getContract('DCAKeep3rJob');
-    DCAHubCompanion = await ethers.getContract('DCAHubCompanion');
     uniswapv3PairManager = await ethers.getContractAt(UNI_V3_MANAGER_ABI, UNISWAP_V3_PAIR_MANAGER);
 
     const timelockContract = await ethers.getContract('Timelock');
