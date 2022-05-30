@@ -73,6 +73,9 @@ contract('Multicall', () => {
     WETH = await ethers.getContractAt(IERC20_ABI, WETH_ADDRESS);
     USDC = await ethers.getContractAt(IERC20_ABI, USDC_ADDRESS);
 
+    // Allow tokens
+    await DCAHub.connect(governor).setAllowedTokens([WETH_ADDRESS, USDC_ADDRESS], [true, true]);
+
     // Send tokens from whales, to our users
     await distributeTokensToUsers();
 

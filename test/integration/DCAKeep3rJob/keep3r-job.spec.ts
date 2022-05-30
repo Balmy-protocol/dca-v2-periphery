@@ -4,7 +4,7 @@ import { BigNumber, Contract, utils } from 'ethers';
 import { deployments, ethers, getNamedAccounts } from 'hardhat';
 import { abi as IERC20_ABI } from '@openzeppelin/contracts/build/contracts/IERC20.json';
 import { expect } from 'chai';
-import { DCAHubCompanion, DCAHubSwapper, DCAKeep3rJob, IDCAHub, IERC20 } from '@typechained';
+import { DCAHubCompanion, DCAHubSwapper, DCAKeep3rJob, IERC20 } from '@typechained';
 import { SwapInterval } from '@test-utils/interval-utils';
 import evm, { snapshot } from '@test-utils/evm';
 import { contract, given, then, when } from '@test-utils/bdd';
@@ -13,7 +13,7 @@ import KEEP3R_ABI from '../abis/Keep3r.json';
 import UNI_V3_MANAGER_ABI from '../abis/UniV3PairManager.json';
 import moment from 'moment';
 import forkBlockNumber from '@integration/fork-block-numbers';
-import { OracleAggregator } from '@mean-finance/dca-v2-core/typechained';
+import { DCAHub, OracleAggregator } from '@mean-finance/dca-v2-core/typechained';
 import { DeterministicFactory, DeterministicFactory__factory } from '@mean-finance/deterministic-factory/typechained';
 import zrx from '@test-utils/dexes/zrx';
 
@@ -27,10 +27,9 @@ const KP3R_WHALE_ADDRESS = '0x2fc52c61fb0c03489649311989ce2689d93dc1a2';
 contract('DCAKeep3rJob', () => {
   let WETH: IERC20, K3PR: IERC20;
 
-  let DCAHubCompanion: DCAHubCompanion;
   let DCAKeep3rJob: DCAKeep3rJob;
   let DCAHubSwapper: DCAHubSwapper;
-  let DCAHub: IDCAHub;
+  let DCAHub: DCAHub;
   let keep3rProtocol: Contract;
   let uniswapv3PairManager: Contract;
 
@@ -71,7 +70,6 @@ contract('DCAKeep3rJob', () => {
     DCAHub = await ethers.getContract('DCAHub');
     DCAHubSwapper = await ethers.getContract('DCAHubSwapper');
     DCAKeep3rJob = await ethers.getContract('DCAKeep3rJob');
-    DCAHubCompanion = await ethers.getContract('DCAHubCompanion');
     uniswapv3PairManager = await ethers.getContractAt(UNI_V3_MANAGER_ABI, UNISWAP_V3_PAIR_MANAGER);
 
     const timelockContract = await ethers.getContract('Timelock');
@@ -84,6 +82,9 @@ contract('DCAKeep3rJob', () => {
 
     // Make platform fee bigger so we don't fail
     await DCAHub.connect(timelock).setSwapFee(20000); // 2%
+
+    // Allow tokens
+    await DCAHub.connect(governor).setAllowedTokens([WETH_ADDRESS, USDC_ADDRESS], [true, true]);
 
     // Allow one minute interval
     await DCAHub.connect(governor).addSwapIntervalsToAllowedList([SwapInterval.ONE_MINUTE.seconds]);
@@ -189,28 +190,21 @@ contract('DCAKeep3rJob', () => {
   }
 
   async function generateCallAndSignature() {
-    const {
-      tokens: [, weth],
-    } = await DCAHubCompanion.getNextSwapInfo([{ tokenA: WETH_ADDRESS, tokenB: USDC_ADDRESS }]);
-    const dexQuote = await zrx.quote({
-      chainId: 1,
-      sellToken: WETH_ADDRESS,
-      buyToken: USDC_ADDRESS,
-      sellAmount: weth.reward,
-      slippagePercentage: 0.01, // 1%
-      takerAddress: DCAHubSwapper.address,
-      skipValidation: true,
-    });
+    // We are hardcoding the call to 0x, so we can fork from the block number
+    const quoteData =
+      '0xd9627aa40000000000000000000000000000000000000000000000000000000000000080000000000000000000000000000000000000000000000000016345785d8a0000000000000000000000000000000000000000000000000000000000000bce50c700000000000000000000000000000000000000000000000000000000000000010000000000000000000000000000000000000000000000000000000000000002000000000000000000000000c02aaa39b223fe8d0a0e5c4f27ead9083c756cc2000000000000000000000000a0b86991c6218b36c1d19d4a2e9eb0ce3606eb48869584cd0000000000000000000000001000000000000000000000000000000000000011000000000000000000000000000000000000000000000077582d5feb628a7f8e';
+    const quoteTo = '0xdef1c0ded9bec7f1a1670819833240f027b25eff';
+    const quoteAllowanceTarget = '0xdef1c0ded9bec7f1a1670819833240f027b25eff';
 
-    await DCAHubSwapper.connect(governor).defineDexSupport(dexQuote.to, true);
+    await DCAHubSwapper.connect(governor).defineDexSupport(quoteTo, true);
     const tokensInSwap = [USDC_ADDRESS, WETH_ADDRESS];
     const indexesInSwap = [{ indexTokenA: 0, indexTokenB: 1 }];
     const { data } = await DCAHubSwapper.populateTransaction.swapWithDex(
-      dexQuote.to,
-      dexQuote.allowanceTarget,
+      quoteTo,
+      quoteAllowanceTarget,
       tokensInSwap,
       indexesInSwap,
-      [dexQuote.data],
+      [quoteData],
       false,
       constants.NOT_ZERO_ADDRESS,
       constants.MAX_UINT_256

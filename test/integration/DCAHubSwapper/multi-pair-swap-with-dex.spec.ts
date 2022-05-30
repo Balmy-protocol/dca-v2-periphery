@@ -66,6 +66,8 @@ contract('Multi pair swap with DEX', () => {
     const timelock = await wallet.impersonate(timelockContract.address);
     await ethers.provider.send('hardhat_setBalance', [timelockContract.address, '0xffffffffffffffff']);
 
+    // Allow tokens
+    await DCAHub.connect(governor).setAllowedTokens([WETH_ADDRESS, USDC_ADDRESS, LINK_ADDRESS], [true, true, true]);
     // Allow one minute interval
     await DCAHub.connect(governor).addSwapIntervalsToAllowedList([SwapInterval.ONE_MINUTE.seconds]);
     //We are setting a very high fee, so that there is a surplus in both reward and toProvide tokens

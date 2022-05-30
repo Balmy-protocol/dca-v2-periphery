@@ -63,6 +63,9 @@ contract('WToken', () => {
     DCAHubSwapper = await ethers.getContract('DCAHubSwapper');
     DCAPermissionManager = await ethers.getContract('PermissionsManager');
 
+    // Allow tokens
+    await DCAHub.connect(governor).setAllowedTokens([WETH_ADDRESS, USDC_ADDRESS], [true, true]);
+
     // Allow one minute interval
     await DCAHub.connect(governor).addSwapIntervalsToAllowedList([SwapInterval.ONE_MINUTE.seconds]);
 

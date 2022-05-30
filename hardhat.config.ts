@@ -70,7 +70,7 @@ const networks: NetworksUserConfig = process.env.TEST
         tags: ['production'],
       },
       mumbai: {
-        url: 'https://rpc-mumbai.matic.today',
+        url: getNodeUrl('mumbai'),
         accounts: accounts('mumbai'),
         tags: ['staging'],
       },
@@ -88,7 +88,13 @@ const config: HardhatUserConfig = {
   },
   namedAccounts: {
     deployer: 4,
-    governor: '0x1a00e1E311009E56e3b0B9Ed6F86f5Ce128a1C01',
+    governor: {
+      // Gnosis multisigs
+      default: '0x1a00e1E311009E56e3b0B9Ed6F86f5Ce128a1C01',
+      ethereum: '0xEC864BE26084ba3bbF3cAAcF8F6961A9263319C4',
+      optimism: '0x308810881807189cAe91950888b2cB73A1CC5920',
+      polygon: '0xCe9F6991b48970d6c9Ef99Fffb112359584488e3',
+    },
   },
   networks,
   solidity: {
@@ -118,12 +124,6 @@ const config: HardhatUserConfig = {
     apiKey: process.env.ETHERSCAN_API_KEY,
   },
   external: {
-    contracts: [
-      {
-        artifacts: 'node_modules/@mean-finance/dca-v2-core/artifacts',
-        deploy: 'node_modules/@mean-finance/dca-v2-core/deploy',
-      },
-    ],
     deployments: {
       mainnet: [
         'node_modules/@mean-finance/dca-v2-core/deployments/mainnet',
@@ -151,6 +151,12 @@ const config: HardhatUserConfig = {
 };
 
 if (process.env.TEST) {
+  config.external!.contracts = [
+    {
+      artifacts: 'node_modules/@mean-finance/dca-v2-core/artifacts',
+      deploy: 'node_modules/@mean-finance/dca-v2-core/deploy',
+    },
+  ];
   const solidity = config.solidity as MultiSolcUserConfig;
   solidity.compilers.forEach((_, i) => {
     solidity.compilers[i].settings! = {
