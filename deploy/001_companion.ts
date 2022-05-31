@@ -21,6 +21,9 @@ const deployFunction: DeployFunction = async function (hre: HardhatRuntimeEnviro
     case 'optimism':
       wProtocolToken = '0x4200000000000000000000000000000000000006'; // WETH
       break;
+    case 'arbitrum':
+      wProtocolToken = '0x82af49447d8a07e3bd95bd0d56f35241523fbab1'; // WETH
+      break;
     case 'mumbai':
       wProtocolToken = '0x9c3C9283D3e44854697Cd22D3Faa240Cfb032889'; // WMATIC
       break;

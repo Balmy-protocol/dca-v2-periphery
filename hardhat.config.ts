@@ -69,6 +69,11 @@ const networks: NetworksUserConfig = process.env.TEST
         accounts: accounts('optimism'),
         tags: ['production'],
       },
+      arbitrum: {
+        url: getNodeUrl('arbitrum'),
+        accounts: accounts('arbitrum'),
+        tags: ['production'],
+      },
       mumbai: {
         url: getNodeUrl('mumbai'),
         accounts: accounts('mumbai'),
@@ -94,6 +99,7 @@ const config: HardhatUserConfig = {
       ethereum: '0xEC864BE26084ba3bbF3cAAcF8F6961A9263319C4',
       optimism: '0x308810881807189cAe91950888b2cB73A1CC5920',
       polygon: '0xCe9F6991b48970d6c9Ef99Fffb112359584488e3',
+      arbitrum: '0x84F4836e8022765Af9FBCE3Bb2887fD826c668f1',
     },
   },
   networks,
@@ -137,6 +143,10 @@ const config: HardhatUserConfig = {
       'optimism-kovan': [
         'node_modules/@mean-finance/dca-v2-core/deployments/optimism-kovan',
         'node_modules/@mean-finance/chainlink-registry/deployments/optimismkovan',
+      ],
+      arbitrum: [
+        'node_modules/@mean-finance/dca-v2-core/deployments/arbitrum',
+        'node_modules/@mean-finance/chainlink-registry/deployments/arbitrum',
       ],
       polygon: [
         'node_modules/@mean-finance/dca-v2-core/deployments/polygon',
