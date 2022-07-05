@@ -79,65 +79,22 @@ contract('DCAFeeManager', () => {
     });
   });
 
-  describe('withdrawProtocolToken', () => {
-    const RECIPIENT = wallet.generateRandomAddress();
-    when('we avoid withdrawing from platform balance', () => {
+  describe('unwrapWToken', () => {
+    const TOTAL_BALANCE = utils.parseEther('1');
+    const BALANCE_TO_UNWRAP = utils.parseEther('0.1');
+    when('unwrap is called', () => {
       given(async () => {
-        await DCAFeeManager.connect(governor).withdrawProtocolToken(false, [], RECIPIENT);
-      });
-      then('no balance check is executed', () => {
-        expect(DCAHub.platformBalance).to.have.not.have.been.called;
-      });
-      then('no withdraw is made from the platform balance', () => {
-        expect(DCAHub.withdrawFromPlatformBalance).to.have.not.have.been.called;
-      });
-    });
-    when('platform balance is zero', () => {
-      given(async () => {
-        DCAHub.platformBalance.returns(0);
-        await DCAFeeManager.connect(governor).withdrawProtocolToken(true, [], RECIPIENT);
-      });
-      then('no withdraw is made from the platform balance', () => {
-        expect(DCAHub.withdrawFromPlatformBalance).to.have.not.have.been.called;
-      });
-    });
-    when('the position ids list is empty', () => {
-      given(async () => {
-        await DCAFeeManager.connect(governor).withdrawProtocolToken(true, [], RECIPIENT);
-      });
-      then('no withdraw is executed', () => {
-        expect(DCAHub.withdrawSwappedMany).to.have.not.have.been.called;
-      });
-    });
-    when('all sources have balance', () => {
-      const PLATFORM_BALANCE = utils.parseEther('1');
-      const POSITION_IDS = [1, 2, 3];
-      const TOTAL_BALANCE = utils.parseEther('1');
-      given(async () => {
-        DCAHub.platformBalance.returns(PLATFORM_BALANCE);
         await wToken.mint(DCAFeeManager.address, TOTAL_BALANCE);
-        await DCAFeeManager.connect(governor).withdrawProtocolToken(true, POSITION_IDS, RECIPIENT);
+        await DCAFeeManager.connect(governor).unwrapWToken(BALANCE_TO_UNWRAP);
       });
-      then('platform balance is withdrawn', () => {
-        expect(DCAHub.withdrawFromPlatformBalance).to.have.have.been.calledOnce;
-        const [amountToWithdraw, recipient] = DCAHub.withdrawFromPlatformBalance.getCall(0).args as [AmountToWithdraw[], string];
-        expectAmounToWithdrawToBe(amountToWithdraw, [{ token: wToken.address, amount: PLATFORM_BALANCE }]);
-        expect(recipient).to.equal(DCAFeeManager.address);
-      });
-      then('swapped balance is withdrawn from positions', () => {
-        expect(DCAHub.withdrawSwappedMany).to.have.have.been.calledOnce;
-        const [positionSets, recipient] = DCAHub.withdrawSwappedMany.getCall(0).args as [PositionSet[], string];
-        expectPositionSetsToBe(positionSets, [{ token: wToken.address, positionIds: POSITION_IDS }]);
-        expect(recipient).to.equal(DCAFeeManager.address);
-      });
-      then('total balance is unwrapped and sent to the recipient', async () => {
-        expect(await wToken.balanceOf(DCAFeeManager.address)).to.equal(0);
-        expect(await getProtocolBalance(RECIPIENT)).to.equal(TOTAL_BALANCE);
+      then('given balance is unwrapped', async () => {
+        expect(await wToken.balanceOf(DCAFeeManager.address)).to.equal(TOTAL_BALANCE.sub(BALANCE_TO_UNWRAP));
+        expect(await getProtocolBalance(DCAFeeManager.address)).to.equal(BALANCE_TO_UNWRAP);
       });
     });
     shouldOnlyBeExecutableByGovernorOrAllowed({
-      funcAndSignature: 'withdrawProtocolToken',
-      params: [true, [], RECIPIENT],
+      funcAndSignature: 'unwrapWToken',
+      params: [BALANCE_TO_UNWRAP],
     });
   });
 
@@ -196,6 +153,29 @@ contract('DCAFeeManager', () => {
     shouldOnlyBeExecutableByGovernorOrAllowed({
       funcAndSignature: 'withdrawFromPositions',
       params: [[], RECIPIENT],
+    });
+  });
+
+  describe('withdrawProtocolToken', () => {
+    const RECIPIENT = wallet.generateRandomAddress();
+    const TOTAL_BALANCE = utils.parseEther('1');
+    const BALANCE_TO_WITHDRAW = utils.parseEther('0.1');
+    when('unwrap is called', () => {
+      given(async () => {
+        await wToken.mint(DCAFeeManager.address, TOTAL_BALANCE);
+        await DCAFeeManager.connect(governor).unwrapWToken(TOTAL_BALANCE);
+        await DCAFeeManager.connect(governor).withdrawProtocolToken(BALANCE_TO_WITHDRAW, RECIPIENT);
+      });
+      then('amount to withdraw is sent to recipient', async () => {
+        expect(await getProtocolBalance(RECIPIENT)).to.equal(BALANCE_TO_WITHDRAW);
+      });
+      then('leftover is still on the fee manager', async () => {
+        expect(await getProtocolBalance(DCAFeeManager.address)).to.equal(TOTAL_BALANCE.sub(BALANCE_TO_WITHDRAW));
+      });
+    });
+    shouldOnlyBeExecutableByGovernorOrAllowed({
+      funcAndSignature: 'withdrawProtocolToken',
+      params: [BALANCE_TO_WITHDRAW, RECIPIENT],
     });
   });
 
