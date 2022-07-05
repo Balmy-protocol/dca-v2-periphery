@@ -137,7 +137,23 @@ contract('DCAFeeManager', () => {
     expect(position2.remaining).to.equal(0);
 
     // Execute withdraw as protocol token
-    await DCAFeeManager.connect(allowed).withdrawProtocolToken(true, [position1.positionId, position2.positionId], RECIPIENT);
+    const total = wethBalance.platformBalance.add(wethBalance.positions[0].swapped).add(wethBalance.positions[1].swapped);
+    const { data: withdrawPlatformBalanceData } = await DCAFeeManager.populateTransaction.withdrawFromPlatformBalance(
+      [{ token: WETH.address, amount: wethBalance.platformBalance }],
+      DCAFeeManager.address
+    );
+    const { data: withdrawPositionsData } = await DCAFeeManager.populateTransaction.withdrawFromPositions(
+      [{ token: WETH.address, positionIds: [position1.positionId, position2.positionId] }],
+      DCAFeeManager.address
+    );
+    const { data: unwrapData } = await DCAFeeManager.populateTransaction.unwrapWToken(total);
+    const { data: withdrawProtocolTokenData } = await DCAFeeManager.populateTransaction.withdrawProtocolToken(total, RECIPIENT);
+    await DCAFeeManager.connect(allowed).multicall([
+      withdrawPlatformBalanceData!,
+      withdrawPositionsData!,
+      unwrapData!,
+      withdrawProtocolTokenData!,
+    ]);
 
     // Make sure that everything was transferred to recipient
     const recipientBalance = await ethers.provider.getBalance(RECIPIENT);
