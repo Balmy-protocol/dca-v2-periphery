@@ -105,19 +105,11 @@ interface IDCAFeeManager is IGovernable {
   function positions(bytes32 pairKey) external view returns (uint256); // key(from, to) => position id
 
   /**
-   * @notice Withdraws all wToken balance from the platform balance and the given positions,
-   *         unwraps it in exchange for the protocol token, and sends it to the given recipient
+   * @notice Unwraps all wToken, in exchange for the protocol token
    * @dev Can only be executed by the owner or allowed users
-   * @param withdrawFromPlatform Specify if we want to withdraw from the platform balance or not
-   * @param positionIds The ids of the positions that we want to withdraw wToken from. These positions
-   *                    have swapped other tokens in exchange for wToken
-   * @param recipient The address of the recipient, that will receive all the protocol token balance
+   * @param amount The amount to unwrap
    */
-  function withdrawProtocolToken(
-    bool withdrawFromPlatform,
-    uint256[] calldata positionIds,
-    address payable recipient
-  ) external;
+  function unwrapWToken(uint256 amount) external;
 
   /**
    * @notice Withdraws tokens from the platform balance, and sends them to the given recipient
@@ -142,6 +134,14 @@ interface IDCAFeeManager is IGovernable {
    * @param recipient The address of the recipient
    */
   function withdrawFromPositions(IDCAHub.PositionSet[] calldata positionSets, address recipient) external;
+
+  /**
+   * @notice Withdraws protocol tokens and sends them to the given recipient
+   * @dev Can only be executed by the owner or allowed users
+   * @param amount The amount to withdraw
+   * @param recipient The address of the recipient
+   */
+  function withdrawProtocolToken(uint256 amount, address payable recipient) external;
 
   /**
    * @notice Takes a certain amount of the given tokens, and sets up DCA swaps for each of them.
