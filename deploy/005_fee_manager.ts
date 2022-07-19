@@ -39,7 +39,7 @@ const deployFunction: DeployFunction = async function (hre: HardhatRuntimeEnviro
   await deployThroughDeterministicFactory({
     deployer,
     name: 'DCAFeeManager',
-    salt: 'MF-DCAV2-DCAFeeManager',
+    salt: 'MF-DCAV2-DCAFeeManager-V2',
     contract: 'contracts/DCAFeeManager/DCAFeeManager.sol:DCAFeeManager',
     bytecode: DCAFeeManager__factory.bytecode,
     constructorArgs: {
