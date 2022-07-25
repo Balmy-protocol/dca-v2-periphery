@@ -76,13 +76,6 @@ interface IDCAFeeManager is IGovernable {
   function SWAP_INTERVAL() external view returns (uint32);
 
   /**
-   * @notice Returns address for the DCA Hub
-   * @dev This value cannot be modified after deployment
-   * @return The address for the DCA Hub
-   */
-  function hub() external view returns (IDCAHub);
-
-  /**
    * @notice Returns address for the wToken
    * @dev This value cannot be modified after deployment
    * @return The address for the wToken
@@ -172,10 +165,15 @@ interface IDCAFeeManager is IGovernable {
    *         sent to the given recipient. This is meant to be used only if for some reason swaps are
    *         no longer executed
    * @dev Can only be executed by the owner or allowed users
+   * @param hub The address of the DCA Hub
    * @param positionIds The positions to terminate
    * @param recipient The address that will receive all swapped and unswapped tokens
    */
-  function terminatePositions(uint256[] calldata positionIds, address recipient) external;
+  function terminatePositions(
+    IDCAHub hub,
+    uint256[] calldata positionIds,
+    address recipient
+  ) external;
 
   /**
    * @notice Gives or takes access to permissioned actions from users
@@ -187,8 +185,9 @@ interface IDCAFeeManager is IGovernable {
   /**
    * @notice Returns how much is available for withdraw, for the given tokens
    * @dev This is meant for off-chan purposes
+   * @param hub The address of the DCA Hub
    * @param tokens The tokens to check the balance for
    * @return How much is available for withdraw, for the given tokens
    */
-  function availableBalances(address[] calldata tokens) external view returns (AvailableBalance[] memory);
+  function availableBalances(IDCAHub hub, address[] calldata tokens) external view returns (AvailableBalance[] memory);
 }
