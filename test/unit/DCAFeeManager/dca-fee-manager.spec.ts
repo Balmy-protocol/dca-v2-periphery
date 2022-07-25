@@ -45,7 +45,7 @@ contract('DCAFeeManager', () => {
     wToken = await wTokenFactory.deploy('WETH', 'WETH', 18);
     await setProtocolBalance(wToken, utils.parseEther('100'));
     DCAFeeManagerFactory = await ethers.getContractFactory('contracts/mocks/DCAFeeManager/DCAFeeManager.sol:DCAFeeManagerMock');
-    DCAFeeManager = await DCAFeeManagerFactory.deploy(DCAHub.address, wToken.address, governor.address);
+    DCAFeeManager = await DCAFeeManagerFactory.deploy(wToken.address, governor.address);
     snapshotId = await snapshot.take();
   });
 
@@ -64,9 +64,6 @@ contract('DCAFeeManager', () => {
 
   describe('constructor', () => {
     when('contract is initiated', () => {
-      then('hub is set correctly', async () => {
-        expect(await DCAFeeManager.hub()).to.equal(DCAHub.address);
-      });
       then('max token total share is set correctly', async () => {
         expect(await DCAFeeManager.MAX_TOKEN_TOTAL_SHARE()).to.equal(MAX_SHARES);
       });
@@ -449,7 +446,7 @@ contract('DCAFeeManager', () => {
         await DCAFeeManager.setPositionsWithToken(erc20Token.address, [1, 2]);
       });
       then('balances are returned correctly', async () => {
-        const balances = await DCAFeeManager.availableBalances([erc20Token.address]);
+        const balances = await DCAFeeManager.availableBalances(DCAHub.address, [erc20Token.address]);
         expect(balances).to.have.lengthOf(1);
         expect(balances[0].token).to.equal(erc20Token.address);
         expect(balances[0].platformBalance).to.equal(PLATFORM_BALANCE);

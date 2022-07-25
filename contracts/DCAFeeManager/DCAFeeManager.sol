@@ -15,8 +15,6 @@ contract DCAFeeManager is Governable, Multicall, IDCAFeeManager {
   /// @inheritdoc IDCAFeeManager
   uint32 public constant SWAP_INTERVAL = 1 days;
   /// @inheritdoc IDCAFeeManager
-  IDCAHub public immutable hub;
-  /// @inheritdoc IDCAFeeManager
   IWrappedProtocolToken public immutable wToken;
   /// @inheritdoc IDCAFeeManager
   mapping(address => bool) public hasAccess;
@@ -25,12 +23,7 @@ contract DCAFeeManager is Governable, Multicall, IDCAFeeManager {
 
   mapping(address => uint256[]) internal _positionsWithToken; // token address => all positions with address as to
 
-  constructor(
-    IDCAHub _hub,
-    IWrappedProtocolToken _wToken,
-    address _governor
-  ) Governable(_governor) {
-    hub = _hub;
+  constructor(IWrappedProtocolToken _wToken, address _governor) Governable(_governor) {
     wToken = _wToken;
   }
 
@@ -125,14 +118,14 @@ contract DCAFeeManager is Governable, Multicall, IDCAFeeManager {
   }
 
   /// @inheritdoc IDCAFeeManager
-  function availableBalances(address[] calldata _tokens) external view returns (AvailableBalance[] memory _balances) {
+  function availableBalances(IDCAHub _hub, address[] calldata _tokens) external view returns (AvailableBalance[] memory _balances) {
     _balances = new AvailableBalance[](_tokens.length);
     for (uint256 i; i < _tokens.length; i++) {
       address _token = _tokens[i];
       uint256[] memory _positionIds = _positionsWithToken[_token];
       PositionBalance[] memory _positions = new PositionBalance[](_positionIds.length);
       for (uint256 j; j < _positionIds.length; j++) {
-        IDCAHubPositionHandler.UserPosition memory _userPosition = hub.userPosition(_positionIds[j]);
+        IDCAHubPositionHandler.UserPosition memory _userPosition = _hub.userPosition(_positionIds[j]);
         _positions[j] = PositionBalance({
           positionId: _positionIds[j],
           from: _userPosition.from,
@@ -143,7 +136,7 @@ contract DCAFeeManager is Governable, Multicall, IDCAFeeManager {
       }
       _balances[i] = AvailableBalance({
         token: _token,
-        platformBalance: hub.platformBalance(_token),
+        platformBalance: _hub.platformBalance(_token),
         feeManagerBalance: IERC20(_token).balanceOf(address(this)),
         positions: _positions
       });
