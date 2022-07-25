@@ -94,7 +94,7 @@ contract('DCAFeeManager', () => {
     await swap({ from: WBTC, to: USDC });
 
     // Calculate and verify balances
-    const [usdcBalance, wbtcBalance] = await DCAFeeManager.availableBalances([USDC.address, WBTC.address]);
+    const [usdcBalance, wbtcBalance] = await DCAFeeManager.availableBalances(DCAHub.address, [USDC.address, WBTC.address]);
     expect(usdcBalance.platformBalance.gt(0)).to.be.true;
     expect(usdcBalance.feeManagerBalance).to.equal(0);
     expect(wbtcBalance.platformBalance).to.equal(0);
@@ -110,6 +110,7 @@ contract('DCAFeeManager', () => {
 
     // Prepare data to send WBTC and USDC to Hub, to DCA for WETH
     const { data: fillData } = await DCAFeeManager.populateTransaction.fillPositions(
+      DCAHub.address,
       [
         { token: USDC.address, amount: usdcBalance.platformBalance, amountOfSwaps: 1 },
         { token: WBTC.address, amount: wbtcBalance.feeManagerBalance, amountOfSwaps: 1 },
@@ -124,7 +125,7 @@ contract('DCAFeeManager', () => {
     await swap({ from: USDC, to: WETH }, { from: WBTC, to: WETH });
 
     // Check balances
-    const [wethBalance] = await DCAFeeManager.availableBalances([WETH.address]);
+    const [wethBalance] = await DCAFeeManager.availableBalances(DCAHub.address, [WETH.address]);
     expect(wethBalance.platformBalance.gt(0)).to.be.true;
     expect(wethBalance.positions).to.have.lengthOf(2);
     const [position1, position2] = wethBalance.positions;
@@ -145,6 +146,7 @@ contract('DCAFeeManager', () => {
       DCAFeeManager.address
     );
     const { data: withdrawPositionsData } = await DCAFeeManager.populateTransaction.withdrawFromPositions(
+      DCAHub.address,
       [{ token: WETH.address, positionIds: [position1.positionId, position2.positionId] }],
       DCAFeeManager.address
     );
@@ -159,7 +161,7 @@ contract('DCAFeeManager', () => {
 
     // Make sure that everything was transferred to recipient
     const recipientBalance = await ethers.provider.getBalance(RECIPIENT);
-    const [wethBalanceAfter] = await DCAFeeManager.availableBalances([WETH.address]);
+    const [wethBalanceAfter] = await DCAFeeManager.availableBalances(DCAHub.address, [WETH.address]);
     expect(wethBalanceAfter.platformBalance).to.equal(0);
     const [position1After, position2After] = wethBalanceAfter.positions;
     expect(recipientBalance).to.equal(wethBalance.platformBalance.add(position1.swapped).add(position2.swapped));
