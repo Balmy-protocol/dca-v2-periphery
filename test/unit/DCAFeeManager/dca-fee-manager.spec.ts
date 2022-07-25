@@ -45,7 +45,7 @@ contract('DCAFeeManager', () => {
     wToken = await wTokenFactory.deploy('WETH', 'WETH', 18);
     await setProtocolBalance(wToken, utils.parseEther('100'));
     DCAFeeManagerFactory = await ethers.getContractFactory('contracts/mocks/DCAFeeManager/DCAFeeManager.sol:DCAFeeManagerMock');
-    DCAFeeManager = await DCAFeeManagerFactory.deploy(DCAHub.address, wToken.address, governor.address);
+    DCAFeeManager = await DCAFeeManagerFactory.deploy(wToken.address, governor.address);
     snapshotId = await snapshot.take();
   });
 
@@ -64,9 +64,6 @@ contract('DCAFeeManager', () => {
 
   describe('constructor', () => {
     when('contract is initiated', () => {
-      then('hub is set correctly', async () => {
-        expect(await DCAFeeManager.hub()).to.equal(DCAHub.address);
-      });
       then('max token total share is set correctly', async () => {
         expect(await DCAFeeManager.MAX_TOKEN_TOTAL_SHARE()).to.equal(MAX_SHARES);
       });
@@ -103,7 +100,7 @@ contract('DCAFeeManager', () => {
     when('withdraw is executed', () => {
       const AMOUNT_TO_WITHDRAW = [{ token: TOKEN_A, amount: utils.parseEther('1') }];
       given(async () => {
-        await DCAFeeManager.connect(governor).withdrawFromPlatformBalance(AMOUNT_TO_WITHDRAW, RECIPIENT);
+        await DCAFeeManager.connect(governor).withdrawFromPlatformBalance(DCAHub.address, AMOUNT_TO_WITHDRAW, RECIPIENT);
       });
       then('hub is called correctly', () => {
         expect(DCAHub.withdrawFromPlatformBalance).to.have.been.calledOnce;
@@ -114,7 +111,7 @@ contract('DCAFeeManager', () => {
     });
     shouldOnlyBeExecutableByGovernorOrAllowed({
       funcAndSignature: 'withdrawFromPlatformBalance',
-      params: [[], RECIPIENT],
+      params: () => [DCAHub.address, [], RECIPIENT],
     });
   });
 
@@ -141,7 +138,7 @@ contract('DCAFeeManager', () => {
     when('withdraw is executed', () => {
       const POSITION_SETS = [{ token: TOKEN_A, positionIds: [1, 2, 3] }];
       given(async () => {
-        await DCAFeeManager.connect(governor).withdrawFromPositions(POSITION_SETS, RECIPIENT);
+        await DCAFeeManager.connect(governor).withdrawFromPositions(DCAHub.address, POSITION_SETS, RECIPIENT);
       });
       then('hub is called correctly', () => {
         expect(DCAHub.withdrawSwappedMany).to.have.been.calledOnce;
@@ -152,7 +149,7 @@ contract('DCAFeeManager', () => {
     });
     shouldOnlyBeExecutableByGovernorOrAllowed({
       funcAndSignature: 'withdrawFromPositions',
-      params: [[], RECIPIENT],
+      params: () => [DCAHub.address, [], RECIPIENT],
     });
   });
 
@@ -192,6 +189,7 @@ contract('DCAFeeManager', () => {
       given(async () => {
         erc20Token.allowance.returns(0);
         await DCAFeeManager.connect(governor).fillPositions(
+          DCAHub.address,
           [{ token: erc20Token.address, amount: FULL_AMOUNT, amountOfSwaps: AMOUNT_OF_SWAPS }],
           DISTRIBUTION
         );
@@ -200,12 +198,29 @@ contract('DCAFeeManager', () => {
         expect(erc20Token.approve).to.have.been.calledOnceWith(DCAHub.address, constants.MaxUint256);
       });
     });
+    when('allowance is not zero but less than needed', () => {
+      given(async () => {
+        erc20Token.allowance.returns(1);
+        await DCAFeeManager.connect(governor).fillPositions(
+          DCAHub.address,
+          [{ token: erc20Token.address, amount: FULL_AMOUNT, amountOfSwaps: AMOUNT_OF_SWAPS }],
+          DISTRIBUTION
+        );
+      });
+      then('allowance is reset', () => {
+        expect(erc20Token.approve).to.have.been.calledTwice;
+        expect(erc20Token.approve).to.have.been.calledWith(DCAHub.address, 0);
+        expect(erc20Token.approve).to.have.been.calledWith(DCAHub.address, constants.MaxUint256);
+      });
+    });
     when('there is no position created', () => {
       describe('and deposit fails', () => {
         given(async () => {
+          erc20Token.allowance.returns(constants.MaxUint256);
           DCAHub['deposit(address,address,uint256,uint32,uint32,address,(address,uint8[])[])'].revertsAtCall(0);
           DCAHub['deposit(address,address,uint256,uint32,uint32,address,(address,uint8[])[])'].returnsAtCall(1, POSITION_ID_TOKEN_B);
           await DCAFeeManager.connect(governor).fillPositions(
+            DCAHub.address,
             [{ token: erc20Token.address, amount: FULL_AMOUNT, amountOfSwaps: AMOUNT_OF_SWAPS }],
             DISTRIBUTION
           );
@@ -230,12 +245,16 @@ contract('DCAFeeManager', () => {
           const positions = await DCAFeeManager.positionsWithToken(TOKEN_B);
           expect(positions).to.eql([BigNumber.from(POSITION_ID_TOKEN_B)]);
         });
+        then('allowance is not set', () => {
+          expect(erc20Token.approve).to.not.have.been.called;
+        });
       });
       describe('and deposit works', () => {
         given(async () => {
           DCAHub['deposit(address,address,uint256,uint32,uint32,address,(address,uint8[])[])'].returnsAtCall(0, POSITION_ID_TOKEN_A);
           DCAHub['deposit(address,address,uint256,uint32,uint32,address,(address,uint8[])[])'].returnsAtCall(1, POSITION_ID_TOKEN_B);
           await DCAFeeManager.connect(governor).fillPositions(
+            DCAHub.address,
             [{ token: erc20Token.address, amount: FULL_AMOUNT, amountOfSwaps: AMOUNT_OF_SWAPS }],
             DISTRIBUTION
           );
@@ -293,6 +312,7 @@ contract('DCAFeeManager', () => {
         given(async () => {
           DCAHub.increasePosition.revertsAtCall(0);
           await DCAFeeManager.connect(governor).fillPositions(
+            DCAHub.address,
             [{ token: erc20Token.address, amount: FULL_AMOUNT, amountOfSwaps: AMOUNT_OF_SWAPS }],
             DISTRIBUTION
           );
@@ -305,6 +325,7 @@ contract('DCAFeeManager', () => {
       describe('and increase works', () => {
         given(async () => {
           await DCAFeeManager.connect(governor).fillPositions(
+            DCAHub.address,
             [{ token: erc20Token.address, amount: FULL_AMOUNT, amountOfSwaps: AMOUNT_OF_SWAPS }],
             DISTRIBUTION
           );
@@ -323,7 +344,7 @@ contract('DCAFeeManager', () => {
 
     shouldOnlyBeExecutableByGovernorOrAllowed({
       funcAndSignature: 'fillPositions',
-      params: () => [[{ token: erc20Token.address, amount: FULL_AMOUNT, amountOfSwaps: AMOUNT_OF_SWAPS }], DISTRIBUTION],
+      params: () => [DCAHub.address, [{ token: erc20Token.address, amount: FULL_AMOUNT, amountOfSwaps: AMOUNT_OF_SWAPS }], DISTRIBUTION],
     });
   });
 
@@ -344,7 +365,7 @@ contract('DCAFeeManager', () => {
         }));
         await DCAFeeManager.setPosition(erc20Token.address, TOKEN_A, 1);
         await DCAFeeManager.setPosition(erc20Token.address, TOKEN_B, 2);
-        await DCAFeeManager.connect(governor).terminatePositions(POSITION_IDS, RECIPIENT);
+        await DCAFeeManager.connect(governor).terminatePositions(DCAHub.address, POSITION_IDS, RECIPIENT);
       });
       then('position 1 is terminated and deleted from fee manager', async () => {
         expect(DCAHub.terminate).to.have.been.calledWith(1, RECIPIENT, RECIPIENT);
@@ -362,7 +383,7 @@ contract('DCAFeeManager', () => {
     });
     shouldOnlyBeExecutableByGovernorOrAllowed({
       funcAndSignature: 'terminatePositions',
-      params: [[], RECIPIENT],
+      params: () => [DCAHub.address, [], RECIPIENT],
     });
   });
 
@@ -411,19 +432,6 @@ contract('DCAFeeManager', () => {
     });
   });
 
-  describe('resetAllowance', () => {
-    when('function is executed', () => {
-      given(async () => {
-        await DCAFeeManager.resetAllowance(erc20Token.address);
-      });
-      then('allowance is reset', async () => {
-        expect(erc20Token.approve).to.have.been.calledTwice;
-        expect(erc20Token.approve).to.have.been.calledWith(DCAHub.address, 0);
-        expect(erc20Token.approve).to.have.been.calledWith(DCAHub.address, constants.MaxUint256);
-      });
-    });
-  });
-
   describe('availableBalances', () => {
     when('function is executed', () => {
       const PLATFORM_BALANCE = utils.parseEther('1');
@@ -438,7 +446,7 @@ contract('DCAFeeManager', () => {
         await DCAFeeManager.setPositionsWithToken(erc20Token.address, [1, 2]);
       });
       then('balances are returned correctly', async () => {
-        const balances = await DCAFeeManager.availableBalances([erc20Token.address]);
+        const balances = await DCAFeeManager.availableBalances(DCAHub.address, [erc20Token.address]);
         expect(balances).to.have.lengthOf(1);
         expect(balances[0].token).to.equal(erc20Token.address);
         expect(balances[0].platformBalance).to.equal(PLATFORM_BALANCE);
