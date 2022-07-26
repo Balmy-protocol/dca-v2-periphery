@@ -132,7 +132,7 @@ contract('Single pair swap with DEX', () => {
         initialRecipientUSDCBalance = await USDC.balanceOf(recipient.address);
         const {
           tokens: [, weth],
-        } = await DCAHubCompanion.getNextSwapInfo([{ tokenA: WETH_ADDRESS, tokenB: USDC_ADDRESS }]);
+        } = await DCAHubCompanion.getNextSwapInfo(DCAHub.address, [{ tokenA: WETH_ADDRESS, tokenB: USDC_ADDRESS }]);
         const dexQuote = await zrx.quote({
           chainId: 1,
           sellToken: WETH_ADDRESS,

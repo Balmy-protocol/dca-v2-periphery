@@ -153,7 +153,7 @@ describe.skip('Dexes', () => {
         initialPerformedSwaps = await performedSwaps({ tokenAddress, wethAddress: WETH_ADDRESS });
         initialHubWETHBalance = await WETH.balanceOf(DCAHub.address);
         initialHubTokenBalance = await token.balanceOf(DCAHub.address);
-        const { tokens } = await DCAHubCompanion.getNextSwapInfo([{ tokenA: sortedTokens[0], tokenB: sortedTokens[1] }]);
+        const { tokens } = await DCAHubCompanion.getNextSwapInfo(DCAHub.address, [{ tokenA: sortedTokens[0], tokenB: sortedTokens[1] }]);
         const weth = tokens[wethIndex];
         const dexQuote = await getQuoteData(WETH, token, weth.reward);
         await DCAHubSwapper.connect(governor).defineDexSupport(dexQuote.to, true);

@@ -129,7 +129,7 @@ contract('Multi pair swap with DEX', () => {
         initialRecipientUSDCBalance = await USDC.balanceOf(recipient.address);
         const {
           tokens: [link, usdc],
-        } = await DCAHubCompanion.getNextSwapInfo([
+        } = await DCAHubCompanion.getNextSwapInfo(DCAHub.address, [
           { tokenA: WETH_ADDRESS, tokenB: USDC_ADDRESS },
           { tokenA: WETH_ADDRESS, tokenB: LINK_ADDRESS },
         ]);
