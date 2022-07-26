@@ -326,8 +326,7 @@ contract('Multicall', () => {
         SwapInterval.ONE_MINUTE.seconds,
         positionOwner.address,
         [],
-        ethers.utils.randomBytes(0),
-        false
+        ethers.utils.randomBytes(0)
       );
 
       await DCAHubCompanion.multicall([permissionData, withdrawData!, depositData!]);
