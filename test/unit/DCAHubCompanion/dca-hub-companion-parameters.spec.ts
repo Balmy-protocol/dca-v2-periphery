@@ -1,11 +1,10 @@
 import { expect } from 'chai';
 import { ethers } from 'hardhat';
 import { behaviours, constants } from '@test-utils';
-import { contract, given, then, when } from '@test-utils/bdd';
+import { contract, then, when } from '@test-utils/bdd';
 import { snapshot } from '@test-utils/evm';
 import { DCAHubCompanionParametersMock, DCAHubCompanionParametersMock__factory } from '@typechained';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers';
-import { TransactionResponse } from '@ethersproject/providers';
 
 contract('DCAHubCompanionParameters', () => {
   const HUB = '0x0000000000000000000000000000000000000001';
@@ -67,50 +66,6 @@ contract('DCAHubCompanionParameters', () => {
       then('wrapped token is set correctly', async () => {
         expect(await DCAHubCompanionParameters.wToken()).to.equal(WRAPPED_TOKEN);
       });
-    });
-  });
-
-  describe('setTokensWithApprovalIssues', () => {
-    when('called with invalid parameters', () => {
-      then('reverts with message', async () => {
-        await behaviours.txShouldRevertWithMessage({
-          contract: DCAHubCompanionParameters,
-          func: 'setTokensWithApprovalIssues',
-          args: [[WRAPPED_TOKEN], []],
-          message: 'InvalidTokenApprovalParams',
-        });
-      });
-    });
-    when('adding token with issues', () => {
-      let tx: TransactionResponse;
-      given(async () => {
-        tx = await DCAHubCompanionParameters.setTokensWithApprovalIssues([WRAPPED_TOKEN], [true]);
-      });
-      then('they are set correctly', async () => {
-        expect(await DCAHubCompanionParameters.tokenHasApprovalIssue(WRAPPED_TOKEN)).to.be.true;
-      });
-      then('event is emitted', async () => {
-        await expect(tx).to.emit(DCAHubCompanionParameters, 'TokenWithApprovalIssuesSet').withArgs([WRAPPED_TOKEN], [true]);
-      });
-    });
-    when('removing token with issues', () => {
-      let tx: TransactionResponse;
-      given(async () => {
-        await DCAHubCompanionParameters.setTokensWithApprovalIssues([WRAPPED_TOKEN], [true]);
-        tx = await DCAHubCompanionParameters.setTokensWithApprovalIssues([WRAPPED_TOKEN], [false]);
-      });
-      then('they are set correctly', async () => {
-        expect(await DCAHubCompanionParameters.tokenHasApprovalIssue(WRAPPED_TOKEN)).to.be.false;
-      });
-      then('event is emitted', async () => {
-        await expect(tx).to.emit(DCAHubCompanionParameters, 'TokenWithApprovalIssuesSet').withArgs([WRAPPED_TOKEN], [false]);
-      });
-    });
-    behaviours.shouldBeExecutableOnlyByGovernor({
-      contract: () => DCAHubCompanionParameters,
-      funcAndSignature: 'setTokensWithApprovalIssues',
-      params: () => [[WRAPPED_TOKEN], [true]],
-      governor: () => governor,
     });
   });
 });

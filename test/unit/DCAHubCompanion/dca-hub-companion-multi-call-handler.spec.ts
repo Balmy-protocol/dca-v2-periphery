@@ -172,25 +172,6 @@ contract('DCAHubCompanionMulticallHandler', () => {
         expect(erc20Token.transferFrom).to.have.been.calledWith(governor.address, DCAHubCompanionMulticallHandler.address, AMOUNT);
       });
     });
-    when('depositing a token with issues', () => {
-      given(async () => {
-        await DCAHubCompanionMulticallHandler.setTokensWithApprovalIssues([erc20Token.address], [true]);
-        await DCAHubCompanionMulticallHandler.depositProxy(
-          erc20Token.address,
-          TO,
-          AMOUNT,
-          AMOUNT_OF_SWAPS,
-          SWAP_INTERVAL,
-          OWNER,
-          [],
-          MISC,
-          false
-        );
-      });
-      then('token is approved with the exact amount', () => {
-        expect(erc20Token.approve).to.have.been.calledWith(DCAHub.address, AMOUNT);
-      });
-    });
   });
 
   proxyTest({
@@ -246,16 +227,6 @@ contract('DCAHubCompanionMulticallHandler', () => {
       });
       then('transferFrom is called', () => {
         expect(erc20Token.transferFrom).to.have.been.calledWith(governor.address, DCAHubCompanionMulticallHandler.address, AMOUNT);
-      });
-    });
-    when('increasing a token with issues', () => {
-      given(async () => {
-        DCAPermissionManager.hasPermission.returns(({ _permission }: { _permission: Permission }) => Permission.INCREASE === _permission);
-        await DCAHubCompanionMulticallHandler.setTokensWithApprovalIssues([erc20Token.address], [true]);
-        await DCAHubCompanionMulticallHandler.increasePositionProxy(POSITION_ID, AMOUNT, AMOUNT_OF_SWAPS, false);
-      });
-      then('token is approved with the exact amount', () => {
-        expect(erc20Token.approve).to.have.been.calledWith(DCAHub.address, AMOUNT);
       });
     });
 

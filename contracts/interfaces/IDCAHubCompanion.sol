@@ -5,19 +5,9 @@ import '@mean-finance/dca-v2-core/contracts/interfaces/IDCAHub.sol';
 import '@mean-finance/dca-v2-core/contracts/interfaces/IDCAPermissionManager.sol';
 import '@mean-finance/dca-v2-core/contracts/interfaces/IDCAHubSwapCallee.sol';
 import './IWrappedProtocolToken.sol';
-import './utils/ICollectableDust.sol';
-import './utils/IGovernable.sol';
 import './ISharedTypes.sol';
 
-interface IDCAHubCompanionParameters is IGovernable {
-  /// @notice Thrown when the given parameters are invalid
-  error InvalidTokenApprovalParams();
-
-  /// @notice Emitted when tokens with approval issues are set
-  /// @param addresses The addresses of the tokens
-  /// @param hasIssue Whether they have issues or not
-  event TokenWithApprovalIssuesSet(address[] addresses, bool[] hasIssue);
-
+interface IDCAHubCompanionParameters {
   /// @notice Returns the DCA Hub's address
   /// @dev This value cannot be modified
   /// @return The DCA Hub contract
@@ -42,12 +32,6 @@ interface IDCAHubCompanionParameters is IGovernable {
   /// @param _tokenAddress The address of the token to check
   /// @return Whether it has issues or not
   function tokenHasApprovalIssue(address _tokenAddress) external view returns (bool);
-
-  /// @notice Sets whether specific addresses have issues with approvals, like USDT
-  /// @dev Will revert with `InvalidTokenApprovalParams` if the length of the given arrays differ
-  /// @param _addresses The addresses of the tokens
-  /// @param _hasIssue Wether they have issues or not
-  function setTokensWithApprovalIssues(address[] calldata _addresses, bool[] calldata _hasIssue) external;
 }
 
 interface IDCAHubCompanionSwapHandler is IDCAHubSwapCallee {
@@ -244,8 +228,6 @@ interface IDCAHubCompanionWTokenPositionHandler {
   function approveWTokenForHub() external;
 }
 
-interface IDCAHubCompanionDustHandler is ICollectableDust {}
-
 /**
  * @notice This contract exposes many utils that are also available through libraries. The idea is to make
  *         these functions available here, so others don't need to deploy new contracts
@@ -372,7 +354,6 @@ interface IDCAHubCompanionMulticallHandler {
 interface IDCAHubCompanion is
   IDCAHubCompanionParameters,
   IDCAHubCompanionWTokenPositionHandler,
-  IDCAHubCompanionDustHandler,
   IDCAHubCompanionLibrariesHandler,
   IDCAHubCompanionMulticallHandler
 {
