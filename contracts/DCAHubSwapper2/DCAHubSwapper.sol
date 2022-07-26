@@ -74,6 +74,7 @@ abstract contract DCAHubSwapper is IDCAHubSwapperSwapHandler {
     for (uint256 i; i < _tokens.length; i++) {
       IDCAHub.TokenInSwap memory _token = _tokens[i];
       if (_token.toProvide > 0) {
+        // We assume that msg.sender is the DCAHub
         IERC20(_token.token).safeTransferFrom(_swapExecutor, msg.sender, _token.toProvide);
       }
     }
