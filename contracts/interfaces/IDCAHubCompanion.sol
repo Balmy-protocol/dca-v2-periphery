@@ -254,7 +254,7 @@ interface IDCAHubCompanionLibrariesHandler {
   /**
    * @notice Takes a list of pairs and returns how it would look like to execute a swap for all of them
    * @dev Please note that this function is very expensive. Ideally, it would be used for off-chain purposes
-   * @param hub The pairs to be involved in the swap
+   * @param hub The address of the DCAHub
    * @param pairs The pairs to be involved in the swap
    * @return How executing a swap for all the given pairs would look like
    */
@@ -263,7 +263,7 @@ interface IDCAHubCompanionLibrariesHandler {
   /**
    * @notice Returns how many seconds left until the next swap is available for a list of pairs
    * @dev Tokens in pairs may be passed in either tokenA/tokenB or tokenB/tokenA order
-   * @param hub The pairs to be involved in the swap
+   * @param hub The address of the DCAHub
    * @param pairs Pairs to check
    * @return The amount of seconds until next swap for each of the pairs
    */
