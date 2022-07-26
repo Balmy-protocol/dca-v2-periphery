@@ -30,10 +30,9 @@ abstract contract DCAHubCompanionMulticallHandler is Multicall, DCAHubCompanionP
     uint32 _swapInterval,
     address _owner,
     IDCAPermissionManager.PermissionSet[] calldata _permissions,
-    bytes calldata _miscellaneous,
-    bool _transferFromCaller
+    bytes calldata _miscellaneous
   ) external payable returns (uint256 _positionId) {
-    _transferFromAndApprove(_from, _amount, _transferFromCaller);
+    _approveHub(address(_from), hub, _amount);
     _positionId = _miscellaneous.length > 0
       ? hub.deposit(_from, _to, _amount, _amountOfSwaps, _swapInterval, _owner, _permissions, _miscellaneous)
       : hub.deposit(_from, _to, _amount, _amountOfSwaps, _swapInterval, _owner, _permissions);
@@ -67,11 +66,10 @@ abstract contract DCAHubCompanionMulticallHandler is Multicall, DCAHubCompanionP
   function increasePositionProxy(
     uint256 _positionId,
     uint256 _amount,
-    uint32 _newSwaps,
-    bool _transferFromCaller
+    uint32 _newSwaps
   ) external payable checkPermission(_positionId, IDCAPermissionManager.Permission.INCREASE) {
     IERC20Metadata _from = hub.userPosition(_positionId).from;
-    _transferFromAndApprove(address(_from), _amount, _transferFromCaller);
+    _approveHub(address(_from), hub, _amount);
     hub.increasePosition(_positionId, _amount, _newSwaps);
   }
 
@@ -94,14 +92,17 @@ abstract contract DCAHubCompanionMulticallHandler is Multicall, DCAHubCompanionP
     (_unswapped, _swapped) = hub.terminate(_positionId, _recipientUnswapped, _recipientSwapped);
   }
 
-  function _transferFromAndApprove(
-    address _from,
-    uint256 _amount,
-    bool _transferFromCaller
+  function _approveHub(
+    address _token,
+    IDCAHub _hub,
+    uint256 _amount
   ) internal {
-    if (_transferFromCaller) {
-      IERC20Metadata(_from).safeTransferFrom(msg.sender, address(this), _amount);
+    uint256 _allowance = IERC20(_token).allowance(address(this), address(_hub));
+    if (_allowance < _amount) {
+      if (_allowance > 0) {
+        IERC20(_token).approve(address(_hub), 0); // We do this because some tokens (like USDT) fail if we don't
+      }
+      IERC20(_token).approve(address(_hub), type(uint256).max);
     }
-    _approveHub(address(_from), _amount);
   }
 }

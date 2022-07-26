@@ -27,11 +27,6 @@ interface IDCAHubCompanionParameters {
   /// @notice Returns the permission manager contract
   /// @return The contract itself
   function permissionManager() external view returns (IDCAPermissionManager);
-
-  /// @notice Returns whether the given address has issues with approvals, like USDT
-  /// @param _tokenAddress The address of the token to check
-  /// @return Whether it has issues or not
-  function tokenHasApprovalIssue(address _tokenAddress) external view returns (bool);
 }
 
 interface IDCAHubCompanionSwapHandler is IDCAHubSwapCallee {
@@ -262,7 +257,6 @@ interface IDCAHubCompanionMulticallHandler {
   /// @param _swapInterval How frequently the position's swaps should be executed
   /// @param _owner The address of the owner of the position being created
   /// @param _miscellaneous Bytes that will be emitted, and associated with the position. If empty, no event will be emitted
-  /// @param _transferFromCaller Determines if the funds should be transfered from the caller
   /// @return _positionId The id of the created position
   function depositProxy(
     address _from,
@@ -272,8 +266,7 @@ interface IDCAHubCompanionMulticallHandler {
     uint32 _swapInterval,
     address _owner,
     IDCAPermissionManager.PermissionSet[] calldata _permissions,
-    bytes calldata _miscellaneous,
-    bool _transferFromCaller
+    bytes calldata _miscellaneous
   ) external payable returns (uint256 _positionId);
 
   /// @notice Call the hub and withdraws all swapped tokens from a position to a recipient
@@ -299,12 +292,10 @@ interface IDCAHubCompanionMulticallHandler {
   /// @param _positionId The position's id
   /// @param _amount Amount of funds to add to the position
   /// @param _newSwaps The new amount of swaps
-  /// @param _transferFromCaller Determines if the funds should be transfered from the caller
   function increasePositionProxy(
     uint256 _positionId,
     uint256 _amount,
-    uint32 _newSwaps,
-    bool _transferFromCaller
+    uint32 _newSwaps
   ) external payable;
 
   /// @notice Call the hub and withdraws the specified amount from the unswapped balance and modifies the position so that
