@@ -246,18 +246,28 @@ interface IDCAHubCompanionWTokenPositionHandler {
 
 interface IDCAHubCompanionDustHandler is ICollectableDust {}
 
+/**
+ * @notice This contract exposes many utils that are also available through libraries. The idea is to make
+ *         these functions available here, so others don't need to deploy new contracts
+ */
 interface IDCAHubCompanionLibrariesHandler {
-  /// @notice Takes a list of pairs and returns how it would look like to execute a swap for all of them
-  /// @dev Please note that this function is very expensive. Ideally, it would be used for off-chain purposes
-  /// @param _pairs The pairs to be involved in the swap
-  /// @return How executing a swap for all the given pairs would look like
-  function getNextSwapInfo(Pair[] calldata _pairs) external view returns (IDCAHub.SwapInfo memory);
+  /**
+   * @notice Takes a list of pairs and returns how it would look like to execute a swap for all of them
+   * @dev Please note that this function is very expensive. Ideally, it would be used for off-chain purposes
+   * @param hub The pairs to be involved in the swap
+   * @param pairs The pairs to be involved in the swap
+   * @return How executing a swap for all the given pairs would look like
+   */
+  function getNextSwapInfo(IDCAHub hub, Pair[] calldata pairs) external view returns (IDCAHub.SwapInfo memory);
 
-  /// @notice Returns how many seconds left until the next swap is available for a list of pairs
-  /// @dev Tokens in pairs may be passed in either tokenA/tokenB or tokenB/tokenA order
-  /// @param _pairs Pairs to check
-  /// @return The amount of seconds until next swap for each of the pairs
-  function secondsUntilNextSwap(Pair[] calldata _pairs) external view returns (uint256[] memory);
+  /**
+   * @notice Returns how many seconds left until the next swap is available for a list of pairs
+   * @dev Tokens in pairs may be passed in either tokenA/tokenB or tokenB/tokenA order
+   * @param hub The pairs to be involved in the swap
+   * @param pairs Pairs to check
+   * @return The amount of seconds until next swap for each of the pairs
+   */
+  function secondsUntilNextSwap(IDCAHub hub, Pair[] calldata pairs) external view returns (uint256[] memory);
 }
 
 interface IDCAHubCompanionMulticallHandler {
