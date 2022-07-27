@@ -182,6 +182,45 @@ contract('DCAHubCompanionHubProxyHandler', () => {
     });
   });
 
+  describe.only('depositWithAllBalanceProxy', () => {
+    const TO = '0x0000000000000000000000000000000000000002';
+    const AMOUNT = 10000;
+    const AMOUNT_OF_SWAPS = 40;
+    const SWAP_INTERVAL = 10000;
+    const OWNER = '0x0000000000000000000000000000000000000003';
+    const MISC = ethers.utils.hexlify(ethers.utils.randomBytes(10));
+
+    when('depositing with all balance', () => {
+      given(async () => {
+        erc20Token.balanceOf.returns(AMOUNT);
+        await DCAHubCompanionHubProxyHandler.depositWithAllBalanceProxy(
+          DCAHub.address,
+          erc20Token.address,
+          TO,
+          AMOUNT_OF_SWAPS,
+          SWAP_INTERVAL,
+          OWNER,
+          [],
+          MISC
+        );
+      });
+      then('balance is checked correctly', () => {
+        expect(erc20Token.balanceOf).to.have.been.calledOnceWith(DCAHubCompanionHubProxyHandler.address);
+      });
+      then('deposit proxy is called with the correct balance', async () => {
+        const calls = await DCAHubCompanionHubProxyHandler.depositProxyCalls();
+        expect(calls).to.have.lengthOf(1);
+        expect(calls[0].from).to.equal(erc20Token.address);
+        expect(calls[0].to).to.equal(TO);
+        expect(calls[0].amount).to.equal(AMOUNT);
+        expect(calls[0].amountOfSwaps).to.equal(AMOUNT_OF_SWAPS);
+        expect(calls[0].owner).to.equal(OWNER);
+        expect(calls[0].permissions).to.eql([]);
+        expect(calls[0].miscellaneous).to.eql(MISC);
+      });
+    });
+  });
+
   proxyTest({
     method: 'withdrawSwappedProxy',
     hubMethod: 'withdrawSwapped',

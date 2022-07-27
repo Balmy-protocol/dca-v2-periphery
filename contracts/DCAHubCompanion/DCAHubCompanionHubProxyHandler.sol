@@ -32,11 +32,26 @@ abstract contract DCAHubCompanionHubProxyHandler is IDCAHubCompanionHubProxyHand
     address _owner,
     IDCAPermissionManager.PermissionSet[] calldata _permissions,
     bytes calldata _miscellaneous
-  ) external payable returns (uint256 _positionId) {
+  ) public payable virtual returns (uint256 _positionId) {
     _approveHub(address(_from), _hub, _amount);
     _positionId = _miscellaneous.length > 0
       ? _hub.deposit(_from, _to, _amount, _amountOfSwaps, _swapInterval, _owner, _permissions, _miscellaneous)
       : _hub.deposit(_from, _to, _amount, _amountOfSwaps, _swapInterval, _owner, _permissions);
+  }
+
+  /// @inheritdoc IDCAHubCompanionHubProxyHandler
+  function depositWithAllBalanceProxy(
+    IDCAHub _hub,
+    address _from,
+    address _to,
+    uint32 _amountOfSwaps,
+    uint32 _swapInterval,
+    address _owner,
+    IDCAPermissionManager.PermissionSet[] calldata _permissions,
+    bytes calldata _miscellaneous
+  ) external payable returns (uint256 _positionId) {
+    uint256 _amount = IERC20(_from).balanceOf(address(this));
+    return depositProxy(_hub, _from, _to, _amount, _amountOfSwaps, _swapInterval, _owner, _permissions, _miscellaneous);
   }
 
   /// @inheritdoc IDCAHubCompanionHubProxyHandler
