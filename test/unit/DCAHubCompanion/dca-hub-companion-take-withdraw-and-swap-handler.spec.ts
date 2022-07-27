@@ -14,7 +14,7 @@ import { wallet } from '@test-utils';
 
 chai.use(smock.matchers);
 
-contract('DCAHubCompanionTakeWithdrawAndSwapHandlerMock', () => {
+contract('DCAHubCompanionTakeWithdrawAndSwapHandler', () => {
   let token: FakeContract<IERC20>;
   let takeWithdrawAndSwapHandler: DCAHubCompanionTakeWithdrawAndSwapHandlerMock;
   let snapshotId: string;
