@@ -835,6 +835,14 @@
     "@openzeppelin/contracts" "4.6.0"
     "@rari-capital/solmate" "6.2.0"
 
+"@mean-finance/swappers@1.0.0-rc1":
+  version "1.0.0-rc1"
+  resolved "https://registry.yarnpkg.com/@mean-finance/swappers/-/swappers-1.0.0-rc1.tgz#c5343bd1bf67e936323660fc5c384d51ce7944a3"
+  integrity sha512-SyW5bu8a4zbqcI56mgBWKBUHyC/0AaXbN2f8753H3VEiY8WHuQMPBQLyz5OMiySXLjvdsqa/feHuOsQGgYBbQg==
+  dependencies:
+    "@mean-finance/deterministic-factory" "1.3.1"
+    "@openzeppelin/contracts" "4.6.0"
+
 "@metamask/eth-sig-util@^4.0.0":
   version "4.0.0"
   resolved "https://registry.yarnpkg.com/@metamask/eth-sig-util/-/eth-sig-util-4.0.0.tgz#11553ba06de0d1352332c1bde28c8edd00e0dcf6"

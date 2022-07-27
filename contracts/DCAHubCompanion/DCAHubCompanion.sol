@@ -3,6 +3,15 @@ pragma solidity >=0.8.7 <0.9.0;
 
 import './DCAHubCompanionLibrariesHandler.sol';
 import './DCAHubCompanionHubProxyHandler.sol';
+import './DCAHubCompanionTakeWithdrawAndSwapHandler.sol';
 import './utils/Multicall.sol';
 
-contract DCAHubCompanion is DCAHubCompanionLibrariesHandler, DCAHubCompanionHubProxyHandler, Multicall, IDCAHubCompanion {}
+contract DCAHubCompanion is
+  DCAHubCompanionLibrariesHandler,
+  DCAHubCompanionHubProxyHandler,
+  DCAHubCompanionTakeWithdrawAndSwapHandler,
+  Multicall,
+  IDCAHubCompanion
+{
+  constructor(address _swapperRegistry) SwapAdapter(_swapperRegistry) {}
+}
