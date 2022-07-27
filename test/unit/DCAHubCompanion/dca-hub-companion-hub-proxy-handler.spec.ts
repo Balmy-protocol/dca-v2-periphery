@@ -182,7 +182,7 @@ contract('DCAHubCompanionHubProxyHandler', () => {
     });
   });
 
-  describe.only('depositWithAllBalanceProxy', () => {
+  describe('depositWithAllBalanceProxy', () => {
     const TO = '0x0000000000000000000000000000000000000002';
     const AMOUNT = 10000;
     const AMOUNT_OF_SWAPS = 40;
