@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: GPL-2.0-or-later
 pragma solidity >=0.8.7 <0.9.0;
 
+import '@openzeppelin/contracts/utils/Address.sol';
 import '@openzeppelin/contracts/access/AccessControl.sol';
 import '@openzeppelin/contracts/token/ERC20/IERC20.sol';
 import '@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol';
@@ -12,6 +13,7 @@ contract DCAFeeManager is AccessControl, Multicall, IDCAFeeManager {
   bytes32 public constant ADMIN_ROLE = keccak256('ADMIN_ROLE');
 
   using SafeERC20 for IERC20;
+  using Address for address payable;
 
   /// @inheritdoc IDCAFeeManager
   uint16 public constant MAX_TOKEN_TOTAL_SHARE = 10000;
@@ -70,7 +72,7 @@ contract DCAFeeManager is AccessControl, Multicall, IDCAFeeManager {
 
   /// @inheritdoc IDCAFeeManager
   function withdrawProtocolToken(uint256 _amount, address payable _recipient) external onlyRole(ADMIN_ROLE) {
-    _recipient.transfer(_amount);
+    _recipient.sendValue(_amount);
   }
 
   /// @inheritdoc IDCAFeeManager
