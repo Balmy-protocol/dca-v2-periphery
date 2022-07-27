@@ -282,12 +282,17 @@ contract('Multicall', () => {
       hubToTokenBalanceAfterSwap = await WETH.balanceOf(DCAHub.address);
       const permissionData = await addPermissionToCompanionData(positionOwner, positionId, Permission.REDUCE, Permission.WITHDRAW);
       const { data: reduceData } = await DCAHubCompanion.populateTransaction.reducePositionProxy(
+        DCAHub.address,
         positionId,
         unswappedBalance,
         0,
         recipient.address
       );
-      const { data: withdrawData } = await DCAHubCompanion.populateTransaction.withdrawSwappedProxy(positionId, recipient.address);
+      const { data: withdrawData } = await DCAHubCompanion.populateTransaction.withdrawSwappedProxy(
+        DCAHub.address,
+        positionId,
+        recipient.address
+      );
       await DCAHubCompanion.multicall([permissionData, reduceData!, withdrawData!]);
     });
     then(`hub's FROM balance is reduced`, async () => {
@@ -317,8 +322,13 @@ contract('Multicall', () => {
       ({ positionId, swappedBalance } = await depositWithWTokenAsToAndSwap());
       hubWETHBalanceAfterSwap = await WETH.balanceOf(DCAHub.address);
       const permissionData = await addPermissionToCompanionData(positionOwner, positionId, Permission.WITHDRAW);
-      const { data: withdrawData } = await DCAHubCompanion.populateTransaction.withdrawSwappedProxy(positionId, DCAHubCompanion.address);
+      const { data: withdrawData } = await DCAHubCompanion.populateTransaction.withdrawSwappedProxy(
+        DCAHub.address,
+        positionId,
+        DCAHubCompanion.address
+      );
       const { data: depositData } = await DCAHubCompanion.populateTransaction.depositProxy(
+        DCAHub.address,
         WETH.address,
         USDC.address,
         swappedBalance,
@@ -460,6 +470,7 @@ contract('Multicall', () => {
     const permissionsStruct = [{ operator: DCAHubCompanion.address, permissions }];
     const { v, r, s } = await getSignature(signer, tokenId, permissionsStruct);
     const { data } = await DCAHubCompanion.populateTransaction.permissionPermitProxy(
+      DCAPermissionManager.address,
       permissionsStruct,
       tokenId,
       constants.MAX_UINT_256,
