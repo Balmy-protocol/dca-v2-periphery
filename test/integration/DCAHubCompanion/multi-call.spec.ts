@@ -88,189 +88,189 @@ contract('Multicall', () => {
     await snapshot.revert(snapshotId);
   });
 
-  describe('protocol token as "from"', () => {
-    when('increasing a position with protocol token', () => {
-      const AMOUNT_TO_INCREASE = RATE.mul(AMOUNT_OF_SWAPS);
-      let positionId: BigNumber;
-      let hubWTokenBalanceAfterDeposit: BigNumber;
-      given(async () => {
-        positionId = await depositWithWTokenAsFrom();
-        hubWTokenBalanceAfterDeposit = await WETH.balanceOf(DCAHub.address);
+  // describe('protocol token as "from"', () => {
+  //   when('increasing a position with protocol token', () => {
+  //     const AMOUNT_TO_INCREASE = RATE.mul(AMOUNT_OF_SWAPS);
+  //     let positionId: BigNumber;
+  //     let hubWTokenBalanceAfterDeposit: BigNumber;
+  //     given(async () => {
+  //       positionId = await depositWithWTokenAsFrom();
+  //       hubWTokenBalanceAfterDeposit = await WETH.balanceOf(DCAHub.address);
 
-        const permissionData = await addPermissionToCompanionData(positionOwner, positionId, Permission.INCREASE);
-        const { data: increaseData } = await DCAHubCompanion.populateTransaction.increasePositionUsingProtocolToken(
-          positionId,
-          AMOUNT_TO_INCREASE,
-          AMOUNT_OF_SWAPS
-        );
-        await DCAHubCompanion.multicall([permissionData, increaseData!], { value: AMOUNT_TO_INCREASE });
-      });
-      then('position is increased', async () => {
-        const userPosition = await DCAHub.userPosition(positionId);
-        expect(userPosition.from).to.equal(WETH_ADDRESS);
-        expect(userPosition.rate).to.equal(RATE.mul(2));
-        expect(userPosition.swapsLeft).to.equal(AMOUNT_OF_SWAPS);
-      });
-      then(`hub's wToken balance is increased`, async () => {
-        const balance = await WETH.balanceOf(DCAHub.address);
-        expect(balance).to.equal(hubWTokenBalanceAfterDeposit.add(AMOUNT_TO_INCREASE));
-      });
-      thenCompanionRemainsWithoutAnyBalance();
-    });
-    when('reducing a position with protocol token', () => {
-      const AMOUNT_TO_REDUCE = RATE.mul(AMOUNT_OF_SWAPS).div(2);
-      let positionId: BigNumber;
-      let hubWTokenBalanceAfterDeposit: BigNumber;
-      given(async () => {
-        positionId = await depositWithWTokenAsFrom();
-        hubWTokenBalanceAfterDeposit = await WETH.balanceOf(DCAHub.address);
+  //       const permissionData = await addPermissionToCompanionData(positionOwner, positionId, Permission.INCREASE);
+  //       const { data: increaseData } = await DCAHubCompanion.populateTransaction.increasePositionUsingProtocolToken(
+  //         positionId,
+  //         AMOUNT_TO_INCREASE,
+  //         AMOUNT_OF_SWAPS
+  //       );
+  //       await DCAHubCompanion.multicall([permissionData, increaseData!], { value: AMOUNT_TO_INCREASE });
+  //     });
+  //     then('position is increased', async () => {
+  //       const userPosition = await DCAHub.userPosition(positionId);
+  //       expect(userPosition.from).to.equal(WETH_ADDRESS);
+  //       expect(userPosition.rate).to.equal(RATE.mul(2));
+  //       expect(userPosition.swapsLeft).to.equal(AMOUNT_OF_SWAPS);
+  //     });
+  //     then(`hub's wToken balance is increased`, async () => {
+  //       const balance = await WETH.balanceOf(DCAHub.address);
+  //       expect(balance).to.equal(hubWTokenBalanceAfterDeposit.add(AMOUNT_TO_INCREASE));
+  //     });
+  //     thenCompanionRemainsWithoutAnyBalance();
+  //   });
+  //   when('reducing a position with protocol token', () => {
+  //     const AMOUNT_TO_REDUCE = RATE.mul(AMOUNT_OF_SWAPS).div(2);
+  //     let positionId: BigNumber;
+  //     let hubWTokenBalanceAfterDeposit: BigNumber;
+  //     given(async () => {
+  //       positionId = await depositWithWTokenAsFrom();
+  //       hubWTokenBalanceAfterDeposit = await WETH.balanceOf(DCAHub.address);
 
-        const permissionData = await addPermissionToCompanionData(positionOwner, positionId, Permission.REDUCE);
-        const { data: reduceData } = await DCAHubCompanion.populateTransaction.reducePositionUsingProtocolToken(
-          positionId,
-          AMOUNT_TO_REDUCE,
-          AMOUNT_OF_SWAPS,
-          recipient.address
-        );
-        await DCAHubCompanion.multicall([permissionData, reduceData!]);
-      });
-      then('position is reduced', async () => {
-        const userPosition = await DCAHub.userPosition(positionId);
-        expect(userPosition.from).to.equal(WETH_ADDRESS);
-        expect(userPosition.rate).to.equal(RATE.div(2));
-        expect(userPosition.swapsLeft).to.equal(AMOUNT_OF_SWAPS);
-      });
-      then(`hub's wToken balance is reduced`, async () => {
-        const balance = await WETH.balanceOf(DCAHub.address);
-        expect(balance).to.equal(hubWTokenBalanceAfterDeposit.sub(AMOUNT_TO_REDUCE));
-      });
-      then(`recipients's protocol balance increases`, async () => {
-        const balance = await ethers.provider.getBalance(recipient.address);
-        expect(balance).to.equal(initialRecipientProtocolBalance.add(AMOUNT_TO_REDUCE));
-      });
-      thenCompanionRemainsWithoutAnyBalance();
-    });
+  //       const permissionData = await addPermissionToCompanionData(positionOwner, positionId, Permission.REDUCE);
+  //       const { data: reduceData } = await DCAHubCompanion.populateTransaction.reducePositionUsingProtocolToken(
+  //         positionId,
+  //         AMOUNT_TO_REDUCE,
+  //         AMOUNT_OF_SWAPS,
+  //         recipient.address
+  //       );
+  //       await DCAHubCompanion.multicall([permissionData, reduceData!]);
+  //     });
+  //     then('position is reduced', async () => {
+  //       const userPosition = await DCAHub.userPosition(positionId);
+  //       expect(userPosition.from).to.equal(WETH_ADDRESS);
+  //       expect(userPosition.rate).to.equal(RATE.div(2));
+  //       expect(userPosition.swapsLeft).to.equal(AMOUNT_OF_SWAPS);
+  //     });
+  //     then(`hub's wToken balance is reduced`, async () => {
+  //       const balance = await WETH.balanceOf(DCAHub.address);
+  //       expect(balance).to.equal(hubWTokenBalanceAfterDeposit.sub(AMOUNT_TO_REDUCE));
+  //     });
+  //     then(`recipients's protocol balance increases`, async () => {
+  //       const balance = await ethers.provider.getBalance(recipient.address);
+  //       expect(balance).to.equal(initialRecipientProtocolBalance.add(AMOUNT_TO_REDUCE));
+  //     });
+  //     thenCompanionRemainsWithoutAnyBalance();
+  //   });
 
-    when(`terminating a position with protocol token as 'from'`, () => {
-      const AMOUNT_RETURNED = RATE.mul(AMOUNT_OF_SWAPS);
-      let positionId: BigNumber;
-      let hubWTokenBalanceAfterDeposit: BigNumber;
-      given(async () => {
-        positionId = await depositWithWTokenAsFrom();
-        hubWTokenBalanceAfterDeposit = await WETH.balanceOf(DCAHub.address);
-        const permissionData = await addPermissionToCompanionData(positionOwner, positionId, Permission.TERMINATE);
-        const { data: terminateData } = await DCAHubCompanion.populateTransaction.terminateUsingProtocolTokenAsFrom(
-          positionId,
-          recipient.address,
-          recipient.address
-        );
-        await DCAHubCompanion.multicall([permissionData, terminateData!]);
-      });
-      then('position is terminated', async () => {
-        const userPosition = await DCAHub.userPosition(positionId);
-        expect(userPosition.swapInterval).to.equal(0);
-      });
-      then(`hub's wToken balance is reduced`, async () => {
-        const balance = await WETH.balanceOf(DCAHub.address);
-        expect(balance).to.equal(hubWTokenBalanceAfterDeposit.sub(AMOUNT_RETURNED));
-      });
-      then(`recipients's protocol balance increases`, async () => {
-        const balance = await ethers.provider.getBalance(recipient.address);
-        expect(balance).to.equal(initialRecipientProtocolBalance.add(AMOUNT_RETURNED));
-      });
-      thenCompanionRemainsWithoutAnyBalance();
-    });
-  });
+  //   when(`terminating a position with protocol token as 'from'`, () => {
+  //     const AMOUNT_RETURNED = RATE.mul(AMOUNT_OF_SWAPS);
+  //     let positionId: BigNumber;
+  //     let hubWTokenBalanceAfterDeposit: BigNumber;
+  //     given(async () => {
+  //       positionId = await depositWithWTokenAsFrom();
+  //       hubWTokenBalanceAfterDeposit = await WETH.balanceOf(DCAHub.address);
+  //       const permissionData = await addPermissionToCompanionData(positionOwner, positionId, Permission.TERMINATE);
+  //       const { data: terminateData } = await DCAHubCompanion.populateTransaction.terminateUsingProtocolTokenAsFrom(
+  //         positionId,
+  //         recipient.address,
+  //         recipient.address
+  //       );
+  //       await DCAHubCompanion.multicall([permissionData, terminateData!]);
+  //     });
+  //     then('position is terminated', async () => {
+  //       const userPosition = await DCAHub.userPosition(positionId);
+  //       expect(userPosition.swapInterval).to.equal(0);
+  //     });
+  //     then(`hub's wToken balance is reduced`, async () => {
+  //       const balance = await WETH.balanceOf(DCAHub.address);
+  //       expect(balance).to.equal(hubWTokenBalanceAfterDeposit.sub(AMOUNT_RETURNED));
+  //     });
+  //     then(`recipients's protocol balance increases`, async () => {
+  //       const balance = await ethers.provider.getBalance(recipient.address);
+  //       expect(balance).to.equal(initialRecipientProtocolBalance.add(AMOUNT_RETURNED));
+  //     });
+  //     thenCompanionRemainsWithoutAnyBalance();
+  //   });
+  // });
 
-  describe('protocol token as "to"', () => {
-    when('withdrawing from a position', () => {
-      let positionId: BigNumber;
-      let swappedBalance: BigNumber;
-      let hubWTokenBalanceAfterSwap: BigNumber;
-      given(async () => {
-        ({ positionId, swappedBalance } = await depositWithWTokenAsToAndSwap());
-        hubWTokenBalanceAfterSwap = await WETH.balanceOf(DCAHub.address);
-        const permissionData = await addPermissionToCompanionData(positionOwner, positionId, Permission.WITHDRAW);
-        const { data: withdrawData } = await DCAHubCompanion.populateTransaction.withdrawSwappedUsingProtocolToken(
-          positionId,
-          recipient.address
-        );
-        await DCAHubCompanion.multicall([permissionData, withdrawData!]);
-      });
-      then('position has no more swapped balance', async () => {
-        const userPosition = await DCAHub.userPosition(positionId);
-        expect(userPosition.swapped).to.equal(0);
-      });
-      then(`hub's wToken balance is reduced`, async () => {
-        const balance = await WETH.balanceOf(DCAHub.address);
-        expect(balance).to.equal(hubWTokenBalanceAfterSwap.sub(swappedBalance));
-      });
-      then(`recipients's protocol balance increases`, async () => {
-        const balance = await ethers.provider.getBalance(recipient.address);
-        expect(balance).to.equal(initialRecipientProtocolBalance.add(swappedBalance));
-      });
-      thenCompanionRemainsWithoutAnyBalance();
-    });
+  // describe('protocol token as "to"', () => {
+  //   when('withdrawing from a position', () => {
+  //     let positionId: BigNumber;
+  //     let swappedBalance: BigNumber;
+  //     let hubWTokenBalanceAfterSwap: BigNumber;
+  //     given(async () => {
+  //       ({ positionId, swappedBalance } = await depositWithWTokenAsToAndSwap());
+  //       hubWTokenBalanceAfterSwap = await WETH.balanceOf(DCAHub.address);
+  //       const permissionData = await addPermissionToCompanionData(positionOwner, positionId, Permission.WITHDRAW);
+  //       const { data: withdrawData } = await DCAHubCompanion.populateTransaction.withdrawSwappedUsingProtocolToken(
+  //         positionId,
+  //         recipient.address
+  //       );
+  //       await DCAHubCompanion.multicall([permissionData, withdrawData!]);
+  //     });
+  //     then('position has no more swapped balance', async () => {
+  //       const userPosition = await DCAHub.userPosition(positionId);
+  //       expect(userPosition.swapped).to.equal(0);
+  //     });
+  //     then(`hub's wToken balance is reduced`, async () => {
+  //       const balance = await WETH.balanceOf(DCAHub.address);
+  //       expect(balance).to.equal(hubWTokenBalanceAfterSwap.sub(swappedBalance));
+  //     });
+  //     then(`recipients's protocol balance increases`, async () => {
+  //       const balance = await ethers.provider.getBalance(recipient.address);
+  //       expect(balance).to.equal(initialRecipientProtocolBalance.add(swappedBalance));
+  //     });
+  //     thenCompanionRemainsWithoutAnyBalance();
+  //   });
 
-    when('withdrawing many from a position', () => {
-      let positionId: BigNumber;
-      let swappedBalance: BigNumber;
-      let hubWTokenBalanceAfterSwap: BigNumber;
-      given(async () => {
-        ({ positionId, swappedBalance } = await depositWithWTokenAsToAndSwap());
-        hubWTokenBalanceAfterSwap = await WETH.balanceOf(DCAHub.address);
-        const permissionData = await addPermissionToCompanionData(positionOwner, positionId, Permission.WITHDRAW);
-        const { data: withdrawData } = await DCAHubCompanion.populateTransaction.withdrawSwappedManyUsingProtocolToken(
-          [positionId],
-          recipient.address
-        );
-        await DCAHubCompanion.multicall([permissionData, withdrawData!]);
-      });
-      then('position has no more swapped balance', async () => {
-        const userPosition = await DCAHub.userPosition(positionId);
-        expect(userPosition.swapped).to.equal(0);
-      });
-      then(`hub's wToken balance is reduced`, async () => {
-        const balance = await WETH.balanceOf(DCAHub.address);
-        expect(balance).to.equal(hubWTokenBalanceAfterSwap.sub(swappedBalance));
-      });
-      then(`recipients's protocol balance increases`, async () => {
-        const balance = await ethers.provider.getBalance(recipient.address);
-        expect(balance).to.equal(initialRecipientProtocolBalance.add(swappedBalance));
-      });
-      thenCompanionRemainsWithoutAnyBalance();
-    });
+  //   when('withdrawing many from a position', () => {
+  //     let positionId: BigNumber;
+  //     let swappedBalance: BigNumber;
+  //     let hubWTokenBalanceAfterSwap: BigNumber;
+  //     given(async () => {
+  //       ({ positionId, swappedBalance } = await depositWithWTokenAsToAndSwap());
+  //       hubWTokenBalanceAfterSwap = await WETH.balanceOf(DCAHub.address);
+  //       const permissionData = await addPermissionToCompanionData(positionOwner, positionId, Permission.WITHDRAW);
+  //       const { data: withdrawData } = await DCAHubCompanion.populateTransaction.withdrawSwappedManyUsingProtocolToken(
+  //         [positionId],
+  //         recipient.address
+  //       );
+  //       await DCAHubCompanion.multicall([permissionData, withdrawData!]);
+  //     });
+  //     then('position has no more swapped balance', async () => {
+  //       const userPosition = await DCAHub.userPosition(positionId);
+  //       expect(userPosition.swapped).to.equal(0);
+  //     });
+  //     then(`hub's wToken balance is reduced`, async () => {
+  //       const balance = await WETH.balanceOf(DCAHub.address);
+  //       expect(balance).to.equal(hubWTokenBalanceAfterSwap.sub(swappedBalance));
+  //     });
+  //     then(`recipients's protocol balance increases`, async () => {
+  //       const balance = await ethers.provider.getBalance(recipient.address);
+  //       expect(balance).to.equal(initialRecipientProtocolBalance.add(swappedBalance));
+  //     });
+  //     thenCompanionRemainsWithoutAnyBalance();
+  //   });
 
-    when(`terminating a position with protocol token as 'to'`, () => {
-      let positionId: BigNumber;
-      let swappedBalance: BigNumber;
-      let hubWTokenBalanceAfterSwap: BigNumber;
-      given(async () => {
-        ({ positionId, swappedBalance } = await depositWithWTokenAsToAndSwap());
-        hubWTokenBalanceAfterSwap = await WETH.balanceOf(DCAHub.address);
-        const permissionData = await addPermissionToCompanionData(positionOwner, positionId, Permission.TERMINATE);
-        const { data: terminateData } = await DCAHubCompanion.populateTransaction.terminateUsingProtocolTokenAsTo(
-          positionId,
-          recipient.address,
-          recipient.address
-        );
-        await DCAHubCompanion.multicall([permissionData, terminateData!]);
-      });
-      then('position is terminated', async () => {
-        const userPosition = await DCAHub.userPosition(positionId);
-        expect(userPosition.swapInterval).to.equal(0);
-      });
-      then(`hub's wToken balance is reduced`, async () => {
-        const balance = await WETH.balanceOf(DCAHub.address);
-        expect(balance).to.equal(hubWTokenBalanceAfterSwap.sub(swappedBalance));
-      });
-      then(`recipients's protocol balance increases`, async () => {
-        const balance = await ethers.provider.getBalance(recipient.address);
-        expect(balance).to.equal(initialRecipientProtocolBalance.add(swappedBalance));
-      });
-      thenCompanionRemainsWithoutAnyBalance();
-    });
-  });
+  //   when(`terminating a position with protocol token as 'to'`, () => {
+  //     let positionId: BigNumber;
+  //     let swappedBalance: BigNumber;
+  //     let hubWTokenBalanceAfterSwap: BigNumber;
+  //     given(async () => {
+  //       ({ positionId, swappedBalance } = await depositWithWTokenAsToAndSwap());
+  //       hubWTokenBalanceAfterSwap = await WETH.balanceOf(DCAHub.address);
+  //       const permissionData = await addPermissionToCompanionData(positionOwner, positionId, Permission.TERMINATE);
+  //       const { data: terminateData } = await DCAHubCompanion.populateTransaction.terminateUsingProtocolTokenAsTo(
+  //         positionId,
+  //         recipient.address,
+  //         recipient.address
+  //       );
+  //       await DCAHubCompanion.multicall([permissionData, terminateData!]);
+  //     });
+  //     then('position is terminated', async () => {
+  //       const userPosition = await DCAHub.userPosition(positionId);
+  //       expect(userPosition.swapInterval).to.equal(0);
+  //     });
+  //     then(`hub's wToken balance is reduced`, async () => {
+  //       const balance = await WETH.balanceOf(DCAHub.address);
+  //       expect(balance).to.equal(hubWTokenBalanceAfterSwap.sub(swappedBalance));
+  //     });
+  //     then(`recipients's protocol balance increases`, async () => {
+  //       const balance = await ethers.provider.getBalance(recipient.address);
+  //       expect(balance).to.equal(initialRecipientProtocolBalance.add(swappedBalance));
+  //     });
+  //     thenCompanionRemainsWithoutAnyBalance();
+  //   });
+  // });
 
   when('trying to withdraw swapped and unswapped balance in one tx', () => {
     let positionId: BigNumber;
