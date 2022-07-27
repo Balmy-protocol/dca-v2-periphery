@@ -5,6 +5,4 @@ import './DCAHubCompanionLibrariesHandler.sol';
 import './DCAHubCompanionHubProxyHandler.sol';
 import './utils/Multicall.sol';
 
-contract DCAHubCompanion is DCAHubCompanionLibrariesHandler, DCAHubCompanionHubProxyHandler, Multicall, IDCAHubCompanion {
-  constructor() {}
-}
+contract DCAHubCompanion is DCAHubCompanionLibrariesHandler, DCAHubCompanionHubProxyHandler, Multicall, IDCAHubCompanion {}
