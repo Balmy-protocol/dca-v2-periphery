@@ -108,7 +108,7 @@ interface IDCAHubCompanionHubProxyHandler {
 
   /**
    * @notice Call the hub and takes the unswapped balance, adds the new deposited funds and modifies the position so that
-   * it is executed in newSwaps swaps
+   * it is executed in `newSwaps` swaps
    * @dev Meant to be used as part of a multicall
    * @param hub The address of the DCAHub
    * @param positionId The position's id
@@ -119,6 +119,20 @@ interface IDCAHubCompanionHubProxyHandler {
     IDCAHub hub,
     uint256 positionId,
     uint256 amount,
+    uint32 newSwaps
+  ) external payable;
+
+  /**
+   * @notice Call the hub and takes the unswapped balance, adds the Companion's current balance and modifies the position so that
+   * it is executed in `newSwaps` swaps
+   * @dev Meant to be used as part of a multicall
+   * @param hub The address of the DCAHub
+   * @param positionId The position's id
+   * @param newSwaps The new amount of swaps
+   */
+  function increasePositionWithAllBalanceProxy(
+    IDCAHub hub,
+    uint256 positionId,
     uint32 newSwaps
   ) external payable;
 

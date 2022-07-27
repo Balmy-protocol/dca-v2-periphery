@@ -296,6 +296,44 @@ contract('DCAHubCompanionHubProxyHandler', () => {
     });
   });
 
+  describe('increasePositionWithAllBalanceProxy', () => {
+    const POSITION_ID = 10;
+    const AMOUNT = 20;
+    const AMOUNT_OF_SWAPS = 30;
+    when('increasing with all balance', () => {
+      given(async () => {
+        DCAPermissionManager.hasPermission.returns(true);
+        erc20Token.balanceOf.returns(AMOUNT);
+        erc20Token.allowance.returns(AMOUNT - 1);
+        await DCAHubCompanionHubProxyHandler.increasePositionWithAllBalanceProxy(DCAHub.address, POSITION_ID, AMOUNT_OF_SWAPS);
+      });
+      then('allowance is checked correctly', () => {
+        expect(erc20Token.allowance).to.have.been.calledWith(DCAHubCompanionHubProxyHandler.address, DCAHub.address);
+      });
+      then('allowance is resetted', () => {
+        expect(erc20Token.approve).to.have.been.calledTwice;
+        expect(erc20Token.approve).to.have.been.calledWith(DCAHub.address, 0);
+        expect(erc20Token.approve).to.have.been.calledWith(DCAHub.address, constants.MAX_UINT_256);
+      });
+      then('hub is called correctly', () => {
+        expect(DCAHub.increasePosition).to.have.been.calledOnceWith(POSITION_ID, AMOUNT, AMOUNT_OF_SWAPS);
+      });
+    });
+    when('caller does not have permission', () => {
+      given(() => {
+        DCAPermissionManager.hasPermission.returns(false);
+      });
+      then('operation is reverted', async () => {
+        const result: Promise<TransactionResponse> = DCAHubCompanionHubProxyHandler.increasePositionWithAllBalanceProxy(
+          DCAHub.address,
+          POSITION_ID,
+          AMOUNT_OF_SWAPS
+        );
+        await expect(result).to.be.revertedWith('UnauthorizedCaller');
+      });
+    });
+  });
+
   proxyTest({
     method: 'reducePositionProxy',
     hubMethod: 'reducePosition',

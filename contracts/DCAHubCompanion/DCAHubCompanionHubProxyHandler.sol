@@ -90,6 +90,18 @@ abstract contract DCAHubCompanionHubProxyHandler is IDCAHubCompanionHubProxyHand
   }
 
   /// @inheritdoc IDCAHubCompanionHubProxyHandler
+  function increasePositionWithAllBalanceProxy(
+    IDCAHub _hub,
+    uint256 _positionId,
+    uint32 _newSwaps
+  ) external payable verifyPermission(_hub, _positionId, IDCAPermissionManager.Permission.INCREASE) {
+    IERC20Metadata _from = _hub.userPosition(_positionId).from;
+    uint256 _amount = _from.balanceOf(address(this));
+    _approveHub(address(_from), _hub, _amount);
+    _hub.increasePosition(_positionId, _amount, _newSwaps);
+  }
+
+  /// @inheritdoc IDCAHubCompanionHubProxyHandler
   function reducePositionProxy(
     IDCAHub _hub,
     uint256 _positionId,
