@@ -2,14 +2,13 @@
 pragma solidity >=0.8.7 <0.9.0;
 
 import '@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol';
-import './utils/Multicall.sol';
 import '../interfaces/IDCAHubCompanion.sol';
 
 /// @dev All public functions are payable, so that they can be multicalled together with other payable functions when msg.value > 0
-abstract contract DCAHubCompanionMulticallHandler is Multicall, IDCAHubCompanionMulticallHandler {
+abstract contract DCAHubCompanionHubProxyHandler is IDCAHubCompanionHubProxyHandler {
   using SafeERC20 for IERC20Metadata;
 
-  /// @inheritdoc IDCAHubCompanionMulticallHandler
+  /// @inheritdoc IDCAHubCompanionHubProxyHandler
   function permissionPermitProxy(
     IDCAPermissionManager _permissionManager,
     IDCAPermissionManager.PermissionSet[] calldata _permissions,
@@ -22,7 +21,7 @@ abstract contract DCAHubCompanionMulticallHandler is Multicall, IDCAHubCompanion
     _permissionManager.permissionPermit(_permissions, _tokenId, _deadline, _v, _r, _s);
   }
 
-  /// @inheritdoc IDCAHubCompanionMulticallHandler
+  /// @inheritdoc IDCAHubCompanionHubProxyHandler
   function depositProxy(
     IDCAHub _hub,
     address _from,
@@ -40,7 +39,7 @@ abstract contract DCAHubCompanionMulticallHandler is Multicall, IDCAHubCompanion
       : _hub.deposit(_from, _to, _amount, _amountOfSwaps, _swapInterval, _owner, _permissions);
   }
 
-  /// @inheritdoc IDCAHubCompanionMulticallHandler
+  /// @inheritdoc IDCAHubCompanionHubProxyHandler
   function withdrawSwappedProxy(
     IDCAHub _hub,
     uint256 _positionId,
@@ -49,7 +48,7 @@ abstract contract DCAHubCompanionMulticallHandler is Multicall, IDCAHubCompanion
     _swapped = _hub.withdrawSwapped(_positionId, _recipient);
   }
 
-  /// @inheritdoc IDCAHubCompanionMulticallHandler
+  /// @inheritdoc IDCAHubCompanionHubProxyHandler
   function withdrawSwappedManyProxy(
     IDCAHub _hub,
     IDCAHub.PositionSet[] calldata _positions,
@@ -63,7 +62,7 @@ abstract contract DCAHubCompanionMulticallHandler is Multicall, IDCAHubCompanion
     _withdrawn = _hub.withdrawSwappedMany(_positions, _recipient);
   }
 
-  /// @inheritdoc IDCAHubCompanionMulticallHandler
+  /// @inheritdoc IDCAHubCompanionHubProxyHandler
   function increasePositionProxy(
     IDCAHub _hub,
     uint256 _positionId,
@@ -75,7 +74,7 @@ abstract contract DCAHubCompanionMulticallHandler is Multicall, IDCAHubCompanion
     _hub.increasePosition(_positionId, _amount, _newSwaps);
   }
 
-  /// @inheritdoc IDCAHubCompanionMulticallHandler
+  /// @inheritdoc IDCAHubCompanionHubProxyHandler
   function reducePositionProxy(
     IDCAHub _hub,
     uint256 _positionId,
@@ -86,7 +85,7 @@ abstract contract DCAHubCompanionMulticallHandler is Multicall, IDCAHubCompanion
     _hub.reducePosition(_positionId, _amount, _newSwaps, _recipient);
   }
 
-  /// @inheritdoc IDCAHubCompanionMulticallHandler
+  /// @inheritdoc IDCAHubCompanionHubProxyHandler
   function terminateProxy(
     IDCAHub _hub,
     uint256 _positionId,
