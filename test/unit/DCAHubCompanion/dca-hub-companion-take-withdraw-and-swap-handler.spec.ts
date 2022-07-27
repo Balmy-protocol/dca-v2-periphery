@@ -15,7 +15,6 @@ import { wallet } from '@test-utils';
 chai.use(smock.matchers);
 
 contract('DCAHubCompanionTakeWithdrawAndSwapHandlerMock', () => {
-  let registry: FakeContract<ISwapperRegistry>;
   let token: FakeContract<IERC20>;
   let takeWithdrawAndSwapHandler: DCAHubCompanionTakeWithdrawAndSwapHandlerMock;
   let snapshotId: string;
@@ -24,6 +23,7 @@ contract('DCAHubCompanionTakeWithdrawAndSwapHandlerMock', () => {
     const DCAHubCompanionHubProxyHandlerFactory: DCAHubCompanionTakeWithdrawAndSwapHandlerMock__factory = await ethers.getContractFactory(
       'DCAHubCompanionTakeWithdrawAndSwapHandlerMock'
     );
+    const registry = await smock.fake('ISwapperRegistry');
     token = await smock.fake('IERC20');
     takeWithdrawAndSwapHandler = await DCAHubCompanionHubProxyHandlerFactory.deploy(registry.address);
     snapshotId = await snapshot.take();
