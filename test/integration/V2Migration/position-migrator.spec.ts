@@ -174,6 +174,7 @@ contract('PositionMigrator', () => {
     const DCAHubSwapper = await DCAHubSwapperFactory.deploy(hub.address, WETH.address, constants.NOT_ZERO_ADDRESS);
     await WETH.connect(swapper).approve(DCAHubSwapper.address, constants.MAX_UINT_256);
     await DCAHubSwapper.connect(swapper).swapForCaller(
+      DCAHub.address,
       [WETH_ADDRESS, USDC_ADDRESS],
       [{ indexTokenA: 0, indexTokenB: 1 }],
       [0, 0],

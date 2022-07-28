@@ -187,6 +187,7 @@ contract('DCAFeeManager', () => {
       []
     );
     await DCAHubSwapper.connect(swapper).swapForCaller(
+      DCAHub.address,
       tokens,
       pairIndexes,
       tokens.map((_) => 0),
