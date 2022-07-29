@@ -22,7 +22,7 @@ const USDC_WHALE_ADDRESS = '0xad7b4c162707e0b2b5f6fddbd3f8538a5fba0d60';
 const BETA_HUB = '0x24F85583FAa9F8BD0B8Aa7B1D1f4f53F0F450038';
 const VULN_HUB = '0x230C63702D1B5034461ab2ca889a30E343D81349';
 
-contract.only('PositionMigrator', () => {
+contract('PositionMigrator', () => {
   let WETH: IERC20, USDC: IERC20;
   let positionOwner: SignerWithAddress, swapper: SignerWithAddress;
   let vulnDCAHub: DCAHub, betaDCAHub: DCAHub, DCAHub: DCAHub;
