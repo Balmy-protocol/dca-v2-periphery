@@ -3,9 +3,9 @@ pragma solidity >=0.8.7 <0.9.0;
 
 import '../libraries/InputBuilding.sol';
 import '../libraries/SecondsUntilNextSwap.sol';
-import './DCAHubCompanionParameters.sol';
+import '../interfaces/IDCAHubCompanion.sol';
 
-abstract contract DCAHubCompanionLibrariesHandler is DCAHubCompanionParameters, IDCAHubCompanionLibrariesHandler {
+abstract contract DCAHubCompanionLibrariesHandler is IDCAHubCompanionLibrariesHandler {
   /// @inheritdoc IDCAHubCompanionLibrariesHandler
   function getNextSwapInfo(IDCAHub _hub, Pair[] calldata _pairs) external view returns (IDCAHub.SwapInfo memory) {
     (address[] memory _tokens, IDCAHub.PairIndexes[] memory _indexes) = InputBuilding.buildGetNextSwapInfoInput(_pairs);

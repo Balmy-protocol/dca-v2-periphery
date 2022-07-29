@@ -13,7 +13,6 @@ import {
 import { FakeContract, smock } from '@defi-wonderland/smock';
 import { TransactionResponse } from '@ethersproject/abstract-provider';
 import { utils } from 'ethers';
-import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers';
 
 chai.use(smock.matchers);
 
@@ -22,11 +21,9 @@ contract('DCAHubCompanionHubProxyHandler', () => {
   let DCAHub: FakeContract<IDCAHub>;
   let erc20Token: FakeContract<IERC20>;
   let DCAHubCompanionHubProxyHandler: DCAHubCompanionHubProxyHandlerMock;
-  let governor: SignerWithAddress;
   let snapshotId: string;
 
   before('Setup accounts and contracts', async () => {
-    [governor] = await ethers.getSigners();
     const DCAHubCompanionHubProxyHandlerFactory: DCAHubCompanionHubProxyHandlerMock__factory = await ethers.getContractFactory(
       'contracts/mocks/DCAHubCompanion/DCAHubCompanionHubProxyHandler.sol:DCAHubCompanionHubProxyHandlerMock'
     );
@@ -34,11 +31,7 @@ contract('DCAHubCompanionHubProxyHandler', () => {
     DCAHub = await smock.fake('IDCAHub');
     DCAHub.permissionManager.returns(DCAPermissionManager.address);
     erc20Token = await smock.fake('IERC20');
-    DCAHubCompanionHubProxyHandler = await DCAHubCompanionHubProxyHandlerFactory.deploy(
-      DCAHub.address,
-      DCAPermissionManager.address,
-      governor.address
-    );
+    DCAHubCompanionHubProxyHandler = await DCAHubCompanionHubProxyHandlerFactory.deploy();
     snapshotId = await snapshot.take();
   });
 
