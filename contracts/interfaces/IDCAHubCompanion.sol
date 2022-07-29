@@ -56,6 +56,29 @@ interface IDCAHubCompanionHubProxyHandler {
   ) external payable returns (uint256 positionId);
 
   /**
+   * @notice Creates a new position using the entire balance available on the contract
+   * @dev Meant to be used as part of a multicall
+   * @param hub The address of the DCAHub
+   * @param from The address of the "from" token
+   * @param to The address of the "to" token
+   * @param amountOfSwaps How many swaps to execute for this position
+   * @param swapInterval How frequently the position's swaps should be executed
+   * @param owner The address of the owner of the position being created
+   * @param miscellaneous Bytes that will be emitted, and associated with the position. If empty, no event will be emitted
+   * @return positionId The id of the created position
+   */
+  function depositWithAllBalanceProxy(
+    IDCAHub hub,
+    address from,
+    address to,
+    uint32 amountOfSwaps,
+    uint32 swapInterval,
+    address owner,
+    IDCAPermissionManager.PermissionSet[] calldata permissions,
+    bytes calldata miscellaneous
+  ) external payable returns (uint256 positionId);
+
+  /**
    * @notice Call the hub and withdraws all swapped tokens from a position to a recipient
    * @dev Meant to be used as part of a multicall
    * @param hub The address of the DCAHub
