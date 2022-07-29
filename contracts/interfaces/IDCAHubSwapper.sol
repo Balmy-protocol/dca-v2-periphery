@@ -2,8 +2,8 @@
 pragma solidity >=0.8.7 <0.9.0;
 
 import '@mean-finance/dca-v2-core/contracts/interfaces/IDCAHub.sol';
-import '@mean-finance/dca-v2-core/contracts/interfaces/IDCAPermissionManager.sol';
 import '@mean-finance/dca-v2-core/contracts/interfaces/IDCAHubSwapCallee.sol';
+import '@mean-finance/swappers/solidity/contracts/extensions/Shared.sol';
 import './IWrappedProtocolToken.sol';
 import './utils/ICollectableDust.sol';
 import './utils/IGovernable.sol';
@@ -40,6 +40,26 @@ interface IDCAHubSwapperParameters is IGovernable {
 }
 
 interface IDCAHubSwapperSwapHandler is IDCAHubSwapCallee {
+  /// @notice Parameters to execute a swap with dexes
+  struct SwapWithDexesParams {
+    // The address of the DCAHub
+    IDCAHub hub;
+    // The tokens involved in the swap
+    address[] tokens;
+    // The pairs to swap
+    IDCAHub.PairIndexes[] pairsToSwap;
+    // The accounts that should be approved for spending
+    Allowance[] allowanceTargets;
+    // The different swappers involved in the swap
+    address[] swappers;
+    // The different swaps to execute
+    SwapExecution[] executions;
+    // Address that will receive all unspent tokens
+    address leftoverRecipient;
+    // Deadline when the swap becomes invalid
+    uint256 deadline;
+  }
+
   /// @notice The data necessary for a swap to be executed
   struct SwapExecution {
     // The index of the swapper in the swapper array
@@ -97,6 +117,21 @@ interface IDCAHubSwapperSwapHandler is IDCAHubSwapCallee {
     address recipient,
     uint256 deadline
   ) external payable returns (IDCAHub.SwapInfo memory);
+
+  /**
+   * @notice Executes a swap with the given swappers, and sends all unspent tokens to the given recipient
+   * @return The information about the executed swap
+   */
+  function swapWithDexes(SwapWithDexesParams calldata parameters) external payable returns (IDCAHub.SwapInfo memory);
+
+  /**
+   * @notice Meant to be used by Mean Finance keepers, as an cheaper way to execute swaps. This function executes a
+   *         swap with the given swappers, but sends some of the unspent tokens back to the hub. This means that they
+   *         will be considered part of the protocol's balance. Unspent tokens that were given as reward will be
+   *         sent to the provided recipient
+   * @return The information about the executed swap
+   */
+  function swapWithDexesByMeanKeepers(SwapWithDexesParams calldata parameters) external payable returns (IDCAHub.SwapInfo memory);
 
   /// @notice Executes a swap with the given DEX, and sends all unspent tokens to the given recipient
   /// @param _dex The DEX that will be used in the swap

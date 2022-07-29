@@ -7,6 +7,15 @@ import './DCAHubSwapperParameters.sol';
 contract DCAHubSwapperSwapHandlerMock is DCAHubSwapperSwapHandler, DCAHubSwapperParametersMock {
   mapping(address => bytes[]) private _dexCalledWith;
 
+  struct MaxApproveSpenderCall {
+    IERC20 token;
+    address spender;
+    bool alreadyValidatedSpender;
+    uint256 minAllowance;
+  }
+
+  MaxApproveSpenderCall[] internal _maxApproveSpenderCalls;
+
   constructor(
     IDCAHub _hub,
     IWrappedProtocolToken _wToken,
@@ -20,6 +29,20 @@ contract DCAHubSwapperSwapHandlerMock is DCAHubSwapperSwapHandler, DCAHubSwapper
 
   function callsToDex(address _dex) external view returns (bytes[] memory) {
     return _dexCalledWith[_dex];
+  }
+
+  function maxApproveSpenderCalls() external view returns (MaxApproveSpenderCall[] memory) {
+    return _maxApproveSpenderCalls;
+  }
+
+  function _maxApproveSpenderIfNeeded(
+    IERC20 _token,
+    address _spender,
+    bool _alreadyValidatedSpender,
+    uint256 _minAllowance
+  ) internal override {
+    _maxApproveSpenderCalls.push(MaxApproveSpenderCall(_token, _spender, _alreadyValidatedSpender, _minAllowance));
+    super._maxApproveSpenderIfNeeded(_token, _spender, _alreadyValidatedSpender, _minAllowance);
   }
 
   function isSwapExecutorEmpty() external view returns (bool) {
