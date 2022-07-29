@@ -247,7 +247,7 @@ interface IDCAHubCompanionLibrariesHandler {
   function secondsUntilNextSwap(IDCAHub hub, Pair[] calldata pairs) external view returns (uint256[] memory);
 }
 
-interface IDCAHubCompanionMulticallHandler {
+interface IDCAHubCompanionHubProxyHandler {
   /**
    * @notice Creates a new position
    * @dev Meant to be used as part of a multicall
@@ -377,7 +377,7 @@ interface IDCAHubCompanion is
   IDCAHubCompanionParameters,
   IDCAHubCompanionWTokenPositionHandler,
   IDCAHubCompanionLibrariesHandler,
-  IDCAHubCompanionMulticallHandler
+  IDCAHubCompanionHubProxyHandler
 {
   /// @notice Thrown when one of the parameters is a zero address
   error ZeroAddress();

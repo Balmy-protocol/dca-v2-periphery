@@ -4,13 +4,15 @@ pragma solidity >=0.8.7 <0.9.0;
 import './DCAHubCompanionParameters.sol';
 import './DCAHubCompanionWTokenPositionHandler.sol';
 import './DCAHubCompanionLibrariesHandler.sol';
-import './DCAHubCompanionMulticallHandler.sol';
+import './DCAHubCompanionHubProxyHandler.sol';
+import './utils/Multicall.sol';
 
 contract DCAHubCompanion is
   DCAHubCompanionParameters,
   DCAHubCompanionWTokenPositionHandler,
   DCAHubCompanionLibrariesHandler,
-  DCAHubCompanionMulticallHandler,
+  DCAHubCompanionHubProxyHandler,
+  Multicall,
   IDCAHubCompanion
 {
   constructor(
