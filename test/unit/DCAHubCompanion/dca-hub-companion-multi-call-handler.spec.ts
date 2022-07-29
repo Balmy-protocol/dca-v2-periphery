@@ -32,6 +32,7 @@ contract('DCAHubCompanionMulticallHandler', () => {
     );
     DCAPermissionManager = await smock.fake('IDCAPermissionManager');
     DCAHub = await smock.fake('IDCAHub');
+    DCAHub.permissionManager.returns(DCAPermissionManager.address);
     erc20Token = await smock.fake('IERC20');
     DCAHubCompanionMulticallHandler = await DCAHubCompanionMulticallHandlerFactory.deploy(
       DCAHub.address,
@@ -81,7 +82,7 @@ contract('DCAHubCompanionMulticallHandler', () => {
 
     when('method is executed', () => {
       given(async () => {
-        await DCAHubCompanionMulticallHandler.permissionPermitProxy(PERMISSIONS, 10, 20, 30, R, S);
+        await DCAHubCompanionMulticallHandler.permissionPermitProxy(DCAPermissionManager.address, PERMISSIONS, 10, 20, 30, R, S);
       });
       then('hub is called', () => {
         expect(DCAPermissionManager.permissionPermit).to.have.been.calledOnce;
@@ -109,7 +110,17 @@ contract('DCAHubCompanionMulticallHandler', () => {
     when('depositing and allowance is not enough', () => {
       given(async () => {
         erc20Token.allowance.returns(AMOUNT - 1);
-        await DCAHubCompanionMulticallHandler.depositProxy(erc20Token.address, TO, AMOUNT, AMOUNT_OF_SWAPS, SWAP_INTERVAL, OWNER, [], MISC);
+        await DCAHubCompanionMulticallHandler.depositProxy(
+          DCAHub.address,
+          erc20Token.address,
+          TO,
+          AMOUNT,
+          AMOUNT_OF_SWAPS,
+          SWAP_INTERVAL,
+          OWNER,
+          [],
+          MISC
+        );
       });
       then('allowance is checked correctly', () => {
         expect(erc20Token.allowance).to.have.been.calledWith(DCAHubCompanionMulticallHandler.address, DCAHub.address);
@@ -135,7 +146,17 @@ contract('DCAHubCompanionMulticallHandler', () => {
     when('depositing and allowance is enough', () => {
       given(async () => {
         erc20Token.allowance.returns(AMOUNT);
-        await DCAHubCompanionMulticallHandler.depositProxy(erc20Token.address, TO, AMOUNT, AMOUNT_OF_SWAPS, SWAP_INTERVAL, OWNER, [], MISC);
+        await DCAHubCompanionMulticallHandler.depositProxy(
+          DCAHub.address,
+          erc20Token.address,
+          TO,
+          AMOUNT,
+          AMOUNT_OF_SWAPS,
+          SWAP_INTERVAL,
+          OWNER,
+          [],
+          MISC
+        );
       });
       then('allowance is checked correctly', () => {
         expect(erc20Token.allowance).to.have.been.calledWith(DCAHubCompanionMulticallHandler.address, DCAHub.address);
@@ -147,7 +168,17 @@ contract('DCAHubCompanionMulticallHandler', () => {
     when('depositing and allowance is 0', () => {
       given(async () => {
         erc20Token.allowance.returns(0);
-        await DCAHubCompanionMulticallHandler.depositProxy(erc20Token.address, TO, AMOUNT, AMOUNT_OF_SWAPS, SWAP_INTERVAL, OWNER, [], MISC);
+        await DCAHubCompanionMulticallHandler.depositProxy(
+          DCAHub.address,
+          erc20Token.address,
+          TO,
+          AMOUNT,
+          AMOUNT_OF_SWAPS,
+          SWAP_INTERVAL,
+          OWNER,
+          [],
+          MISC
+        );
       });
       then('allowance is checked correctly', () => {
         expect(erc20Token.allowance).to.have.been.calledWith(DCAHubCompanionMulticallHandler.address, DCAHub.address);
@@ -196,7 +227,7 @@ contract('DCAHubCompanionMulticallHandler', () => {
     when('increasing and allowance is not enough', () => {
       given(async () => {
         erc20Token.allowance.returns(AMOUNT - 1);
-        await DCAHubCompanionMulticallHandler.increasePositionProxy(POSITION_ID, AMOUNT, AMOUNT_OF_SWAPS);
+        await DCAHubCompanionMulticallHandler.increasePositionProxy(DCAHub.address, POSITION_ID, AMOUNT, AMOUNT_OF_SWAPS);
       });
       then('allowance is checked correctly', () => {
         expect(erc20Token.allowance).to.have.been.calledWith(DCAHubCompanionMulticallHandler.address, DCAHub.address);
@@ -210,7 +241,7 @@ contract('DCAHubCompanionMulticallHandler', () => {
     when('increasing and allowance is enough', () => {
       given(async () => {
         erc20Token.allowance.returns(AMOUNT);
-        await DCAHubCompanionMulticallHandler.increasePositionProxy(POSITION_ID, AMOUNT, AMOUNT_OF_SWAPS);
+        await DCAHubCompanionMulticallHandler.increasePositionProxy(DCAHub.address, POSITION_ID, AMOUNT, AMOUNT_OF_SWAPS);
       });
       then('allowance is checked correctly', () => {
         expect(erc20Token.allowance).to.have.been.calledWith(DCAHubCompanionMulticallHandler.address, DCAHub.address);
@@ -222,7 +253,7 @@ contract('DCAHubCompanionMulticallHandler', () => {
     when('increasing and allowance is 0', () => {
       given(async () => {
         erc20Token.allowance.returns(0);
-        await DCAHubCompanionMulticallHandler.increasePositionProxy(POSITION_ID, AMOUNT, AMOUNT_OF_SWAPS);
+        await DCAHubCompanionMulticallHandler.increasePositionProxy(DCAHub.address, POSITION_ID, AMOUNT, AMOUNT_OF_SWAPS);
       });
       then('allowance is checked correctly', () => {
         expect(erc20Token.allowance).to.have.been.calledWith(DCAHubCompanionMulticallHandler.address, DCAHub.address);
@@ -247,6 +278,7 @@ contract('DCAHubCompanionMulticallHandler', () => {
     params: [10, constants.NOT_ZERO_ADDRESS, constants.NOT_ZERO_ADDRESS],
   });
 
+  type DropFirstParam<T extends unknown[]> = T extends [any, ...infer U] ? U : never;
   function proxyTest<
     ProxyMethod extends keyof DCAHubCompanionMulticallHandlerMock['functions'] & string,
     HubMethod extends keyof FakeContract<IDCAHub>
@@ -259,15 +291,15 @@ contract('DCAHubCompanionMulticallHandler', () => {
   }: {
     method: ProxyMethod;
     permission: Permission;
-    params: Parameters<DCAHubCompanionMulticallHandlerMock['functions'][ProxyMethod]>;
+    params: DropFirstParam<Parameters<DCAHubCompanionMulticallHandlerMock['functions'][ProxyMethod]>>;
     hubMethod: HubMethod;
-    compare?: (result: any, expected: Parameters<DCAHubCompanionMulticallHandlerMock['functions'][ProxyMethod]>) => boolean;
+    compare?: (result: any, expected: DropFirstParam<Parameters<DCAHubCompanionMulticallHandlerMock['functions'][ProxyMethod]>>) => boolean;
   }) {
     describe(method, () => {
       when('method is executed', () => {
         given(async () => {
           DCAPermissionManager.hasPermission.returns(({ _permission }: { _permission: Permission }) => permission === _permission);
-          await (DCAHubCompanionMulticallHandler[method] as any)(...params);
+          await (DCAHubCompanionMulticallHandler[method] as any)(DCAHub.address, ...params);
         });
         then('hub is called', () => {
           if (compare) {
@@ -284,7 +316,7 @@ contract('DCAHubCompanionMulticallHandler', () => {
           DCAPermissionManager.hasPermission.returns(() => false);
         });
         then('operation is reverted', async () => {
-          const result: Promise<TransactionResponse> = (DCAHubCompanionMulticallHandler[method] as any)(...params);
+          const result: Promise<TransactionResponse> = (DCAHubCompanionMulticallHandler[method] as any)(DCAHub.address, ...params);
           await expect(result).to.be.revertedWith('UnauthorizedCaller');
         });
       });

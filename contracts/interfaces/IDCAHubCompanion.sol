@@ -248,97 +248,128 @@ interface IDCAHubCompanionLibrariesHandler {
 }
 
 interface IDCAHubCompanionMulticallHandler {
-  /// @notice Creates a new position
-  /// @dev Meant to be used as part of a multicall
-  /// @param _from The address of the "from" token
-  /// @param _to The address of the "to" token
-  /// @param _amount How many "from" tokens will be swapped in total
-  /// @param _amountOfSwaps How many swaps to execute for this position
-  /// @param _swapInterval How frequently the position's swaps should be executed
-  /// @param _owner The address of the owner of the position being created
-  /// @param _miscellaneous Bytes that will be emitted, and associated with the position. If empty, no event will be emitted
-  /// @return _positionId The id of the created position
+  /**
+   * @notice Creates a new position
+   * @dev Meant to be used as part of a multicall
+   * @param hub The address of the DCAHub
+   * @param from The address of the "from" token
+   * @param to The address of the "to" token
+   * @param amount How many "from" tokens will be swapped in total
+   * @param amountOfSwaps How many swaps to execute for this position
+   * @param swapInterval How frequently the position's swaps should be executed
+   * @param owner The address of the owner of the position being created
+   * @param miscellaneous Bytes that will be emitted, and associated with the position. If empty, no event will be emitted
+   * @return positionId The id of the created position
+   */
   function depositProxy(
-    address _from,
-    address _to,
-    uint256 _amount,
-    uint32 _amountOfSwaps,
-    uint32 _swapInterval,
-    address _owner,
-    IDCAPermissionManager.PermissionSet[] calldata _permissions,
-    bytes calldata _miscellaneous
-  ) external payable returns (uint256 _positionId);
+    IDCAHub hub,
+    address from,
+    address to,
+    uint256 amount,
+    uint32 amountOfSwaps,
+    uint32 swapInterval,
+    address owner,
+    IDCAPermissionManager.PermissionSet[] calldata permissions,
+    bytes calldata miscellaneous
+  ) external payable returns (uint256 positionId);
 
-  /// @notice Call the hub and withdraws all swapped tokens from a position to a recipient
-  /// @dev Meant to be used as part of a multicall
-  /// @param _positionId The position's id
-  /// @param _recipient The address to withdraw swapped tokens to
-  /// @return _swapped How much was withdrawn
-  function withdrawSwappedProxy(uint256 _positionId, address _recipient) external payable returns (uint256 _swapped);
+  /**
+   * @notice Call the hub and withdraws all swapped tokens from a position to a recipient
+   * @dev Meant to be used as part of a multicall
+   * @param hub The address of the DCAHub
+   * @param positionId The position's id
+   * @param recipient The address to withdraw swapped tokens to
+   * @return swapped How much was withdrawn
+   */
+  function withdrawSwappedProxy(
+    IDCAHub hub,
+    uint256 positionId,
+    address recipient
+  ) external payable returns (uint256 swapped);
 
-  /// @notice Call the hub and withdraws all swapped tokens from multiple positions
-  /// @dev Meant to be used as part of a multicall
-  /// @param _positions A list positions, grouped by `to` token
-  /// @param _recipient The address to withdraw swapped tokens to
-  /// @return _withdrawn How much was withdrawn for each token
-  function withdrawSwappedManyProxy(IDCAHub.PositionSet[] calldata _positions, address _recipient)
-    external
-    payable
-    returns (uint256[] memory _withdrawn);
+  /**
+   * @notice Call the hub and withdraws all swapped tokens from multiple positions
+   * @dev Meant to be used as part of a multicall
+   * @param hub The address of the DCAHub
+   * @param positions A list positions, grouped by `to` token
+   * @param recipient The address to withdraw swapped tokens to
+   * @return withdrawn How much was withdrawn for each token
+   */
+  function withdrawSwappedManyProxy(
+    IDCAHub hub,
+    IDCAHub.PositionSet[] calldata positions,
+    address recipient
+  ) external payable returns (uint256[] memory withdrawn);
 
-  /// @notice Call the hub and takes the unswapped balance, adds the new deposited funds and modifies the position so that
-  /// it is executed in _newSwaps swaps
-  /// @dev Meant to be used as part of a multicall
-  /// @param _positionId The position's id
-  /// @param _amount Amount of funds to add to the position
-  /// @param _newSwaps The new amount of swaps
+  /**
+   * @notice Call the hub and takes the unswapped balance, adds the new deposited funds and modifies the position so that
+   * it is executed in newSwaps swaps
+   * @dev Meant to be used as part of a multicall
+   * @param hub The address of the DCAHub
+   * @param positionId The position's id
+   * @param amount Amount of funds to add to the position
+   * @param newSwaps The new amount of swaps
+   */
   function increasePositionProxy(
-    uint256 _positionId,
-    uint256 _amount,
-    uint32 _newSwaps
+    IDCAHub hub,
+    uint256 positionId,
+    uint256 amount,
+    uint32 newSwaps
   ) external payable;
 
-  /// @notice Call the hub and withdraws the specified amount from the unswapped balance and modifies the position so that
-  /// it is executed in _newSwaps swaps
-  /// @dev Meant to be used as part of a multicall
-  /// @param _positionId The position's id
-  /// @param _amount Amount of funds to withdraw from the position
-  /// @param _newSwaps The new amount of swaps
-  /// @param _recipient The address to send tokens to
+  /**
+   * @notice Call the hub and withdraws the specified amount from the unswapped balance and modifies the position so that
+   * it is executed in newSwaps swaps
+   * @dev Meant to be used as part of a multicall
+   * @param hub The address of the DCAHub
+   * @param positionId The position's id
+   * @param amount Amount of funds to withdraw from the position
+   * @param newSwaps The new amount of swaps
+   * @param recipient The address to send tokens to
+   */
   function reducePositionProxy(
-    uint256 _positionId,
-    uint256 _amount,
-    uint32 _newSwaps,
-    address _recipient
+    IDCAHub hub,
+    uint256 positionId,
+    uint256 amount,
+    uint32 newSwaps,
+    address recipient
   ) external payable;
 
-  /// @notice Calls the hub and terminates the position and sends all unswapped and swapped balance to the specified recipients
-  /// @dev Meant to be used as part of a multicall
-  /// @param _positionId The position's id
-  /// @param _recipientUnswapped The address to withdraw unswapped tokens to
-  /// @param _recipientSwapped The address to withdraw swapped tokens to
-  /// @return _unswapped The unswapped balance sent to `_recipientUnswapped`
-  /// @return _swapped The swapped balance sent to `_recipientSwapped`
+  /**
+   * @notice Calls the hub and terminates the position and sends all unswapped and swapped balance to the specified recipients
+   * @dev Meant to be used as part of a multicall
+   * @param hub The address of the DCAHub
+   * @param positionId The position's id
+   * @param recipientUnswapped The address to withdraw unswapped tokens to
+   * @param recipientSwapped The address to withdraw swapped tokens to
+   * @return unswapped The unswapped balance sent to `recipientUnswapped`
+   * @return swapped The swapped balance sent to `recipientSwapped`
+   */
   function terminateProxy(
-    uint256 _positionId,
-    address _recipientUnswapped,
-    address _recipientSwapped
-  ) external payable returns (uint256 _unswapped, uint256 _swapped);
+    IDCAHub hub,
+    uint256 positionId,
+    address recipientUnswapped,
+    address recipientSwapped
+  ) external payable returns (uint256 unswapped, uint256 swapped);
 
-  /// @notice Calls the permission manager and sets permissions via signature
-  /// @param _permissions The permissions to set
-  /// @param _tokenId The token's id
-  /// @param _deadline The deadline timestamp by which the call must be mined for the approve to work
-  /// @param _v Must produce valid secp256k1 signature from the holder along with `r` and `s`
-  /// @param _r Must produce valid secp256k1 signature from the holder along with `v` and `s`
-  /// @param _s Must produce valid secp256k1 signature from the holder along with `r` and `v`
+  /**
+   * @notice Calls the permission manager and sets permissions via signature
+   * @param permissionManager The address of the permission manager
+   * @param permissions The permissions to set
+   * @param tokenId The token's id
+   * @param deadline The deadline timestamp by which the call must be mined for the approve to work
+   * @param v Must produce valid secp256k1 signature from the holder along with `r` and `s`
+   * @param r Must produce valid secp256k1 signature from the holder along with `v` and `s`
+   * @param s Must produce valid secp256k1 signature from the holder along with `r` and `v`
+   */
   function permissionPermitProxy(
-    IDCAPermissionManager.PermissionSet[] calldata _permissions,
-    uint256 _tokenId,
-    uint256 _deadline,
-    uint8 _v,
-    bytes32 _r,
-    bytes32 _s
+    IDCAPermissionManager permissionManager,
+    IDCAPermissionManager.PermissionSet[] calldata permissions,
+    uint256 tokenId,
+    uint256 deadline,
+    uint8 v,
+    bytes32 r,
+    bytes32 s
   ) external payable;
 }
 
