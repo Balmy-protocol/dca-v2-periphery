@@ -23,13 +23,6 @@ async function main() {
     name: 'DCAFeeManager',
     path: 'contracts/DCAFeeManager/DCAFeeManager.sol:DCAFeeManager',
   });
-
-  if (currentNetwork === 'mainnet') {
-    await verify({
-      name: 'DCAKeep3rJob',
-      path: 'contracts/DCAKeep3rJob/DCAKeep3rJob.sol:DCAKeep3rJob',
-    });
-  }
 }
 
 async function verify({ name, path }: { name: string; path: string }) {
