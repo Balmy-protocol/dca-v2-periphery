@@ -106,22 +106,18 @@ contract('DCAHubCompanionMulticallHandler', () => {
     const OWNER = '0x0000000000000000000000000000000000000003';
     const MISC = ethers.utils.randomBytes(10);
 
-    when('depositing without transfering from caller', () => {
+    when('depositing and allowance is not enough', () => {
       given(async () => {
-        await DCAHubCompanionMulticallHandler.depositProxy(
-          erc20Token.address,
-          TO,
-          AMOUNT,
-          AMOUNT_OF_SWAPS,
-          SWAP_INTERVAL,
-          OWNER,
-          [],
-          MISC,
-          false
-        );
+        erc20Token.allowance.returns(AMOUNT - 1);
+        await DCAHubCompanionMulticallHandler.depositProxy(erc20Token.address, TO, AMOUNT, AMOUNT_OF_SWAPS, SWAP_INTERVAL, OWNER, [], MISC);
       });
-      then('token is approved', () => {
-        expect(erc20Token.approve).to.have.been.calledWith(DCAHub.address, AMOUNT + 1);
+      then('allowance is checked correctly', () => {
+        expect(erc20Token.allowance).to.have.been.calledWith(DCAHubCompanionMulticallHandler.address, DCAHub.address);
+      });
+      then('token is reset', () => {
+        expect(erc20Token.approve).to.have.been.calledTwice;
+        expect(erc20Token.approve).to.have.been.calledWith(DCAHub.address, 0);
+        expect(erc20Token.approve).to.have.been.calledWith(DCAHub.address, constants.MAX_UINT_256);
       });
       then('hub is called', () => {
         expect(DCAHub['deposit(address,address,uint256,uint32,uint32,address,(address,uint8[])[],bytes)']).to.have.been.calledOnceWith(
@@ -134,42 +130,30 @@ contract('DCAHubCompanionMulticallHandler', () => {
           [],
           ethers.utils.hexlify(MISC)
         );
-      });
-      then('transferFrom is not called', () => {
-        expect(erc20Token.transferFrom).to.not.have.been.called;
       });
     });
-    when('depositing with transfer from caller', () => {
+    when('depositing and allowance is enough', () => {
       given(async () => {
-        await DCAHubCompanionMulticallHandler.depositProxy(
-          erc20Token.address,
-          TO,
-          AMOUNT,
-          AMOUNT_OF_SWAPS,
-          SWAP_INTERVAL,
-          OWNER,
-          [],
-          MISC,
-          true
-        );
+        erc20Token.allowance.returns(AMOUNT);
+        await DCAHubCompanionMulticallHandler.depositProxy(erc20Token.address, TO, AMOUNT, AMOUNT_OF_SWAPS, SWAP_INTERVAL, OWNER, [], MISC);
       });
-      then('token is approved', () => {
-        expect(erc20Token.approve).to.have.been.calledWith(DCAHub.address, AMOUNT + 1);
+      then('allowance is checked correctly', () => {
+        expect(erc20Token.allowance).to.have.been.calledWith(DCAHubCompanionMulticallHandler.address, DCAHub.address);
       });
-      then('hub is called', () => {
-        expect(DCAHub['deposit(address,address,uint256,uint32,uint32,address,(address,uint8[])[],bytes)']).to.have.been.calledOnceWith(
-          erc20Token.address,
-          TO,
-          AMOUNT,
-          AMOUNT_OF_SWAPS,
-          SWAP_INTERVAL,
-          OWNER,
-          [],
-          ethers.utils.hexlify(MISC)
-        );
+      then('token is not approved', () => {
+        expect(erc20Token.approve).to.not.have.been.called;
       });
-      then('transferFrom is called', () => {
-        expect(erc20Token.transferFrom).to.have.been.calledWith(governor.address, DCAHubCompanionMulticallHandler.address, AMOUNT);
+    });
+    when('depositing and allowance is 0', () => {
+      given(async () => {
+        erc20Token.allowance.returns(0);
+        await DCAHubCompanionMulticallHandler.depositProxy(erc20Token.address, TO, AMOUNT, AMOUNT_OF_SWAPS, SWAP_INTERVAL, OWNER, [], MISC);
+      });
+      then('allowance is checked correctly', () => {
+        expect(erc20Token.allowance).to.have.been.calledWith(DCAHubCompanionMulticallHandler.address, DCAHub.address);
+      });
+      then('token is approved for max', () => {
+        expect(erc20Token.approve).to.have.been.calledWith(DCAHub.address, constants.MAX_UINT_256);
       });
     });
   });
@@ -194,54 +178,57 @@ contract('DCAHubCompanionMulticallHandler', () => {
       result._recipient === recipient,
   });
 
+  proxyTest({
+    method: 'increasePositionProxy',
+    hubMethod: 'increasePosition',
+    permission: Permission.INCREASE,
+    params: [10, 20, 30],
+  });
+
   describe('increasePositionProxy', () => {
     const POSITION_ID = 10;
     const AMOUNT = 20;
     const AMOUNT_OF_SWAPS = 30;
-
-    when('increasing without transfer from caller', () => {
-      given(async () => {
-        DCAPermissionManager.hasPermission.returns(({ _permission }: { _permission: Permission }) => Permission.INCREASE === _permission);
-        await DCAHubCompanionMulticallHandler.increasePositionProxy(POSITION_ID, AMOUNT, AMOUNT_OF_SWAPS, false);
-      });
-      then('token is approved', () => {
-        expect(erc20Token.approve).to.have.been.calledWith(DCAHub.address, AMOUNT + 1);
-      });
-      then('hub is called', () => {
-        expect(DCAHub.increasePosition).to.have.been.calledOnceWith(POSITION_ID, AMOUNT, AMOUNT_OF_SWAPS);
-      });
-      then('transferFrom is not called', () => {
-        expect(erc20Token.transferFrom).to.not.have.been.called;
-      });
-    });
-    when('increasing with transfer from caller', () => {
-      given(async () => {
-        DCAPermissionManager.hasPermission.returns(({ _permission }: { _permission: Permission }) => Permission.INCREASE === _permission);
-        await DCAHubCompanionMulticallHandler.increasePositionProxy(POSITION_ID, AMOUNT, AMOUNT_OF_SWAPS, true);
-      });
-      then('token is approved', () => {
-        expect(erc20Token.approve).to.have.been.calledWith(DCAHub.address, AMOUNT + 1);
-      });
-      then('hub is called', () => {
-        expect(DCAHub.increasePosition).to.have.been.calledOnceWith(POSITION_ID, AMOUNT, AMOUNT_OF_SWAPS);
-      });
-      then('transferFrom is called', () => {
-        expect(erc20Token.transferFrom).to.have.been.calledWith(governor.address, DCAHubCompanionMulticallHandler.address, AMOUNT);
-      });
+    given(() => {
+      DCAPermissionManager.hasPermission.returns(true);
     });
 
-    when('caller does not have permission', () => {
-      given(() => {
-        DCAPermissionManager.hasPermission.returns(() => false);
+    when('increasing and allowance is not enough', () => {
+      given(async () => {
+        erc20Token.allowance.returns(AMOUNT - 1);
+        await DCAHubCompanionMulticallHandler.increasePositionProxy(POSITION_ID, AMOUNT, AMOUNT_OF_SWAPS);
       });
-      then('operation is reverted', async () => {
-        const result: Promise<TransactionResponse> = DCAHubCompanionMulticallHandler.increasePositionProxy(
-          POSITION_ID,
-          AMOUNT,
-          AMOUNT_OF_SWAPS,
-          false
-        );
-        await expect(result).to.be.revertedWith('UnauthorizedCaller');
+      then('allowance is checked correctly', () => {
+        expect(erc20Token.allowance).to.have.been.calledWith(DCAHubCompanionMulticallHandler.address, DCAHub.address);
+      });
+      then('allowance is resetted', () => {
+        expect(erc20Token.approve).to.have.been.calledTwice;
+        expect(erc20Token.approve).to.have.been.calledWith(DCAHub.address, 0);
+        expect(erc20Token.approve).to.have.been.calledWith(DCAHub.address, constants.MAX_UINT_256);
+      });
+    });
+    when('increasing and allowance is enough', () => {
+      given(async () => {
+        erc20Token.allowance.returns(AMOUNT);
+        await DCAHubCompanionMulticallHandler.increasePositionProxy(POSITION_ID, AMOUNT, AMOUNT_OF_SWAPS);
+      });
+      then('allowance is checked correctly', () => {
+        expect(erc20Token.allowance).to.have.been.calledWith(DCAHubCompanionMulticallHandler.address, DCAHub.address);
+      });
+      then('token is not approved', () => {
+        expect(erc20Token.approve).to.not.have.been.called;
+      });
+    });
+    when('increasing and allowance is 0', () => {
+      given(async () => {
+        erc20Token.allowance.returns(0);
+        await DCAHubCompanionMulticallHandler.increasePositionProxy(POSITION_ID, AMOUNT, AMOUNT_OF_SWAPS);
+      });
+      then('allowance is checked correctly', () => {
+        expect(erc20Token.allowance).to.have.been.calledWith(DCAHubCompanionMulticallHandler.address, DCAHub.address);
+      });
+      then('token is approved', () => {
+        expect(erc20Token.approve).to.have.been.calledWith(DCAHub.address, constants.MAX_UINT_256);
       });
     });
   });
