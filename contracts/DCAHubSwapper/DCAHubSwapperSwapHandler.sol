@@ -1,22 +1,44 @@
 // SPDX-License-Identifier: GPL-2.0-or-later
 pragma solidity >=0.8.7 <0.9.0;
 
+import '@mean-finance/swappers/solidity/contracts/SwapAdapter.sol';
+import '@mean-finance/swappers/solidity/contracts/extensions/Shared.sol';
 import '@openzeppelin/contracts/token/ERC20/IERC20.sol';
 import '@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol';
 import './utils/DeadlineValidation.sol';
 import './DCAHubSwapperParameters.sol';
 
-abstract contract DCAHubSwapperSwapHandler is DeadlineValidation, DCAHubSwapperParameters, IDCAHubSwapperSwapHandler {
+abstract contract DCAHubSwapperSwapHandler is DeadlineValidation, DCAHubSwapperParameters, SwapAdapter, IDCAHubSwapperSwapHandler {
   enum SwapPlan {
+    // Used only for tests
     NONE,
+    // Takes the necessary tokens from the caller
     SWAP_FOR_CALLER,
+    // Executes swaps against DEXes
+    SWAP_WITH_DEXES,
+    // TODO: delete
     SWAP_WITH_DEX
   }
   struct SwapData {
     SwapPlan plan;
     bytes data;
   }
+  /// @notice Data used for the callback
+  struct SwapWithDexCallbackData {
+    // The different swappers involved in the swap
+    address[] swappers;
+    // The different swaps to execute
+    SwapExecution[] executions;
+    // The address that will receive the unspent tokens
+    address leftoverRecipient;
+    // This flag is just a way to make transactions cheaper. If Mean Finance is executing the swap, then it's the same for us
+    // if the leftover tokens go to the hub, or to another address. But, it's cheaper in terms of gas to send them to the hub
+    bool sendToProvideLeftoverToHub;
+  }
+
   using SafeERC20 for IERC20;
+  using Address for address;
+
   /// @inheritdoc IDCAHubSwapperSwapHandler
   mapping(address => bool) public isDexSupported;
 
@@ -24,6 +46,8 @@ abstract contract DCAHubSwapperSwapHandler is DeadlineValidation, DCAHubSwapperP
   address internal constant _NO_EXECUTOR = 0x000000000000000000000000000000000000dEaD;
   /// @notice The caller who initiated a swap execution
   address internal _swapExecutor = _NO_EXECUTOR;
+
+  constructor(address _swapperRegistry) SwapAdapter(_swapperRegistry) {}
 
   /// @inheritdoc IDCAHubSwapperSwapHandler
   function swapForCaller(
@@ -133,7 +157,9 @@ abstract contract DCAHubSwapperSwapHandler is DeadlineValidation, DCAHubSwapperP
     bytes calldata _data
   ) external {
     SwapData memory _swapData = abi.decode(_data, (SwapData));
-    if (_swapData.plan == SwapPlan.SWAP_FOR_CALLER) {
+    if (_swapData.plan == SwapPlan.SWAP_WITH_DEXES) {
+      _handleSwapWithDexesCallback(_tokens, _swapData.data);
+    } else if (_swapData.plan == SwapPlan.SWAP_FOR_CALLER) {
       _handleSwapForCallerCallback(_tokens);
     } else if (_swapData.plan == SwapPlan.SWAP_WITH_DEX) {
       _handleSwapWithDexCallback(_tokens, _swapData.data);
@@ -144,8 +170,48 @@ abstract contract DCAHubSwapperSwapHandler is DeadlineValidation, DCAHubSwapperP
 
   /// @inheritdoc IDCAHubSwapperSwapHandler
   function defineDexSupport(address _dex, bool _support) external onlyGovernor {
-    if (_dex == address(0)) revert IDCAHubSwapper.ZeroAddress();
+    if (_dex == address(0)) revert ZeroAddress();
     isDexSupported[_dex] = _support;
+  }
+
+  function _handleSwapWithDexesCallback(IDCAHub.TokenInSwap[] calldata _tokens, bytes memory _data) internal {
+    SwapWithDexCallbackData memory _callbackData = abi.decode(_data, (SwapWithDexCallbackData));
+
+    // Validate that all swappers are allowlisted
+    for (uint256 i; i < _callbackData.swappers.length; i++) {
+      _assertSwapperIsAllowlisted(_callbackData.swappers[i]);
+    }
+
+    // Execute swaps
+    for (uint256 i; i < _callbackData.executions.length; i++) {
+      SwapExecution memory _execution = _callbackData.executions[i];
+      _callbackData.swappers[_execution.swapperIndex].functionCall(_execution.swapData, 'Call to swapper failed');
+    }
+
+    // Send remaining tokens to either hub, or leftover recipient
+    for (uint256 i; i < _tokens.length; i++) {
+      IERC20 _token = IERC20(_tokens[i].token);
+      uint256 _balance = _token.balanceOf(address(this));
+      if (_balance > 0) {
+        uint256 _toProvide = _tokens[i].toProvide;
+        if (_toProvide > 0) {
+          if (_callbackData.sendToProvideLeftoverToHub) {
+            // Send everything to hub (we assume the hub is msg.sender)
+            _token.safeTransfer(msg.sender, _balance);
+          } else {
+            // Send necessary to hub (we assume the hub is msg.sender)
+            _token.safeTransfer(msg.sender, _toProvide);
+            if (_balance > _toProvide) {
+              // If there is some left, send to leftover recipient
+              _token.safeTransfer(_callbackData.leftoverRecipient, _balance - _toProvide);
+            }
+          }
+        } else {
+          // Send reward to the leftover recipient
+          _token.safeTransfer(_callbackData.leftoverRecipient, _balance);
+        }
+      }
+    }
   }
 
   struct CallbackDataDex {

@@ -38,12 +38,13 @@ const deployFunction: DeployFunction = async function (hre: HardhatRuntimeEnviro
   await deployThroughDeterministicFactory({
     deployer,
     name: 'DCAHubSwapper',
-    salt: 'MF-DCAV2-DCAHubSwapper-V2',
+    salt: 'MF-DCAV2-DCAHubSwapper-V3',
     contract: 'contracts/DCAHubSwapper/DCAHubSwapper.sol:DCAHubSwapper',
     bytecode: DCAHubSwapper__factory.bytecode,
     constructorArgs: {
-      types: ['address', 'address', 'address'],
-      values: [hub.address, wProtocolToken, governor],
+      types: ['address', 'address', 'address', 'address'],
+      // TODO: Update to use the real swapper registry in the future
+      values: [hub.address, wProtocolToken, governor, '0x0000000000000000000000000000000000000001'],
     },
     log: !process.env.TEST,
   });

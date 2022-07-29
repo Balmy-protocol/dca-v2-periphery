@@ -9,6 +9,7 @@ contract DCAHubSwapper is DCAHubSwapperParameters, DCAHubSwapperSwapHandler, DCA
   constructor(
     IDCAHub _hub,
     IWrappedProtocolToken _wToken,
-    address _governor
-  ) DCAHubSwapperParameters(_hub, _wToken, _governor) {}
+    address _governor,
+    address _swapperRegistry
+  ) DCAHubSwapperParameters(_hub, _wToken, _governor) DCAHubSwapperSwapHandler(_swapperRegistry) {}
 }

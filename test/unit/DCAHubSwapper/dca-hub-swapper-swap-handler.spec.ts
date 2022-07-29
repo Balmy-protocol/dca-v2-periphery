@@ -9,6 +9,8 @@ import {
   DCAHubSwapperSwapHandlerMock__factory,
   IDCAHub,
   IERC20,
+  ISwapper,
+  ISwapperRegistry,
   WrappedPlatformTokenMock,
   WrappedPlatformTokenMock__factory,
 } from '@typechained';
@@ -16,6 +18,7 @@ import { FakeContract, smock } from '@defi-wonderland/smock';
 import { addExtra, ERC20TokenContract, TokenContract } from '@test-utils/erc20';
 import { BigNumberish } from '@ethersproject/bignumber';
 import { BytesLike } from '@ethersproject/bytes';
+import { TransactionResponse } from '@ethersproject/abstract-provider';
 
 chai.use(smock.matchers);
 
@@ -23,10 +26,11 @@ contract('DCAHubSwapperSwapHandler', () => {
   const ABI_CODER = new ethers.utils.AbiCoder();
   const DEX = constants.NOT_ZERO_ADDRESS;
   const TOKENS_PROXY = wallet.generateRandomAddress();
-  let swapper: SignerWithAddress, hub: SignerWithAddress, governor: SignerWithAddress;
+  let swapper: SignerWithAddress, hub: SignerWithAddress, governor: SignerWithAddress, recipient: SignerWithAddress;
   let DCAHub: FakeContract<IDCAHub>;
   let DCAHubSwapperSwapHandler: DCAHubSwapperSwapHandlerMock;
   let DCAHubSwapperSwapHandlerFactory: DCAHubSwapperSwapHandlerMock__factory;
+  let swapperRegistry: FakeContract<ISwapperRegistry>;
   let wToken: TokenContract<WrappedPlatformTokenMock>;
   let tokenA: ERC20TokenContract, tokenB: ERC20TokenContract;
   let snapshotId: string;
@@ -35,7 +39,7 @@ contract('DCAHubSwapperSwapHandler', () => {
   let tokens: string[];
 
   before('Setup accounts and contracts', async () => {
-    [, swapper, hub, governor] = await ethers.getSigners();
+    [, swapper, hub, governor, recipient] = await ethers.getSigners();
     DCAHubSwapperSwapHandlerFactory = await ethers.getContractFactory(
       'contracts/mocks/DCAHubSwapper/DCAHubSwapperSwapHandler.sol:DCAHubSwapperSwapHandlerMock'
     );
@@ -44,7 +48,13 @@ contract('DCAHubSwapperSwapHandler', () => {
     );
     wToken = await addExtra(await wTokenFactory.deploy('WETH', 'WETH', 18));
     DCAHub = await smock.fake('IDCAHub');
-    DCAHubSwapperSwapHandler = await DCAHubSwapperSwapHandlerFactory.deploy(DCAHub.address, wToken.address, governor.address);
+    swapperRegistry = await smock.fake('ISwapperRegistry');
+    DCAHubSwapperSwapHandler = await DCAHubSwapperSwapHandlerFactory.deploy(
+      DCAHub.address,
+      wToken.address,
+      governor.address,
+      swapperRegistry.address
+    );
     const deploy = (decimals: number) => erc20.deploy({ name: 'A name', symbol: 'SYMB', decimals });
     const deployedTokens = await Promise.all([deploy(12), deploy(16)]);
     [tokenA, tokenB] = deployedTokens.sort((a, b) => a.address.localeCompare(b.address));
@@ -55,6 +65,8 @@ contract('DCAHubSwapperSwapHandler', () => {
   beforeEach('Deploy and configure', async () => {
     await snapshot.revert(snapshotId);
     DCAHub.swap.reset();
+    swapperRegistry.isSwapperAllowlisted.reset();
+    swapperRegistry.isSwapperAllowlisted.returns(true);
   });
   describe('constructor', () => {
     when('contract is initiated', () => {
@@ -339,7 +351,12 @@ contract('DCAHubSwapperSwapHandler', () => {
         { token: wToken.address, toProvide: wToken.asUnits(200), reward: 0, platformFee: 0 },
         { token: tokenA.address, toProvide: tokenA.asUnits(100), reward: 0, platformFee: 0 },
       ];
-      DCAHubSwapperSwapHandler = await DCAHubSwapperSwapHandlerFactory.deploy(hub.address, wToken.address, governor.address);
+      DCAHubSwapperSwapHandler = await DCAHubSwapperSwapHandlerFactory.deploy(
+        hub.address,
+        wToken.address,
+        governor.address,
+        swapperRegistry.address
+      );
     });
     when('the swap plan is unexpected', () => {
       const SWAP_DATA = ABI_CODER.encode(['tuple(uint256, bytes)'], [[0, ethers.utils.randomBytes(5)]]);
@@ -390,6 +407,123 @@ contract('DCAHubSwapperSwapHandler', () => {
           await token.mint(swapper.address, tokenInSwap.toProvide);
           await token.connect(swapper).approve(DCAHubSwapperSwapHandler.address, tokenInSwap.toProvide);
         }
+      }
+    });
+    describe('handleSwapWithDexes', () => {
+      const swapData = ({ callsToSwapper, sendToHubFlag }: { callsToSwapper: BytesLike[]; sendToHubFlag: boolean }) =>
+        encode({
+          plan: 'dexes',
+          bytes: {
+            swappers: [swapper.address],
+            executions: callsToSwapper.map((swap) => ({ index: 0, data: swap })),
+            leftoverRecipient: recipient,
+            sendToProvideLeftoverToHub: sendToHubFlag,
+          },
+        });
+
+      let token: FakeContract<IERC20>;
+      let swapper: FakeContract<ISwapper>;
+      let swapExecution: BytesLike;
+      given(async () => {
+        token = await smock.fake('IERC20');
+        token.transfer.returns(true);
+        swapper = await smock.fake('ISwapper');
+        const { data } = await swapper.populateTransaction.swap(token.address, 1000, token.address);
+        swapExecution = data!;
+      });
+      when('swapper is not allowlisted', () => {
+        let tx: Promise<TransactionResponse>;
+        given(() => {
+          swapperRegistry.isSwapperAllowlisted.returns(false);
+          const data = swapData({ callsToSwapper: [], sendToHubFlag: true });
+          tx = DCAHubSwapperSwapHandler.connect(hub).DCAHubSwapCall(constants.ZERO_ADDRESS, [], [], data);
+        });
+        then('swap fails', async () => {
+          await expect(tx).to.have.revertedWith('SwapperNotAllowlisted');
+        });
+      });
+
+      when('swapper call fails', () => {
+        let tx: Promise<TransactionResponse>;
+        given(() => {
+          swapper.swap.reverts();
+          const data = swapData({ callsToSwapper: [swapExecution], sendToHubFlag: true });
+          tx = DCAHubSwapperSwapHandler.connect(hub).DCAHubSwapCall(constants.ZERO_ADDRESS, [], [], data);
+        });
+        then('then swap reverts', async () => {
+          await expect(tx).to.have.revertedWith('Call to swapper failed');
+        });
+      });
+
+      handleSwapWithDexes({
+        when: 'token needs to be provided and hub flag is set',
+        then: 'everything is transferred to the hub',
+        sendToHubFlag: true,
+        balance: 12345,
+        toProvide: 10000,
+        assertion: (token) => expect(token.transfer).to.have.been.calledOnceWith(hub.address, 12345),
+      });
+
+      handleSwapWithDexes({
+        when: 'token needs to be provided but there is no leftover',
+        then: 'available balance is sent to the hub only',
+        sendToHubFlag: false,
+        balance: 12345,
+        toProvide: 12345,
+        assertion: (token) => expect(token.transfer).to.have.been.calledOnceWith(hub.address, 12345),
+      });
+
+      handleSwapWithDexes({
+        when: 'token needs to be provided and there is some leftover',
+        then: 'leftover is sent to the recipient',
+        sendToHubFlag: false,
+        balance: 12345,
+        toProvide: 10000,
+        assertion: (token, recipient) => {
+          expect(token.transfer).to.have.been.calledTwice;
+          expect(token.transfer).to.have.been.calledWith(hub.address, 10000);
+          expect(token.transfer).to.have.been.calledWith(recipient, 2345);
+        },
+      });
+
+      handleSwapWithDexes({
+        when: 'token is reward (to provide is zero)',
+        then: 'everything is transferred to recipient',
+        balance: 12345,
+        toProvide: 0,
+        assertion: (token, recipient) => expect(token.transfer).to.have.been.calledOnceWith(recipient, 12345),
+      });
+
+      function handleSwapWithDexes({
+        when: title,
+        then: thenTitle,
+        balance,
+        toProvide,
+        sendToHubFlag,
+        assertion,
+      }: {
+        when: string;
+        then: string;
+        balance: BigNumberish;
+        toProvide?: BigNumberish;
+        sendToHubFlag?: boolean;
+        assertion: (_: FakeContract<IERC20>, recipient: string) => void;
+      }) {
+        when(title, () => {
+          given(async () => {
+            const tokensInSwap = [{ token: token.address, toProvide: toProvide ?? 0, reward: 0, platformFee: 0 }];
+            token.balanceOf.returns(balance);
+            const data = swapData({ callsToSwapper: [swapExecution], sendToHubFlag: sendToHubFlag ?? true });
+            await DCAHubSwapperSwapHandler.connect(hub).DCAHubSwapCall(constants.ZERO_ADDRESS, tokensInSwap, [], data);
+          });
+          then(thenTitle, () => assertion(token, recipient.address));
+          then('registry is queried correctly', () => {
+            expect(swapperRegistry.isSwapperAllowlisted).to.have.been.calledOnceWith(swapper.address);
+          });
+          then('swap is executed correctly', () => {
+            expect(swapper.swap).to.have.been.calledOnceWith(token.address, 1000, token.address);
+          });
+        });
       }
     });
     describe('handleSwapWithDex', () => {
@@ -680,15 +814,29 @@ contract('DCAHubSwapperSwapHandler', () => {
     sendToProvideLeftoverToHub: boolean;
     swapAndTransfer: boolean;
   };
-  function encode({ plan, bytes }: { plan: 'none' | 'invalid' | 'swap for caller' | 'dex'; bytes: 'none' | 'random' | SwapWithDex }) {
+  type SwapWithDexes = {
+    swappers: string[];
+    executions: { data: BytesLike; index: number }[];
+    sendToProvideLeftoverToHub: boolean;
+    leftoverRecipient: { address: string };
+  };
+  function encode({
+    plan,
+    bytes,
+  }: {
+    plan: 'none' | 'invalid' | 'swap for caller' | 'dex' | 'dexes';
+    bytes: 'none' | 'random' | SwapWithDexes | SwapWithDex;
+  }) {
     let swapPlan: number = 0;
     let swapData: BytesLike;
     if (plan === 'none') {
       swapPlan = 0;
     } else if (plan === 'swap for caller') {
       swapPlan = 1;
-    } else if (plan === 'dex') {
+    } else if (plan === 'dexes') {
       swapPlan = 2;
+    } else if (plan === 'dex') {
+      swapPlan = 3;
     } else if (plan === 'invalid') {
       swapPlan = 10;
     }
@@ -696,6 +844,18 @@ contract('DCAHubSwapperSwapHandler', () => {
       swapData = ethers.utils.randomBytes(10);
     } else if (bytes == 'none') {
       swapData = [];
+    } else if ('swappers' in bytes) {
+      swapData = ABI_CODER.encode(
+        ['tuple(address[], tuple(uint8, bytes)[], address, bool)'],
+        [
+          [
+            bytes.swappers,
+            bytes.executions.map(({ index, data }) => [index, data]),
+            bytes.leftoverRecipient.address,
+            bytes.sendToProvideLeftoverToHub,
+          ],
+        ]
+      );
     } else {
       swapData = ABI_CODER.encode(
         ['tuple(address, address, bool, bool, address, bytes[])'],
