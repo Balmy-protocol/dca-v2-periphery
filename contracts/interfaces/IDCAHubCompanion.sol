@@ -59,6 +59,9 @@ interface IDCAHubCompanionTakeSendAndSwapHandler {
 }
 
 interface IDCAHubCompanionHubProxyHandler {
+  /// @notice Thrown when a user tries operate on a position that they don't have access to
+  error UnauthorizedCaller();
+
   /**
    * @notice Creates a new position
    * @dev Meant to be used as part of a multicall
@@ -221,7 +224,4 @@ interface IDCAHubCompanionHubProxyHandler {
   ) external payable;
 }
 
-interface IDCAHubCompanion is IDCAHubCompanionLibrariesHandler, IDCAHubCompanionHubProxyHandler, IDCAHubCompanionTakeSendAndSwapHandler {
-  /// @notice Thrown when a user tries operate on a position that they don't have access to
-  error UnauthorizedCaller();
-}
+interface IDCAHubCompanion is IDCAHubCompanionLibrariesHandler, IDCAHubCompanionHubProxyHandler, IDCAHubCompanionTakeSendAndSwapHandler {}

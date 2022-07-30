@@ -143,7 +143,7 @@ abstract contract DCAHubCompanionHubProxyHandler is IDCAHubCompanionHubProxyHand
     uint256 _positionId,
     IDCAPermissionManager.Permission _permission
   ) internal view {
-    if (!_hub.permissionManager().hasPermission(_positionId, msg.sender, _permission)) revert IDCAHubCompanion.UnauthorizedCaller();
+    if (!_hub.permissionManager().hasPermission(_positionId, msg.sender, _permission)) revert UnauthorizedCaller();
   }
 
   modifier verifyPermission(
