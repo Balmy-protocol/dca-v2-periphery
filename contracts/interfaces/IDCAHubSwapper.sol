@@ -46,12 +46,6 @@ interface IDCAHubSwapperSwapHandler is IDCAHubSwapCallee {
   /// @notice Thrown when the amount to provide is more than the specified maximum
   error ToProvideIsTooMuch();
 
-  /// @notice Thrown when callback is not called by the hub
-  error CallbackNotCalledByHub();
-
-  /// @notice Thrown when swap was not initiated by the companion
-  error SwapNotInitiatedByCompanion();
-
   /// @notice Thrown when the callback is executed with an unexpected swap plan
   error UnexpectedSwapPlan();
 
@@ -72,24 +66,28 @@ interface IDCAHubSwapperSwapHandler is IDCAHubSwapCallee {
   /// @param _support Whether the Companion should support swaps with the given DEX
   function defineDexSupport(address _dex, bool _support) external;
 
-  /// @notice Executes a swap for the caller, by sending them the reward, and taking from them the needed tokens
-  /// @dev Will revert:
-  /// With RewardNotEnough if the minimum output is not met
-  /// With ToProvideIsTooMuch if the hub swap requires more than the given maximum input
-  /// @param _tokens The tokens involved in the swap
-  /// @param _pairsToSwap The pairs to swap
-  /// @param _minimumOutput The minimum amount of tokens to receive as part of the swap
-  /// @param _maximumInput The maximum amount of tokens to provide as part of the swap
-  /// @param _recipient Address that will receive all the tokens from the swap
-  /// @param _deadline Deadline when the swap becomes invalid
-  /// @return The information about the executed swap
+  /**
+   * @notice Executes a swap for the caller, by sending them the reward, and taking from them the needed tokens
+   * @dev Will revert:
+   *      - With RewardNotEnough if the minimum output is not met
+   *      - With ToProvideIsTooMuch if the hub swap requires more than the given maximum input
+   * @param hub The address of the DCAHub
+   * @param tokens The tokens involved in the swap
+   * @param pairsToSwap The pairs to swap
+   * @param minimumOutput The minimum amount of tokens to receive as part of the swap
+   * @param maximumInput The maximum amount of tokens to provide as part of the swap
+   * @param recipient Address that will receive all the tokens from the swap
+   * @param deadline Deadline when the swap becomes invalid
+   * @return The information about the executed swap
+   */
   function swapForCaller(
-    address[] calldata _tokens,
-    IDCAHub.PairIndexes[] calldata _pairsToSwap,
-    uint256[] calldata _minimumOutput,
-    uint256[] calldata _maximumInput,
-    address _recipient,
-    uint256 _deadline
+    IDCAHub hub,
+    address[] calldata tokens,
+    IDCAHub.PairIndexes[] calldata pairsToSwap,
+    uint256[] calldata minimumOutput,
+    uint256[] calldata maximumInput,
+    address recipient,
+    uint256 deadline
   ) external payable returns (IDCAHub.SwapInfo memory);
 
   /// @notice Executes a swap with the given DEX, and sends all unspent tokens to the given recipient

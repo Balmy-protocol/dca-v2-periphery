@@ -101,6 +101,7 @@ contract('Swap for caller', () => {
         initialHubWETHBalance = await WETH.balanceOf(DCAHub.address);
         initialHubUSDCBalance = await USDC.balanceOf(DCAHub.address);
         const swapTx = await DCAHubSwapper.connect(swapper).swapForCaller(
+          DCAHub.address,
           [USDC_ADDRESS, WETH_ADDRESS],
           [{ indexTokenA: 0, indexTokenB: 1 }],
           [0, 0],

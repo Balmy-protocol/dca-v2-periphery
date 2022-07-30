@@ -20,4 +20,12 @@ contract DCAHubSwapperSwapHandlerMock is DCAHubSwapperSwapHandler, DCAHubSwapper
   function callsToDex(address _dex) external view returns (bytes[] memory) {
     return _dexCalledWith[_dex];
   }
+
+  function isSwapExecutorEmpty() external view returns (bool) {
+    return _swapExecutor == _NO_EXECUTOR;
+  }
+
+  function setSwapExecutor(address _newSwapExecutor) external {
+    _swapExecutor = _newSwapExecutor;
+  }
 }

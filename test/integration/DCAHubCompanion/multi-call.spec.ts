@@ -425,6 +425,7 @@ contract('Multicall', () => {
 
     await WETH.connect(swapper).approve(DCAHubSwapper.address, constants.MAX_UINT_256);
     await DCAHubSwapper.connect(swapper).swapForCaller(
+      DCAHub.address,
       [USDC_ADDRESS, WETH_ADDRESS],
       [{ indexTokenA: 0, indexTokenB: 1 }],
       [0, 0],

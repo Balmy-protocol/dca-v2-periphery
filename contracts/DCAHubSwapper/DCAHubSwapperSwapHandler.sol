@@ -20,8 +20,14 @@ abstract contract DCAHubSwapperSwapHandler is DeadlineValidation, DCAHubSwapperP
   /// @inheritdoc IDCAHubSwapperSwapHandler
   mapping(address => bool) public isDexSupported;
 
+  /// @notice Represents the lack of an executor. We are not using the zero address so that it's cheaper to modify
+  address internal constant _NO_EXECUTOR = 0x000000000000000000000000000000000000dEaD;
+  /// @notice The caller who initiated a swap execution
+  address internal _swapExecutor = _NO_EXECUTOR;
+
   /// @inheritdoc IDCAHubSwapperSwapHandler
   function swapForCaller(
+    IDCAHub _hub,
     address[] calldata _tokens,
     IDCAHub.PairIndexes[] calldata _pairsToSwap,
     uint256[] calldata _minimumOutput,
@@ -29,15 +35,21 @@ abstract contract DCAHubSwapperSwapHandler is DeadlineValidation, DCAHubSwapperP
     address _recipient,
     uint256 _deadline
   ) external payable checkDeadline(_deadline) returns (IDCAHub.SwapInfo memory _swapInfo) {
+    // Set the swap's executor
+    _swapExecutor = msg.sender;
+
+    // Execute swap
     uint256[] memory _borrow = new uint256[](_tokens.length);
-    _swapInfo = hub.swap(
+    _swapInfo = _hub.swap(
       _tokens,
       _pairsToSwap,
       _recipient,
       address(this),
       _borrow,
-      abi.encode(SwapData({plan: SwapPlan.SWAP_FOR_CALLER, data: abi.encode(CallbackDataCaller({caller: msg.sender, msgValue: msg.value}))}))
+      abi.encode(SwapData({plan: SwapPlan.SWAP_FOR_CALLER, data: ''}))
     );
+
+    // Check that limits were met
     for (uint256 i; i < _swapInfo.tokens.length; i++) {
       IDCAHub.TokenInSwap memory _tokenInSwap = _swapInfo.tokens[i];
       if (_tokenInSwap.reward < _minimumOutput[i]) {
@@ -46,6 +58,9 @@ abstract contract DCAHubSwapperSwapHandler is DeadlineValidation, DCAHubSwapperP
         revert ToProvideIsTooMuch();
       }
     }
+
+    // Clear the swap executor
+    _swapExecutor = _NO_EXECUTOR;
   }
 
   /// @inheritdoc IDCAHubSwapperSwapHandler
@@ -112,16 +127,14 @@ abstract contract DCAHubSwapperSwapHandler is DeadlineValidation, DCAHubSwapperP
 
   // solhint-disable-next-line func-name-mixedcase
   function DCAHubSwapCall(
-    address _sender,
+    address,
     IDCAHub.TokenInSwap[] calldata _tokens,
     uint256[] calldata,
     bytes calldata _data
   ) external {
-    if (msg.sender != address(hub)) revert CallbackNotCalledByHub();
-    if (_sender != address(this)) revert SwapNotInitiatedByCompanion();
     SwapData memory _swapData = abi.decode(_data, (SwapData));
     if (_swapData.plan == SwapPlan.SWAP_FOR_CALLER) {
-      _handleSwapForCallerCallback(_tokens, _swapData.data);
+      _handleSwapForCallerCallback(_tokens);
     } else if (_swapData.plan == SwapPlan.SWAP_WITH_DEX) {
       _handleSwapWithDexCallback(_tokens, _swapData.data);
     } else {
@@ -217,25 +230,14 @@ abstract contract DCAHubSwapperSwapHandler is DeadlineValidation, DCAHubSwapperP
     if (!success) revert CallToDexFailed();
   }
 
-  struct CallbackDataCaller {
-    address caller;
-    uint256 msgValue;
-  }
-
-  function _handleSwapForCallerCallback(IDCAHub.TokenInSwap[] calldata _tokens, bytes memory _data) internal {
-    CallbackDataCaller memory _callbackData = abi.decode(_data, (CallbackDataCaller));
+  function _handleSwapForCallerCallback(IDCAHub.TokenInSwap[] calldata _tokens) internal {
+    // Load to mem to avoid reading storage multiple times
+    address _swapExecutorMen = _swapExecutor;
     for (uint256 i; i < _tokens.length; i++) {
       IDCAHub.TokenInSwap memory _token = _tokens[i];
       if (_token.toProvide > 0) {
-        if (_token.token == address(wToken) && _callbackData.msgValue != 0) {
-          // Wrap necessary
-          wToken.deposit{value: _token.toProvide}();
-          // Return any extra tokens to the original caller
-          if (_callbackData.msgValue > _token.toProvide) {
-            payable(_callbackData.caller).transfer(_callbackData.msgValue - _token.toProvide);
-          }
-        }
-        IERC20(_token.token).safeTransferFrom(_callbackData.caller, address(hub), _token.toProvide);
+        // We assume that msg.sender is the DCAHub
+        IERC20(_token.token).safeTransferFrom(_swapExecutorMen, msg.sender, _token.toProvide);
       }
     }
   }
