@@ -281,18 +281,14 @@ contract('Multicall', () => {
       hubFromTokenBalanceAfterSwap = await USDC.balanceOf(DCAHub.address);
       hubToTokenBalanceAfterSwap = await WETH.balanceOf(DCAHub.address);
       const permissionData = await addPermissionToCompanionData(positionOwner, positionId, Permission.REDUCE, Permission.WITHDRAW);
-      const { data: reduceData } = await DCAHubCompanion.populateTransaction.reducePositionProxy(
+      const { data: reduceData } = await DCAHubCompanion.populateTransaction.reducePosition(
         DCAHub.address,
         positionId,
         unswappedBalance,
         0,
         recipient.address
       );
-      const { data: withdrawData } = await DCAHubCompanion.populateTransaction.withdrawSwappedProxy(
-        DCAHub.address,
-        positionId,
-        recipient.address
-      );
+      const { data: withdrawData } = await DCAHubCompanion.populateTransaction.withdrawSwapped(DCAHub.address, positionId, recipient.address);
       await DCAHubCompanion.multicall([permissionData, reduceData!, withdrawData!]);
     });
     then(`hub's FROM balance is reduced`, async () => {
@@ -322,12 +318,12 @@ contract('Multicall', () => {
       ({ positionId, swappedBalance } = await depositWithWTokenAsToAndSwap());
       hubWETHBalanceAfterSwap = await WETH.balanceOf(DCAHub.address);
       const permissionData = await addPermissionToCompanionData(positionOwner, positionId, Permission.WITHDRAW);
-      const { data: withdrawData } = await DCAHubCompanion.populateTransaction.withdrawSwappedProxy(
+      const { data: withdrawData } = await DCAHubCompanion.populateTransaction.withdrawSwapped(
         DCAHub.address,
         positionId,
         DCAHubCompanion.address
       );
-      const { data: depositData } = await DCAHubCompanion.populateTransaction.depositProxy(
+      const { data: depositData } = await DCAHubCompanion.populateTransaction.deposit(
         DCAHub.address,
         WETH.address,
         USDC.address,
@@ -469,7 +465,7 @@ contract('Multicall', () => {
   async function addPermissionToCompanionData(signer: SignerWithAddress, tokenId: BigNumber, ...permissions: Permission[]) {
     const permissionsStruct = [{ operator: DCAHubCompanion.address, permissions }];
     const { v, r, s } = await getSignature(signer, tokenId, permissionsStruct);
-    const { data } = await DCAHubCompanion.populateTransaction.permissionPermitProxy(
+    const { data } = await DCAHubCompanion.populateTransaction.permissionPermit(
       DCAPermissionManager.address,
       permissionsStruct,
       tokenId,

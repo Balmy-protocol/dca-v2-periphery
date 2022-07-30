@@ -68,14 +68,14 @@ contract('DCAHubCompanionHubProxyHandler', () => {
     TERMINATE,
   }
 
-  describe('permissionPermitProxy', () => {
-    const PERMISSIONS = [{ operator: constants.NOT_ZERO_ADDRESS, permissions: [Permission.INCREASE] }];
+  const PERMISSIONS = [{ operator: constants.NOT_ZERO_ADDRESS, permissions: [Permission.INCREASE] }];
+  describe('permissionPermit', () => {
     const R = utils.formatBytes32String('r');
     const S = utils.formatBytes32String('s');
 
     when('method is executed', () => {
       given(async () => {
-        await DCAHubCompanionHubProxyHandler.permissionPermitProxy(DCAPermissionManager.address, PERMISSIONS, 10, 20, 30, R, S);
+        await DCAHubCompanionHubProxyHandler.permissionPermit(DCAPermissionManager.address, PERMISSIONS, 10, 20, 30, R, S);
       });
       then('hub is called', () => {
         expect(DCAPermissionManager.permissionPermit).to.have.been.calledOnce;
@@ -92,7 +92,7 @@ contract('DCAHubCompanionHubProxyHandler', () => {
     });
   });
 
-  describe('depositProxy', () => {
+  describe('deposit', () => {
     const TO = '0x0000000000000000000000000000000000000002';
     const AMOUNT = 10000;
     const AMOUNT_OF_SWAPS = 40;
@@ -103,7 +103,7 @@ contract('DCAHubCompanionHubProxyHandler', () => {
     when('depositing and allowance is not enough', () => {
       given(async () => {
         erc20Token.allowance.returns(AMOUNT - 1);
-        await DCAHubCompanionHubProxyHandler.depositProxy(
+        await DCAHubCompanionHubProxyHandler.deposit(
           DCAHub.address,
           erc20Token.address,
           TO,
@@ -139,7 +139,7 @@ contract('DCAHubCompanionHubProxyHandler', () => {
     when('depositing and allowance is enough', () => {
       given(async () => {
         erc20Token.allowance.returns(AMOUNT);
-        await DCAHubCompanionHubProxyHandler.depositProxy(
+        await DCAHubCompanionHubProxyHandler.deposit(
           DCAHub.address,
           erc20Token.address,
           TO,
@@ -161,7 +161,7 @@ contract('DCAHubCompanionHubProxyHandler', () => {
     when('depositing and allowance is 0', () => {
       given(async () => {
         erc20Token.allowance.returns(0);
-        await DCAHubCompanionHubProxyHandler.depositProxy(
+        await DCAHubCompanionHubProxyHandler.deposit(
           DCAHub.address,
           erc20Token.address,
           TO,
@@ -182,7 +182,7 @@ contract('DCAHubCompanionHubProxyHandler', () => {
     });
   });
 
-  describe('depositWithAllBalanceProxy', () => {
+  describe('depositWithBalanceOnContract', () => {
     const TO = '0x0000000000000000000000000000000000000002';
     const AMOUNT = 10000;
     const AMOUNT_OF_SWAPS = 40;
@@ -193,7 +193,7 @@ contract('DCAHubCompanionHubProxyHandler', () => {
     when('depositing with all balance', () => {
       given(async () => {
         erc20Token.balanceOf.returns(AMOUNT);
-        await DCAHubCompanionHubProxyHandler.depositWithAllBalanceProxy(
+        await DCAHubCompanionHubProxyHandler.depositWithBalanceOnContract(
           DCAHub.address,
           erc20Token.address,
           TO,
@@ -207,8 +207,8 @@ contract('DCAHubCompanionHubProxyHandler', () => {
       then('balance is checked correctly', () => {
         expect(erc20Token.balanceOf).to.have.been.calledOnceWith(DCAHubCompanionHubProxyHandler.address);
       });
-      then('deposit proxy is called with the correct balance', async () => {
-        const calls = await DCAHubCompanionHubProxyHandler.depositProxyCalls();
+      then('deposit is called with the correct balance', async () => {
+        const calls = await DCAHubCompanionHubProxyHandler.depositCalls();
         expect(calls).to.have.lengthOf(1);
         expect(calls[0].from).to.equal(erc20Token.address);
         expect(calls[0].to).to.equal(TO);
@@ -222,14 +222,14 @@ contract('DCAHubCompanionHubProxyHandler', () => {
   });
 
   proxyTest({
-    method: 'withdrawSwappedProxy',
+    method: 'withdrawSwapped',
     hubMethod: 'withdrawSwapped',
     permission: Permission.WITHDRAW,
     params: [10, constants.NOT_ZERO_ADDRESS],
   });
 
   proxyTest({
-    method: 'withdrawSwappedManyProxy',
+    method: 'withdrawSwappedMany',
     hubMethod: 'withdrawSwappedMany',
     permission: Permission.WITHDRAW,
     params: [[{ token: constants.NOT_ZERO_ADDRESS, positionIds: [1] }], constants.NOT_ZERO_ADDRESS],
@@ -242,13 +242,13 @@ contract('DCAHubCompanionHubProxyHandler', () => {
   });
 
   proxyTest({
-    method: 'increasePositionProxy',
+    method: 'increasePosition',
     hubMethod: 'increasePosition',
     permission: Permission.INCREASE,
     params: [10, 20, 30],
   });
 
-  describe('increasePositionProxy', () => {
+  describe('increasePosition', () => {
     const POSITION_ID = 10;
     const AMOUNT = 20;
     const AMOUNT_OF_SWAPS = 30;
@@ -259,7 +259,7 @@ contract('DCAHubCompanionHubProxyHandler', () => {
     when('increasing and allowance is not enough', () => {
       given(async () => {
         erc20Token.allowance.returns(AMOUNT - 1);
-        await DCAHubCompanionHubProxyHandler.increasePositionProxy(DCAHub.address, POSITION_ID, AMOUNT, AMOUNT_OF_SWAPS);
+        await DCAHubCompanionHubProxyHandler.increasePosition(DCAHub.address, POSITION_ID, AMOUNT, AMOUNT_OF_SWAPS);
       });
       then('allowance is checked correctly', () => {
         expect(erc20Token.allowance).to.have.been.calledWith(DCAHubCompanionHubProxyHandler.address, DCAHub.address);
@@ -273,7 +273,7 @@ contract('DCAHubCompanionHubProxyHandler', () => {
     when('increasing and allowance is enough', () => {
       given(async () => {
         erc20Token.allowance.returns(AMOUNT);
-        await DCAHubCompanionHubProxyHandler.increasePositionProxy(DCAHub.address, POSITION_ID, AMOUNT, AMOUNT_OF_SWAPS);
+        await DCAHubCompanionHubProxyHandler.increasePosition(DCAHub.address, POSITION_ID, AMOUNT, AMOUNT_OF_SWAPS);
       });
       then('allowance is checked correctly', () => {
         expect(erc20Token.allowance).to.have.been.calledWith(DCAHubCompanionHubProxyHandler.address, DCAHub.address);
@@ -285,7 +285,7 @@ contract('DCAHubCompanionHubProxyHandler', () => {
     when('increasing and allowance is 0', () => {
       given(async () => {
         erc20Token.allowance.returns(0);
-        await DCAHubCompanionHubProxyHandler.increasePositionProxy(DCAHub.address, POSITION_ID, AMOUNT, AMOUNT_OF_SWAPS);
+        await DCAHubCompanionHubProxyHandler.increasePosition(DCAHub.address, POSITION_ID, AMOUNT, AMOUNT_OF_SWAPS);
       });
       then('allowance is checked correctly', () => {
         expect(erc20Token.allowance).to.have.been.calledWith(DCAHubCompanionHubProxyHandler.address, DCAHub.address);
@@ -296,7 +296,7 @@ contract('DCAHubCompanionHubProxyHandler', () => {
     });
   });
 
-  describe('increasePositionWithAllBalanceProxy', () => {
+  describe('increasePositionWithBalanceOnContract', () => {
     const POSITION_ID = 10;
     const AMOUNT = 20;
     const AMOUNT_OF_SWAPS = 30;
@@ -305,7 +305,7 @@ contract('DCAHubCompanionHubProxyHandler', () => {
         DCAPermissionManager.hasPermission.returns(true);
         erc20Token.balanceOf.returns(AMOUNT);
         erc20Token.allowance.returns(AMOUNT - 1);
-        await DCAHubCompanionHubProxyHandler.increasePositionWithAllBalanceProxy(DCAHub.address, POSITION_ID, AMOUNT_OF_SWAPS);
+        await DCAHubCompanionHubProxyHandler.increasePositionWithBalanceOnContract(DCAHub.address, POSITION_ID, AMOUNT_OF_SWAPS);
       });
       then('allowance is checked correctly', () => {
         expect(erc20Token.allowance).to.have.been.calledWith(DCAHubCompanionHubProxyHandler.address, DCAHub.address);
@@ -324,7 +324,7 @@ contract('DCAHubCompanionHubProxyHandler', () => {
         DCAPermissionManager.hasPermission.returns(false);
       });
       then('operation is reverted', async () => {
-        const result: Promise<TransactionResponse> = DCAHubCompanionHubProxyHandler.increasePositionWithAllBalanceProxy(
+        const result: Promise<TransactionResponse> = DCAHubCompanionHubProxyHandler.increasePositionWithBalanceOnContract(
           DCAHub.address,
           POSITION_ID,
           AMOUNT_OF_SWAPS
@@ -335,14 +335,14 @@ contract('DCAHubCompanionHubProxyHandler', () => {
   });
 
   proxyTest({
-    method: 'reducePositionProxy',
+    method: 'reducePosition',
     hubMethod: 'reducePosition',
     permission: Permission.REDUCE,
     params: [10, 20, 30, constants.NOT_ZERO_ADDRESS],
   });
 
   proxyTest({
-    method: 'terminateProxy',
+    method: 'terminate',
     hubMethod: 'terminate',
     permission: Permission.TERMINATE,
     params: [10, constants.NOT_ZERO_ADDRESS, constants.NOT_ZERO_ADDRESS],
