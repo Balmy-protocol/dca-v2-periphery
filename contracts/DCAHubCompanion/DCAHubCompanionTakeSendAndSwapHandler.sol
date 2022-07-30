@@ -28,7 +28,7 @@ abstract contract DCAHubCompanionTakeSendAndSwapHandler is SwapAdapter, IDCAHubC
   }
 
   /// @inheritdoc IDCAHubCompanionTakeSendAndSwapHandler
-  function sendAllBalanceToRecipient(address _token, address _recipient) external payable {
+  function sendBalanceOnContractToRecipient(address _token, address _recipient) external payable {
     _sendBalanceToRecipient(_token, _recipient);
   }
 }

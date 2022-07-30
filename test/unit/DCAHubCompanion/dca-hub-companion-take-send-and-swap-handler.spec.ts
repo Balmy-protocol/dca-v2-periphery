@@ -27,6 +27,7 @@ contract('DCAHubCompanionTakeSendAndSwapHandler', () => {
   beforeEach(async () => {
     await snapshot.revert(snapshotId);
     token.transfer.reset();
+    token.transferFrom.returns(true);
     token.transfer.returns(true);
   });
 
@@ -51,6 +52,36 @@ contract('DCAHubCompanionTakeSendAndSwapHandler', () => {
       });
       then('balance is transferred to recipient', async () => {
         expect(await ethers.provider.getBalance(RECIPIENT.address)).to.equal(AMOUNT);
+      });
+    });
+  });
+
+  describe('takeFromCaller', () => {
+    const AMOUNT = 123456789;
+    when('taking token from caller', () => {
+      given(async () => {
+        await TakeSendAndSwapHandler.takeFromCaller(token.address, AMOUNT);
+      });
+      then('internal function is called correctly', async () => {
+        const calls = await TakeSendAndSwapHandler.takeFromMsgSenderCalls();
+        expect(calls).to.have.lengthOf(1);
+        expect(calls[0].token).to.equal(token.address);
+        expect(calls[0].amount).to.equal(AMOUNT);
+      });
+    });
+  });
+
+  describe('sendBalanceOnContractToRecipient', () => {
+    const RECIPIENT = Wallet.createRandom();
+    when('sending balance on contract to a recipient', () => {
+      given(async () => {
+        await TakeSendAndSwapHandler.sendBalanceOnContractToRecipient(token.address, RECIPIENT.address);
+      });
+      then('internal function is called correctly', async () => {
+        const calls = await TakeSendAndSwapHandler.sendBalanceToRecipientCalls();
+        expect(calls).to.have.lengthOf(1);
+        expect(calls[0].token).to.equal(token.address);
+        expect(calls[0].recipient).to.equal(RECIPIENT.address);
       });
     });
   });

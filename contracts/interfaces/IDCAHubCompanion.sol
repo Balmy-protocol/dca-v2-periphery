@@ -43,7 +43,7 @@ interface IDCAHubCompanionTakeSendAndSwapHandler {
    * @param token The token to check
    * @param recipient The recipient of the token balance
    */
-  function sendAllBalanceToRecipient(address token, address recipient) external payable;
+  function sendBalanceOnContractToRecipient(address token, address recipient) external payable;
 
   /**
    * @notice Sends the specified amount of the given token to the recipient
