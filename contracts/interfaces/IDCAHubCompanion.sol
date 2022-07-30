@@ -29,7 +29,39 @@ interface IDCAHubCompanionLibrariesHandler {
   function secondsUntilNextSwap(IDCAHub hub, Pair[] calldata pairs) external view returns (uint256[] memory);
 }
 
+interface IDCAHubCompanionTakeSendAndSwapHandler {
+  /**
+   * @notice Takes the given amount of tokens from the caller and transfers it to this contract
+   * @param token The token to take
+   * @param amount The amount to take
+   */
+  function takeFromCaller(IERC20 token, uint256 amount) external payable;
+
+  /**
+   * @notice Checks if the contract has any balance of the given token, and if it does,
+   *         it sends it to the given recipient
+   * @param token The token to check
+   * @param recipient The recipient of the token balance
+   */
+  function sendBalanceOnContractToRecipient(address token, address recipient) external payable;
+
+  /**
+   * @notice Sends the specified amount of the given token to the recipient
+   * @param token The token to transfer
+   * @param token The amount to transfer
+   * @param recipient The recipient of the token balance
+   */
+  function sendToRecipient(
+    address token,
+    uint256 amount,
+    address recipient
+  ) external payable;
+}
+
 interface IDCAHubCompanionHubProxyHandler {
+  /// @notice Thrown when a user tries operate on a position that they don't have access to
+  error UnauthorizedCaller();
+
   /**
    * @notice Creates a new position
    * @dev Meant to be used as part of a multicall
@@ -192,10 +224,4 @@ interface IDCAHubCompanionHubProxyHandler {
   ) external payable;
 }
 
-interface IDCAHubCompanion is IDCAHubCompanionLibrariesHandler, IDCAHubCompanionHubProxyHandler {
-  /// @notice Thrown when one of the parameters is a zero address
-  error ZeroAddress();
-
-  /// @notice Thrown when a user tries operate on a position that they don't have access to
-  error UnauthorizedCaller();
-}
+interface IDCAHubCompanion is IDCAHubCompanionLibrariesHandler, IDCAHubCompanionHubProxyHandler, IDCAHubCompanionTakeSendAndSwapHandler {}
