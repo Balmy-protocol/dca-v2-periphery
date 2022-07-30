@@ -29,7 +29,7 @@ interface IDCAHubCompanionLibrariesHandler {
   function secondsUntilNextSwap(IDCAHub hub, Pair[] calldata pairs) external view returns (uint256[] memory);
 }
 
-interface IDCAHubCompanionTakeWithdrawAndSwapHandler {
+interface IDCAHubCompanionTakeSendAndSwapHandler {
   /**
    * @notice Takes the given amount of tokens from the caller and transfers it to this contract
    * @param token The token to take
@@ -221,7 +221,7 @@ interface IDCAHubCompanionHubProxyHandler {
   ) external payable;
 }
 
-interface IDCAHubCompanion is IDCAHubCompanionLibrariesHandler, IDCAHubCompanionHubProxyHandler, IDCAHubCompanionTakeWithdrawAndSwapHandler {
+interface IDCAHubCompanion is IDCAHubCompanionLibrariesHandler, IDCAHubCompanionHubProxyHandler, IDCAHubCompanionTakeSendAndSwapHandler {
   /// @notice Thrown when a user tries operate on a position that they don't have access to
   error UnauthorizedCaller();
 }

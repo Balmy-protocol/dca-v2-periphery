@@ -3,13 +3,13 @@ pragma solidity >=0.8.7 <0.9.0;
 
 import './DCAHubCompanionLibrariesHandler.sol';
 import './DCAHubCompanionHubProxyHandler.sol';
-import './DCAHubCompanionTakeWithdrawAndSwapHandler.sol';
+import './DCAHubCompanionTakeSendAndSwapHandler.sol';
 import './utils/Multicall.sol';
 
 contract DCAHubCompanion is
   DCAHubCompanionLibrariesHandler,
   DCAHubCompanionHubProxyHandler,
-  DCAHubCompanionTakeWithdrawAndSwapHandler,
+  DCAHubCompanionTakeSendAndSwapHandler,
   Multicall,
   IDCAHubCompanion
 {

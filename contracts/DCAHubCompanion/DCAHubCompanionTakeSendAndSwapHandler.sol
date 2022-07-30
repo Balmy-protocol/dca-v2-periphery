@@ -5,11 +5,11 @@ import '@mean-finance/swappers/solidity/contracts/SwapAdapter.sol';
 import '../interfaces/IDCAHubCompanion.sol';
 
 /// @dev All public functions are payable, so that they can be multicalled together with other payable functions when msg.value > 0
-abstract contract DCAHubCompanionTakeWithdrawAndSwapHandler is SwapAdapter, IDCAHubCompanionTakeWithdrawAndSwapHandler {
+abstract contract DCAHubCompanionTakeSendAndSwapHandler is SwapAdapter, IDCAHubCompanionTakeSendAndSwapHandler {
   using SafeERC20 for IERC20;
   using Address for address payable;
 
-  /// @inheritdoc IDCAHubCompanionTakeWithdrawAndSwapHandler
+  /// @inheritdoc IDCAHubCompanionTakeSendAndSwapHandler
   function sendToRecipient(
     address _token,
     uint256 _amount,
@@ -22,12 +22,12 @@ abstract contract DCAHubCompanionTakeWithdrawAndSwapHandler is SwapAdapter, IDCA
     }
   }
 
-  /// @inheritdoc IDCAHubCompanionTakeWithdrawAndSwapHandler
+  /// @inheritdoc IDCAHubCompanionTakeSendAndSwapHandler
   function takeFromCaller(IERC20 _token, uint256 _amount) external payable {
     _takeFromMsgSender(_token, _amount);
   }
 
-  /// @inheritdoc IDCAHubCompanionTakeWithdrawAndSwapHandler
+  /// @inheritdoc IDCAHubCompanionTakeSendAndSwapHandler
   function sendAllBalanceToRecipient(address _token, address _recipient) external payable {
     _sendBalanceToRecipient(_token, _recipient);
   }
