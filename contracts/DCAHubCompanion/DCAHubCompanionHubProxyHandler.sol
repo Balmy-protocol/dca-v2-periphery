@@ -9,7 +9,7 @@ abstract contract DCAHubCompanionHubProxyHandler is IDCAHubCompanionHubProxyHand
   using SafeERC20 for IERC20Metadata;
 
   /// @inheritdoc IDCAHubCompanionHubProxyHandler
-  function permissionPermitProxy(
+  function permissionPermit(
     IDCAPermissionManager _permissionManager,
     IDCAPermissionManager.PermissionSet[] calldata _permissions,
     uint256 _tokenId,
@@ -22,7 +22,7 @@ abstract contract DCAHubCompanionHubProxyHandler is IDCAHubCompanionHubProxyHand
   }
 
   /// @inheritdoc IDCAHubCompanionHubProxyHandler
-  function depositProxy(
+  function deposit(
     IDCAHub _hub,
     address _from,
     address _to,
@@ -40,7 +40,7 @@ abstract contract DCAHubCompanionHubProxyHandler is IDCAHubCompanionHubProxyHand
   }
 
   /// @inheritdoc IDCAHubCompanionHubProxyHandler
-  function depositWithAllBalanceProxy(
+  function depositWithBalanceOnContract(
     IDCAHub _hub,
     address _from,
     address _to,
@@ -51,11 +51,11 @@ abstract contract DCAHubCompanionHubProxyHandler is IDCAHubCompanionHubProxyHand
     bytes calldata _miscellaneous
   ) external payable returns (uint256 _positionId) {
     uint256 _amount = IERC20(_from).balanceOf(address(this));
-    return depositProxy(_hub, _from, _to, _amount, _amountOfSwaps, _swapInterval, _owner, _permissions, _miscellaneous);
+    return deposit(_hub, _from, _to, _amount, _amountOfSwaps, _swapInterval, _owner, _permissions, _miscellaneous);
   }
 
   /// @inheritdoc IDCAHubCompanionHubProxyHandler
-  function withdrawSwappedProxy(
+  function withdrawSwapped(
     IDCAHub _hub,
     uint256 _positionId,
     address _recipient
@@ -64,7 +64,7 @@ abstract contract DCAHubCompanionHubProxyHandler is IDCAHubCompanionHubProxyHand
   }
 
   /// @inheritdoc IDCAHubCompanionHubProxyHandler
-  function withdrawSwappedManyProxy(
+  function withdrawSwappedMany(
     IDCAHub _hub,
     IDCAHub.PositionSet[] calldata _positions,
     address _recipient
@@ -78,7 +78,7 @@ abstract contract DCAHubCompanionHubProxyHandler is IDCAHubCompanionHubProxyHand
   }
 
   /// @inheritdoc IDCAHubCompanionHubProxyHandler
-  function increasePositionProxy(
+  function increasePosition(
     IDCAHub _hub,
     uint256 _positionId,
     uint256 _amount,
@@ -90,7 +90,19 @@ abstract contract DCAHubCompanionHubProxyHandler is IDCAHubCompanionHubProxyHand
   }
 
   /// @inheritdoc IDCAHubCompanionHubProxyHandler
-  function reducePositionProxy(
+  function increasePositionWithBalanceOnContract(
+    IDCAHub _hub,
+    uint256 _positionId,
+    uint32 _newSwaps
+  ) external payable verifyPermission(_hub, _positionId, IDCAPermissionManager.Permission.INCREASE) {
+    IERC20Metadata _from = _hub.userPosition(_positionId).from;
+    uint256 _amount = _from.balanceOf(address(this));
+    _approveHub(address(_from), _hub, _amount);
+    _hub.increasePosition(_positionId, _amount, _newSwaps);
+  }
+
+  /// @inheritdoc IDCAHubCompanionHubProxyHandler
+  function reducePosition(
     IDCAHub _hub,
     uint256 _positionId,
     uint256 _amount,
@@ -101,7 +113,7 @@ abstract contract DCAHubCompanionHubProxyHandler is IDCAHubCompanionHubProxyHand
   }
 
   /// @inheritdoc IDCAHubCompanionHubProxyHandler
-  function terminateProxy(
+  function terminate(
     IDCAHub _hub,
     uint256 _positionId,
     address _recipientUnswapped,

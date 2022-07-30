@@ -4,7 +4,7 @@ pragma solidity >=0.8.7 <0.9.0;
 import '../../DCAHubCompanion/DCAHubCompanionHubProxyHandler.sol';
 
 contract DCAHubCompanionHubProxyHandlerMock is DCAHubCompanionHubProxyHandler {
-  struct DepositProxyCall {
+  struct DepositCall {
     IDCAHub hub;
     address from;
     address to;
@@ -16,13 +16,13 @@ contract DCAHubCompanionHubProxyHandlerMock is DCAHubCompanionHubProxyHandler {
     bytes miscellaneous;
   }
 
-  DepositProxyCall[] private _depositProxyCalls;
+  DepositCall[] private _depositCalls;
 
-  function depositProxyCalls() external view returns (DepositProxyCall[] memory) {
-    return _depositProxyCalls;
+  function depositCalls() external view returns (DepositCall[] memory) {
+    return _depositCalls;
   }
 
-  function depositProxy(
+  function deposit(
     IDCAHub _hub,
     address _from,
     address _to,
@@ -33,8 +33,8 @@ contract DCAHubCompanionHubProxyHandlerMock is DCAHubCompanionHubProxyHandler {
     IDCAPermissionManager.PermissionSet[] calldata _permissions,
     bytes calldata _miscellaneous
   ) public payable override returns (uint256 _positionId) {
-    _depositProxyCalls.push();
-    DepositProxyCall storage _ref = _depositProxyCalls[_depositProxyCalls.length - 1];
+    _depositCalls.push();
+    DepositCall storage _ref = _depositCalls[_depositCalls.length - 1];
     _ref.hub = _hub;
     _ref.from = _from;
     _ref.to = _to;
@@ -46,6 +46,6 @@ contract DCAHubCompanionHubProxyHandlerMock is DCAHubCompanionHubProxyHandler {
     for (uint256 i = 0; i < _permissions.length; i++) {
       _ref.permissions.push(_permissions[i]);
     }
-    return super.depositProxy(_hub, _from, _to, _amount, _amountOfSwaps, _swapInterval, _owner, _permissions, _miscellaneous);
+    return super.deposit(_hub, _from, _to, _amount, _amountOfSwaps, _swapInterval, _owner, _permissions, _miscellaneous);
   }
 }

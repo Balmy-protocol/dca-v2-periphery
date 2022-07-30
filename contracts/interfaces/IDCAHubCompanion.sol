@@ -43,7 +43,7 @@ interface IDCAHubCompanionHubProxyHandler {
    * @param miscellaneous Bytes that will be emitted, and associated with the position. If empty, no event will be emitted
    * @return positionId The id of the created position
    */
-  function depositProxy(
+  function deposit(
     IDCAHub hub,
     address from,
     address to,
@@ -67,7 +67,7 @@ interface IDCAHubCompanionHubProxyHandler {
    * @param miscellaneous Bytes that will be emitted, and associated with the position. If empty, no event will be emitted
    * @return positionId The id of the created position
    */
-  function depositWithAllBalanceProxy(
+  function depositWithBalanceOnContract(
     IDCAHub hub,
     address from,
     address to,
@@ -86,7 +86,7 @@ interface IDCAHubCompanionHubProxyHandler {
    * @param recipient The address to withdraw swapped tokens to
    * @return swapped How much was withdrawn
    */
-  function withdrawSwappedProxy(
+  function withdrawSwapped(
     IDCAHub hub,
     uint256 positionId,
     address recipient
@@ -100,7 +100,7 @@ interface IDCAHubCompanionHubProxyHandler {
    * @param recipient The address to withdraw swapped tokens to
    * @return withdrawn How much was withdrawn for each token
    */
-  function withdrawSwappedManyProxy(
+  function withdrawSwappedMany(
     IDCAHub hub,
     IDCAHub.PositionSet[] calldata positions,
     address recipient
@@ -108,17 +108,31 @@ interface IDCAHubCompanionHubProxyHandler {
 
   /**
    * @notice Call the hub and takes the unswapped balance, adds the new deposited funds and modifies the position so that
-   * it is executed in newSwaps swaps
+   * it is executed in `newSwaps` swaps
    * @dev Meant to be used as part of a multicall
    * @param hub The address of the DCAHub
    * @param positionId The position's id
    * @param amount Amount of funds to add to the position
    * @param newSwaps The new amount of swaps
    */
-  function increasePositionProxy(
+  function increasePosition(
     IDCAHub hub,
     uint256 positionId,
     uint256 amount,
+    uint32 newSwaps
+  ) external payable;
+
+  /**
+   * @notice Call the hub and takes the unswapped balance, adds the Companion's current balance and modifies the position so that
+   * it is executed in `newSwaps` swaps
+   * @dev Meant to be used as part of a multicall
+   * @param hub The address of the DCAHub
+   * @param positionId The position's id
+   * @param newSwaps The new amount of swaps
+   */
+  function increasePositionWithBalanceOnContract(
+    IDCAHub hub,
+    uint256 positionId,
     uint32 newSwaps
   ) external payable;
 
@@ -132,7 +146,7 @@ interface IDCAHubCompanionHubProxyHandler {
    * @param newSwaps The new amount of swaps
    * @param recipient The address to send tokens to
    */
-  function reducePositionProxy(
+  function reducePosition(
     IDCAHub hub,
     uint256 positionId,
     uint256 amount,
@@ -150,7 +164,7 @@ interface IDCAHubCompanionHubProxyHandler {
    * @return unswapped The unswapped balance sent to `recipientUnswapped`
    * @return swapped The swapped balance sent to `recipientSwapped`
    */
-  function terminateProxy(
+  function terminate(
     IDCAHub hub,
     uint256 positionId,
     address recipientUnswapped,
@@ -167,7 +181,7 @@ interface IDCAHubCompanionHubProxyHandler {
    * @param r Must produce valid secp256k1 signature from the holder along with `v` and `s`
    * @param s Must produce valid secp256k1 signature from the holder along with `r` and `v`
    */
-  function permissionPermitProxy(
+  function permissionPermit(
     IDCAPermissionManager permissionManager,
     IDCAPermissionManager.PermissionSet[] calldata permissions,
     uint256 tokenId,
