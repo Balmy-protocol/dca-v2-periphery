@@ -40,6 +40,14 @@ interface IDCAHubSwapperParameters is IGovernable {
 }
 
 interface IDCAHubSwapperSwapHandler is IDCAHubSwapCallee {
+  /// @notice The data necessary for a swap to be executed
+  struct SwapExecution {
+    // The index of the swapper in the swapper array
+    uint8 swapperIndex;
+    // The swap's execution
+    bytes swapData;
+  }
+
   /// @notice Thrown when the reward is less that the specified minimum
   error RewardNotEnough();
 
@@ -138,10 +146,4 @@ interface IDCAHubSwapperSwapHandler is IDCAHubSwapCallee {
 
 interface IDCAHubSwapperDustHandler is ICollectableDust {}
 
-interface IDCAHubSwapper is IDCAHubSwapperParameters, IDCAHubSwapperSwapHandler, IDCAHubSwapperDustHandler {
-  /// @notice Thrown when one of the parameters is a zero address
-  error ZeroAddress();
-
-  /// @notice Thrown when a user tries operate on a position that they don't have access to
-  error UnauthorizedCaller();
-}
+interface IDCAHubSwapper is IDCAHubSwapperParameters, IDCAHubSwapperSwapHandler, IDCAHubSwapperDustHandler {}

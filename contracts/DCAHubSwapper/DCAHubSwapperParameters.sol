@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: GPL-2.0-or-later
 pragma solidity >=0.8.7 <0.9.0;
 
+import '@mean-finance/swappers/solidity/contracts/SwapAdapter.sol';
 import '../interfaces/IDCAHubSwapper.sol';
 import '../utils/Governable.sol';
 
@@ -17,7 +18,7 @@ abstract contract DCAHubSwapperParameters is Governable, IDCAHubSwapperParameter
     IWrappedProtocolToken _wToken,
     address _governor
   ) Governable(_governor) {
-    if (address(_hub) == address(0) || address(_wToken) == address(0)) revert IDCAHubSwapper.ZeroAddress();
+    if (address(_hub) == address(0) || address(_wToken) == address(0)) revert ISwapAdapter.ZeroAddress();
     hub = _hub;
     wToken = _wToken;
   }

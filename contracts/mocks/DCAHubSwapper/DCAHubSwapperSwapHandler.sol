@@ -10,8 +10,9 @@ contract DCAHubSwapperSwapHandlerMock is DCAHubSwapperSwapHandler, DCAHubSwapper
   constructor(
     IDCAHub _hub,
     IWrappedProtocolToken _wToken,
-    address _governor
-  ) DCAHubSwapperParametersMock(_hub, _wToken, _governor) {}
+    address _governor,
+    address _swapperRegistry
+  ) DCAHubSwapperParametersMock(_hub, _wToken, _governor) DCAHubSwapperSwapHandler(_swapperRegistry) {}
 
   function _callDex(address _dex, bytes memory _data) internal override {
     _dexCalledWith[_dex].push(_data);
