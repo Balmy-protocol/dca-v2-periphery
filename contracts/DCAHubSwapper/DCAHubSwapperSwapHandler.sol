@@ -108,7 +108,7 @@ abstract contract DCAHubSwapperSwapHandler is DeadlineValidation, DCAHubSwapperP
     }
 
     // Prepare data for callback
-    SwapWithDexCallbackData memory _callbackData = SwapWithDexCallbackData({
+    SwapWithDexesCallbackData memory _callbackData = SwapWithDexesCallbackData({
       swappers: _parameters.swappers,
       executions: _parameters.executions,
       leftoverRecipient: _parameters.leftoverRecipient,
