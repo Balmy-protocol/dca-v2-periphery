@@ -24,7 +24,7 @@ abstract contract DCAHubSwapperSwapHandler is DeadlineValidation, DCAHubSwapperP
     bytes data;
   }
   /// @notice Data used for the callback
-  struct SwapWithDexCallbackData {
+  struct SwapWithDexesCallbackData {
     // The different swappers involved in the swap
     address[] swappers;
     // The different swaps to execute
@@ -175,7 +175,7 @@ abstract contract DCAHubSwapperSwapHandler is DeadlineValidation, DCAHubSwapperP
   }
 
   function _handleSwapWithDexesCallback(IDCAHub.TokenInSwap[] calldata _tokens, bytes memory _data) internal {
-    SwapWithDexCallbackData memory _callbackData = abi.decode(_data, (SwapWithDexCallbackData));
+    SwapWithDexesCallbackData memory _callbackData = abi.decode(_data, (SwapWithDexesCallbackData));
 
     // Validate that all swappers are allowlisted
     for (uint256 i; i < _callbackData.swappers.length; i++) {
