@@ -171,7 +171,7 @@ contract('PositionMigrator', () => {
     const DCAHubSwapperFactory: DCAHubSwapper__factory = await ethers.getContractFactory(
       'contracts/DCAHubSwapper/DCAHubSwapper.sol:DCAHubSwapper'
     );
-    const DCAHubSwapper = await DCAHubSwapperFactory.deploy(hub.address, WETH.address, constants.NOT_ZERO_ADDRESS, constants.NOT_ZERO_ADDRESS);
+    const DCAHubSwapper = await DCAHubSwapperFactory.deploy(constants.NOT_ZERO_ADDRESS);
     await WETH.connect(swapper).approve(DCAHubSwapper.address, constants.MAX_UINT_256);
     await DCAHubSwapper.connect(swapper).swapForCaller(
       hub.address,

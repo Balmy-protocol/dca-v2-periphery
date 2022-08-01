@@ -50,7 +50,7 @@ contract('DCAFeeManager', () => {
 
     await deterministicFactory.connect(superAdmin).grantRole(await deterministicFactory.DEPLOYER_ROLE(), namedAccounts.deployer);
 
-    await deployments.run(['DCAHub', 'DCAHubSwapper', 'DCAFeeManager'], {
+    await deployments.run(['DCAHub', 'SwapperRegistry', 'DCAHubSwapper', 'DCAFeeManager'], {
       resetMemory: true,
       deletePreviousDeployments: false,
       writeDeploymentsToFiles: false,

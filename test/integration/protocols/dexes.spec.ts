@@ -2,17 +2,15 @@ import { expect } from 'chai';
 import { deployments, ethers, getNamedAccounts } from 'hardhat';
 import { JsonRpcSigner, TransactionResponse } from '@ethersproject/providers';
 import { constants, wallet } from '@test-utils';
-import { given, then, when } from '@test-utils/bdd';
+import { given, then } from '@test-utils/bdd';
 import evm, { snapshot } from '@test-utils/evm';
-import { DCAHubCompanion, DCAHubSwapper, IERC20Metadata, IERC20Metadata__factory } from '@typechained';
+import { DCAHubCompanion, DCAHubSwapper, IERC20Metadata, IERC20Metadata__factory, ISwapperRegistry } from '@typechained';
 import { DCAHub } from '@mean-finance/dca-v2-core/typechained';
 import { abi as DCA_HUB_ABI } from '@mean-finance/dca-v2-core/artifacts/contracts/DCAHub/DCAHub.sol/DCAHub.json';
 import { BigNumber, utils } from 'ethers';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers';
 import { SwapInterval } from '@test-utils/interval-utils';
-import zrx from '@test-utils/dexes/zrx';
 import paraswap from '@test-utils/dexes/paraswap';
-import oneinch from '@test-utils/dexes/oneinch';
 import { DeterministicFactory, DeterministicFactory__factory } from '@mean-finance/deterministic-factory/typechained';
 
 const WETH_ADDRESS_BY_NETWORK: { [network: string]: string } = {
@@ -29,6 +27,7 @@ describe.skip('Dexes', () => {
   let sender: SignerWithAddress, recipient: SignerWithAddress;
   let DCAHubSwapper: DCAHubSwapper;
   let DCAHubCompanion: DCAHubCompanion;
+  let swapperRegistry: ISwapperRegistry;
   let DCAHub: DCAHub;
   let initialPerformedSwaps: number;
   let snapshotId: string;
@@ -81,13 +80,14 @@ describe.skip('Dexes', () => {
 
     await deterministicFactory.connect(governor).grantRole(await deterministicFactory.DEPLOYER_ROLE(), namedAccounts.deployer);
 
-    await deployments.run(['DCAHub', 'DCAHubCompanion', 'DCAHubSwapper'], {
+    await deployments.run(['DCAHub', 'DCAHubCompanion', 'SwapperRegistry', 'DCAHubSwapper'], {
       resetMemory: true,
       deletePreviousDeployments: false,
       writeDeploymentsToFiles: false,
     });
     DCAHub = await ethers.getContract('DCAHub');
     DCAHubCompanion = await ethers.getContract('DCAHubCompanion');
+    swapperRegistry = await ethers.getContract('SwapperRegistry');
     DCAHubSwapper = await ethers.getContract('DCAHubSwapper');
     await wallet.setBalance({ account: governorAddress, balance: constants.MAX_UINT_256 });
     const timelockContract = await ethers.getContract('Timelock');
@@ -156,18 +156,17 @@ describe.skip('Dexes', () => {
         const { tokens } = await DCAHubCompanion.getNextSwapInfo(DCAHub.address, [{ tokenA: sortedTokens[0], tokenB: sortedTokens[1] }]);
         const weth = tokens[wethIndex];
         const dexQuote = await getQuoteData(WETH, token, weth.reward);
-        await DCAHubSwapper.connect(governor).defineDexSupport(dexQuote.to, true);
-        const swapTx = await DCAHubSwapper.swapWithDex(
-          dexQuote.to,
-          dexQuote.allowanceTarget,
-          [sortedTokens[0], sortedTokens[1]],
-          [{ indexTokenA: 0, indexTokenB: 1 }],
-          [dexQuote.data],
-          false,
-          recipient.address,
-          constants.MAX_UINT_256
-        );
-
+        await swapperRegistry.connect(governor).allowSwappers([dexQuote.to]);
+        const swapTx = await DCAHubSwapper.swapWithDexes({
+          hub: DCAHub.address,
+          tokens: sortedTokens,
+          pairsToSwap: [{ indexTokenA: 0, indexTokenB: 1 }],
+          allowanceTargets: [{ token: WETH.address, allowanceTarget: dexQuote.allowanceTarget, minAllowance: 0 }],
+          swappers: [dexQuote.to],
+          executions: [{ swapperIndex: 0, swapData: dexQuote.data }],
+          leftoverRecipient: recipient.address,
+          deadline: constants.MAX_UINT_256,
+        });
         ({ reward, toProvide } = await getTransfers(swapTx));
       });
       then('swap is executed', async () => {
