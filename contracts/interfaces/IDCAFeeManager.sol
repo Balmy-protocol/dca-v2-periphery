@@ -2,7 +2,7 @@
 pragma solidity >=0.8.7 <0.9.0;
 
 import '@mean-finance/dca-v2-core/contracts/interfaces/IDCAHub.sol';
-import './IWrappedProtocolToken.sol';
+import '@mean-finance/swappers/solidity/contracts/extensions/RunSwap.sol';
 
 /**
  * @title DCA Fee Manager
@@ -42,9 +42,6 @@ interface IDCAFeeManager {
     uint256 remaining;
   }
 
-  /// @notice Thrown when one of the parameters is a zero address
-  error ZeroAddress();
-
   /**
    * @notice The contract's owner and other allowed users can specify the target tokens that the fees
    *         should be converted to. They can also specify the percentage assigned to each token
@@ -63,13 +60,6 @@ interface IDCAFeeManager {
   function SWAP_INTERVAL() external view returns (uint32);
 
   /**
-   * @notice Returns address for the wToken
-   * @dev This value cannot be modified after deployment
-   * @return The address for the wToken
-   */
-  function wToken() external view returns (IWrappedProtocolToken);
-
-  /**
    * @notice Returns the position id for a given (from, to) pair
    * @dev Key for (tokenA, tokenB) is different from the key for(tokenB, tokenA)
    * @param pairKey The key of the pair (from, to)
@@ -78,15 +68,17 @@ interface IDCAFeeManager {
   function positions(bytes32 pairKey) external view returns (uint256); // key(from, to) => position id
 
   /**
-   * @notice Unwraps all wToken, in exchange for the protocol token
-   * @dev Can only be executed by the owner or allowed users
-   * @param amount The amount to unwrap
+   * @notice Executes a swap with the given swapper. The input tokens are expected to be on the contract before
+   *         this function is executed. If the swap doesn't include a transfer, then the swapped tokens will be left
+   *         on the contract
+   * @dev This function can only be executed with swappers that are allowlisted. Can only be executed by admins
+   * @param parameters The parameters for the swap
    */
-  function unwrapWToken(uint256 amount) external;
+  function runSwap(RunSwap.RunSwapParams calldata parameters) external payable;
 
   /**
    * @notice Withdraws tokens from the platform balance, and sends them to the given recipient
-   * @dev Can only be executed by the owner or allowed users
+   * @dev Can only be executed by admins
    * @param hub The address of the DCA Hub
    * @param amountToWithdraw The tokens to withdraw, and their amounts
    * @param recipient The address of the recipient
@@ -99,7 +91,7 @@ interface IDCAFeeManager {
 
   /**
    * @notice Withdraws tokens from the contract's balance, and sends them to the given recipient
-   * @dev Can only be executed by the owner or allowed users
+   * @dev Can only be executed by admins
    * @param amountToWithdraw The tokens to withdraw, and their amounts
    * @param recipient The address of the recipient
    */
@@ -107,7 +99,7 @@ interface IDCAFeeManager {
 
   /**
    * @notice Withdraws tokens from the given positions, and sends them to the given recipient
-   * @dev Can only be executed by the owner or allowed users
+   * @dev Can only be executed by admins
    * @param hub The address of the DCA Hub
    * @param positionSets The positions to withdraw from
    * @param recipient The address of the recipient
@@ -119,17 +111,9 @@ interface IDCAFeeManager {
   ) external;
 
   /**
-   * @notice Withdraws protocol tokens and sends them to the given recipient
-   * @dev Can only be executed by the owner or allowed users
-   * @param amount The amount to withdraw
-   * @param recipient The address of the recipient
-   */
-  function withdrawProtocolToken(uint256 amount, address payable recipient) external;
-
-  /**
    * @notice Takes a certain amount of the given tokens, and sets up DCA swaps for each of them.
    *         The given amounts can be distributed across different target tokens
-   * @dev Can only be executed by the owner or allowed users
+   * @dev Can only be executed by admins
    * @param hub The address of the DCA Hub
    * @param amounts Specific tokens and amounts to take from this contract and send to the hub
    * @param distribution How to distribute the source tokens across different target tokens
@@ -144,7 +128,7 @@ interface IDCAFeeManager {
    * @notice Takes list of position ids and terminates them. All swapped and unswapped balance is
    *         sent to the given recipient. This is meant to be used only if for some reason swaps are
    *         no longer executed
-   * @dev Can only be executed by the owner or allowed users
+   * @dev Can only be executed by admins
    * @param hub The address of the DCA Hub
    * @param positionIds The positions to terminate
    * @param recipient The address that will receive all swapped and unswapped tokens

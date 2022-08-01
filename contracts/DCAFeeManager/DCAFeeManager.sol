@@ -1,14 +1,12 @@
 // SPDX-License-Identifier: GPL-2.0-or-later
 pragma solidity >=0.8.7 <0.9.0;
 
-import '@openzeppelin/contracts/utils/Address.sol';
 import '@openzeppelin/contracts/access/AccessControl.sol';
-import '@openzeppelin/contracts/token/ERC20/IERC20.sol';
 import '@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol';
 import '@openzeppelin/contracts/utils/Multicall.sol';
 import '../interfaces/IDCAFeeManager.sol';
 
-contract DCAFeeManager is AccessControl, Multicall, IDCAFeeManager {
+contract DCAFeeManager is RunSwap, AccessControl, Multicall, IDCAFeeManager {
   bytes32 public constant SUPER_ADMIN_ROLE = keccak256('SUPER_ADMIN_ROLE');
   bytes32 public constant ADMIN_ROLE = keccak256('ADMIN_ROLE');
 
@@ -20,18 +18,15 @@ contract DCAFeeManager is AccessControl, Multicall, IDCAFeeManager {
   /// @inheritdoc IDCAFeeManager
   uint32 public constant SWAP_INTERVAL = 1 days;
   /// @inheritdoc IDCAFeeManager
-  IWrappedProtocolToken public immutable wToken;
-  /// @inheritdoc IDCAFeeManager
   mapping(bytes32 => uint256) public positions; // key(from, to) => position id
 
   mapping(address => uint256[]) internal _positionsWithToken; // token address => all positions with address as to
 
   constructor(
-    IWrappedProtocolToken _wToken,
+    address _swapperRegistry,
     address _superAdmin,
     address[] memory _initialAdmins
-  ) {
-    wToken = _wToken;
+  ) SwapAdapter(_swapperRegistry) {
     if (_superAdmin == address(0)) revert ZeroAddress();
     _setupRole(SUPER_ADMIN_ROLE, _superAdmin);
     _setRoleAdmin(ADMIN_ROLE, SUPER_ADMIN_ROLE);
@@ -41,8 +36,8 @@ contract DCAFeeManager is AccessControl, Multicall, IDCAFeeManager {
   }
 
   /// @inheritdoc IDCAFeeManager
-  function unwrapWToken(uint256 _amount) external onlyRole(ADMIN_ROLE) {
-    wToken.withdraw(_amount);
+  function runSwap(RunSwapParams calldata _parameters) public payable override(IDCAFeeManager, RunSwap) onlyRole(ADMIN_ROLE) {
+    super.runSwap(_parameters);
   }
 
   /// @inheritdoc IDCAFeeManager
@@ -57,7 +52,8 @@ contract DCAFeeManager is AccessControl, Multicall, IDCAFeeManager {
   /// @inheritdoc IDCAFeeManager
   function withdrawFromBalance(IDCAHub.AmountOfToken[] calldata _amountToWithdraw, address _recipient) external onlyRole(ADMIN_ROLE) {
     for (uint256 i; i < _amountToWithdraw.length; i++) {
-      IERC20(_amountToWithdraw[i].token).safeTransfer(_recipient, _amountToWithdraw[i].amount);
+      IDCAHub.AmountOfToken memory _amountOfToken = _amountToWithdraw[i];
+      _sendToRecipient(_amountOfToken.token, _amountOfToken.amount, _recipient);
     }
   }
 
@@ -71,11 +67,6 @@ contract DCAFeeManager is AccessControl, Multicall, IDCAFeeManager {
   }
 
   /// @inheritdoc IDCAFeeManager
-  function withdrawProtocolToken(uint256 _amount, address payable _recipient) external onlyRole(ADMIN_ROLE) {
-    _recipient.sendValue(_amount);
-  }
-
-  /// @inheritdoc IDCAFeeManager
   function fillPositions(
     IDCAHub _hub,
     AmountToFill[] calldata _amounts,
@@ -84,14 +75,12 @@ contract DCAFeeManager is AccessControl, Multicall, IDCAFeeManager {
     for (uint256 i; i < _amounts.length; i++) {
       AmountToFill memory _amount = _amounts[i];
 
-      uint256 _allowance = IERC20(_amount.token).allowance(address(this), address(_hub));
-      if (_allowance < _amount.amount) {
-        if (_allowance > 0) {
-          IERC20(_amount.token).approve(address(_hub), 0); // We do this first because some tokens (like USDT) will fail if we don't
-        }
-        // Approve the token so that the hub can take the funds
-        IERC20(_amount.token).approve(address(_hub), type(uint256).max);
-      }
+      _maxApproveSpenderIfNeeded(
+        IERC20(_amount.token),
+        address(_hub),
+        true, // No need to check if the hub is a valid allowance target
+        _amount.amount
+      );
 
       // Distribute to different tokens
       uint256 _amountSpent;
@@ -151,8 +140,6 @@ contract DCAFeeManager is AccessControl, Multicall, IDCAFeeManager {
   function getPositionKey(address _from, address _to) public pure returns (bytes32) {
     return keccak256(abi.encodePacked(_from, _to));
   }
-
-  receive() external payable {}
 
   function _depositToHub(
     IDCAHub _hub,

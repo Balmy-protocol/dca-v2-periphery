@@ -170,6 +170,10 @@ if (process.env.TEST) {
       artifacts: 'node_modules/@mean-finance/swappers/artifacts',
       deploy: 'node_modules/@mean-finance/swappers/deploy',
     },
+    {
+      artifacts: 'node_modules/@mean-finance/transformers/artifacts',
+      deploy: 'node_modules/@mean-finance/transformers/deploy',
+    },
   ];
   const solidity = config.solidity as MultiSolcUserConfig;
   solidity.compilers.forEach((_, i) => {

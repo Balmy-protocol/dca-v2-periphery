@@ -2,20 +2,10 @@ import chai, { expect } from 'chai';
 import { ethers } from 'hardhat';
 import { contract, given, then, when } from '@test-utils/bdd';
 import { snapshot } from '@test-utils/evm';
-import {
-  DCAFeeManagerMock,
-  DCAFeeManagerMock__factory,
-  IDCAHub,
-  IDCAHubPositionHandler,
-  IERC20,
-  WrappedPlatformTokenMock,
-  WrappedPlatformTokenMock__factory,
-} from '@typechained';
+import { DCAFeeManagerMock, DCAFeeManagerMock__factory, IDCAHub, IDCAHubPositionHandler, IERC20, ISwapperRegistry } from '@typechained';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers';
 import { duration } from 'moment';
 import { behaviours, wallet } from '@test-utils';
-import { readArgFromEventOrFail } from '@test-utils/event-utils';
-import { TransactionResponse } from '@ethersproject/providers';
 import { IDCAFeeManager } from '@typechained/DCAFeeManager';
 import { FakeContract, smock } from '@defi-wonderland/smock';
 import { BigNumber, BigNumberish, constants, utils } from 'ethers';
@@ -27,7 +17,7 @@ contract('DCAFeeManager', () => {
   const TOKEN_B = '0x0000000000000000000000000000000000000011';
   const MAX_SHARES = 10000;
   const SWAP_INTERVAL = duration(1, 'day').asSeconds();
-  let wToken: WrappedPlatformTokenMock;
+  let swapperRegistry: FakeContract<ISwapperRegistry>;
   let DCAHub: FakeContract<IDCAHub>;
   let DCAFeeManager: DCAFeeManagerMock;
   let DCAFeeManagerFactory: DCAFeeManagerMock__factory;
@@ -38,15 +28,11 @@ contract('DCAFeeManager', () => {
 
   before('Setup accounts and contracts', async () => {
     [random, superAdmin, admin] = await ethers.getSigners();
-    const wTokenFactory: WrappedPlatformTokenMock__factory = await ethers.getContractFactory(
-      'contracts/mocks/WrappedPlatformTokenMock.sol:WrappedPlatformTokenMock'
-    );
     DCAHub = await smock.fake('IDCAHub');
     erc20Token = await smock.fake('IERC20');
-    wToken = await wTokenFactory.deploy('WETH', 'WETH', 18);
-    await setProtocolBalance(wToken, utils.parseEther('100'));
+    swapperRegistry = await smock.fake('ISwapperRegistry');
     DCAFeeManagerFactory = await ethers.getContractFactory('contracts/mocks/DCAFeeManager/DCAFeeManager.sol:DCAFeeManagerMock');
-    DCAFeeManager = await DCAFeeManagerFactory.deploy(wToken.address, superAdmin.address, [admin.address]);
+    DCAFeeManager = await DCAFeeManagerFactory.deploy(swapperRegistry.address, superAdmin.address, [admin.address]);
     superAdminRole = await DCAFeeManager.SUPER_ADMIN_ROLE();
     adminRole = await DCAFeeManager.ADMIN_ROLE();
     snapshotId = await snapshot.take();
@@ -70,7 +56,7 @@ contract('DCAFeeManager', () => {
       then('tx is reverted with reason error', async () => {
         await behaviours.deployShouldRevertWithMessage({
           contract: DCAFeeManagerFactory,
-          args: [wToken.address, constants.AddressZero, []],
+          args: [swapperRegistry.address, constants.AddressZero, []],
           message: 'ZeroAddress',
         });
       });
@@ -94,29 +80,24 @@ contract('DCAFeeManager', () => {
       then('swap interval is set to daily', async () => {
         expect(await DCAFeeManager.SWAP_INTERVAL()).to.equal(SWAP_INTERVAL);
       });
-      then('wToken is set correctly', async () => {
-        expect(await DCAFeeManager.wToken()).to.equal(wToken.address);
-      });
     });
   });
 
-  describe('unwrapWToken', () => {
-    const TOTAL_BALANCE = utils.parseEther('1');
-    const BALANCE_TO_UNWRAP = utils.parseEther('0.1');
-    when('unwrap is called', () => {
-      given(async () => {
-        await wToken.mint(DCAFeeManager.address, TOTAL_BALANCE);
-        await DCAFeeManager.connect(admin).unwrapWToken(BALANCE_TO_UNWRAP);
-      });
-      then('given balance is unwrapped', async () => {
-        expect(await wToken.balanceOf(DCAFeeManager.address)).to.equal(TOTAL_BALANCE.sub(BALANCE_TO_UNWRAP));
-        expect(await getProtocolBalance(DCAFeeManager.address)).to.equal(BALANCE_TO_UNWRAP);
-      });
-    });
+  describe('runSwap', () => {
+    // Note: we can't test that the underlying function was called, so we will test the functionality
+    // in e2e/integration tests
     behaviours.shouldBeExecutableOnlyByRole({
       contract: () => DCAFeeManager,
-      funcAndSignature: 'unwrapWToken',
-      params: [BALANCE_TO_UNWRAP],
+      funcAndSignature: 'runSwap',
+      params: () => [
+        {
+          swapper: constants.AddressZero,
+          allowanceTarget: constants.AddressZero,
+          swapData: constants.HashZero,
+          tokenIn: constants.AddressZero,
+          amountIn: 0,
+        },
+      ],
       addressWithRole: () => admin,
       role: () => adminRole,
     });
@@ -150,11 +131,14 @@ contract('DCAFeeManager', () => {
     when('withdraw is executed', () => {
       const AMOUNT_TO_WITHDRAW = utils.parseEther('1');
       given(async () => {
-        erc20Token.transfer.returns(true);
         await DCAFeeManager.connect(admin).withdrawFromBalance([{ token: erc20Token.address, amount: AMOUNT_TO_WITHDRAW }], RECIPIENT);
       });
-      then('token is called correctly', () => {
-        expect(erc20Token.transfer).to.have.been.calledOnceWith(RECIPIENT, AMOUNT_TO_WITHDRAW);
+      then('internal function is called correctly', async () => {
+        const calls = await DCAFeeManager.sendToRecipientCalls();
+        expect(calls).to.have.lengthOf(1);
+        expect(calls[0].token).to.equal(erc20Token.address);
+        expect(calls[0].amount).to.equal(AMOUNT_TO_WITHDRAW);
+        expect(calls[0].recipient).to.equal(RECIPIENT);
       });
     });
     behaviours.shouldBeExecutableOnlyByRole({
@@ -184,32 +168,6 @@ contract('DCAFeeManager', () => {
       contract: () => DCAFeeManager,
       funcAndSignature: 'withdrawFromPositions',
       params: () => [DCAHub.address, [], RECIPIENT],
-      addressWithRole: () => admin,
-      role: () => adminRole,
-    });
-  });
-
-  describe('withdrawProtocolToken', () => {
-    const RECIPIENT = wallet.generateRandomAddress();
-    const TOTAL_BALANCE = utils.parseEther('1');
-    const BALANCE_TO_WITHDRAW = utils.parseEther('0.1');
-    when('unwrap is called', () => {
-      given(async () => {
-        await wToken.mint(DCAFeeManager.address, TOTAL_BALANCE);
-        await DCAFeeManager.connect(admin).unwrapWToken(TOTAL_BALANCE);
-        await DCAFeeManager.connect(admin).withdrawProtocolToken(BALANCE_TO_WITHDRAW, RECIPIENT);
-      });
-      then('amount to withdraw is sent to recipient', async () => {
-        expect(await getProtocolBalance(RECIPIENT)).to.equal(BALANCE_TO_WITHDRAW);
-      });
-      then('leftover is still on the fee manager', async () => {
-        expect(await getProtocolBalance(DCAFeeManager.address)).to.equal(TOTAL_BALANCE.sub(BALANCE_TO_WITHDRAW));
-      });
-    });
-    behaviours.shouldBeExecutableOnlyByRole({
-      contract: () => DCAFeeManager,
-      funcAndSignature: 'withdrawProtocolToken',
-      params: [BALANCE_TO_WITHDRAW, RECIPIENT],
       addressWithRole: () => admin,
       role: () => adminRole,
     });
@@ -481,15 +439,6 @@ contract('DCAFeeManager', () => {
       };
     }
   });
-
-  function getProtocolBalance(address: string) {
-    return ethers.provider.getBalance(address);
-  }
-
-  async function setProtocolBalance(recipient: { address: string }, amount: BigNumber) {
-    await ethers.provider.send('hardhat_setBalance', [recipient.address, ethers.utils.hexValue(amount)]);
-    return BigNumber.from(amount);
-  }
 
   type AmountToWithdraw = { token: string; amount: BigNumberish };
   function expectAmounToWithdrawToBe(actual: AmountToWithdraw[], expected: AmountToWithdraw[]) {

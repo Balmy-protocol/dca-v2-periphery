@@ -4,11 +4,23 @@ pragma solidity >=0.8.7 <0.9.0;
 import '../../DCAFeeManager/DCAFeeManager.sol';
 
 contract DCAFeeManagerMock is DCAFeeManager {
+  struct SendToRecipientCall {
+    address token;
+    uint256 amount;
+    address recipient;
+  }
+
+  SendToRecipientCall[] internal _sendToRecipientCalls;
+
   constructor(
-    IWrappedProtocolToken _wToken,
+    address _swapperRegistry,
     address _superAdmin,
     address[] memory _initialAdmins
-  ) DCAFeeManager(_wToken, _superAdmin, _initialAdmins) {}
+  ) DCAFeeManager(_swapperRegistry, _superAdmin, _initialAdmins) {}
+
+  function sendToRecipientCalls() external view returns (SendToRecipientCall[] memory) {
+    return _sendToRecipientCalls;
+  }
 
   function setPosition(
     address _from,
@@ -26,5 +38,13 @@ contract DCAFeeManagerMock is DCAFeeManager {
     for (uint256 i; i < _positionIds.length; i++) {
       _positionsWithToken[_toToken].push(_positionIds[i]);
     }
+  }
+
+  function _sendToRecipient(
+    address _token,
+    uint256 _amount,
+    address _recipient
+  ) internal override {
+    _sendToRecipientCalls.push(SendToRecipientCall(_token, _amount, _recipient));
   }
 }
