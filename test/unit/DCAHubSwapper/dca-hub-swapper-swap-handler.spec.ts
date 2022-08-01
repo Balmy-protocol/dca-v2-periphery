@@ -256,10 +256,10 @@ contract('DCAHubSwapperSwapHandler', () => {
       });
     });
   });
-  describe('swapWithDexesByMeanKeepers', () => {
+  describe('swapWithDexesForMean', () => {
     const BYTES = ethers.utils.randomBytes(10);
     whenDeadlineHasExpiredThenTxReverts({
-      func: 'swapWithDexesByMeanKeepers',
+      func: 'swapWithDexesForMean',
       args: () => [
         {
           hub: DCAHub.address,
@@ -275,7 +275,7 @@ contract('DCAHubSwapperSwapHandler', () => {
     });
     when('executing a swap with dexes', () => {
       given(async () => {
-        await DCAHubSwapperSwapHandler.connect(swapper).swapWithDexesByMeanKeepers({
+        await DCAHubSwapperSwapHandler.connect(swapper).swapWithDexesForMean({
           hub: DCAHub.address,
           tokens: tokens,
           pairsToSwap: INDEXES,

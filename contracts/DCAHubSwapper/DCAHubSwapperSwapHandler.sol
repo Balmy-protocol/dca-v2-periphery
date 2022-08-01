@@ -92,7 +92,7 @@ abstract contract DCAHubSwapperSwapHandler is DeadlineValidation, DCAHubSwapperP
   }
 
   /// @inheritdoc IDCAHubSwapperSwapHandler
-  function swapWithDexesByMeanKeepers(SwapWithDexesParams calldata _parameters) external payable returns (IDCAHub.SwapInfo memory) {
+  function swapWithDexesForMean(SwapWithDexesParams calldata _parameters) external payable returns (IDCAHub.SwapInfo memory) {
     return _swapWithDexes(_parameters, true);
   }
 

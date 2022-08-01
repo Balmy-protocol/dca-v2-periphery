@@ -131,7 +131,7 @@ interface IDCAHubSwapperSwapHandler is IDCAHubSwapCallee {
    *         sent to the provided recipient
    * @return The information about the executed swap
    */
-  function swapWithDexesByMeanKeepers(SwapWithDexesParams calldata parameters) external payable returns (IDCAHub.SwapInfo memory);
+  function swapWithDexesForMean(SwapWithDexesParams calldata parameters) external payable returns (IDCAHub.SwapInfo memory);
 
   /// @notice Executes a swap with the given DEX, and sends all unspent tokens to the given recipient
   /// @param _dex The DEX that will be used in the swap
