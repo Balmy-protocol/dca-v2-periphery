@@ -145,7 +145,7 @@ contract('Single pair swap with DEX', () => {
           skipValidation: true,
         });
         await swapperRegistry.connect(governor).allowSwappers([dexQuote.to]);
-        const dexFunction = sendLeftoverToHub ? 'swapWithDexesByMeanKeepers' : 'swapWithDexes';
+        const dexFunction = sendLeftoverToHub ? 'swapWithDexesForMean' : 'swapWithDexes';
         const tokensInSwap = [USDC_ADDRESS, WETH_ADDRESS];
         const indexesInSwap = [{ indexTokenA: 0, indexTokenB: 1 }];
         const swapTx = await DCAHubSwapper[dexFunction]({

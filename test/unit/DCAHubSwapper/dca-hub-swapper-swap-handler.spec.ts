@@ -217,7 +217,7 @@ contract('DCAHubSwapperSwapHandler', () => {
     });
     when('executing a swap with dexes', () => {
       given(async () => {
-        await DCAHubSwapperSwapHandler.connect(swapper).swapWithDexesForMean({
+        await DCAHubSwapperSwapHandler.connect(swapExecutioner).swapWithDexesForMean({
           hub: DCAHub.address,
           tokens: tokens,
           pairsToSwap: INDEXES,
