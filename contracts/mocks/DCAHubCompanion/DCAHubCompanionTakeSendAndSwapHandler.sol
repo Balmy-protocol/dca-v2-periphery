@@ -11,20 +11,31 @@ contract DCAHubCompanionTakeSendAndSwapHandlerMock is DCAHubCompanionTakeSendAnd
     uint256 amount;
   }
 
-  struct SendBalanceToRecipientCall {
+  struct SendBalanceOnContractToRecipientCall {
     address token;
     address recipient;
   }
 
+  struct SendToRecipientCall {
+    address token;
+    uint256 amount;
+    address recipient;
+  }
+
   TakeFromMsgSenderCall[] internal _takeFromMsgSenderCalls;
-  SendBalanceToRecipientCall[] internal _sendBalanceToRecipientCalls;
+  SendBalanceOnContractToRecipientCall[] internal _sendBalanceOnContractToRecipientCalls;
+  SendToRecipientCall[] internal _sendToRecipientCalls;
 
   function takeFromMsgSenderCalls() external view returns (TakeFromMsgSenderCall[] memory) {
     return _takeFromMsgSenderCalls;
   }
 
-  function sendBalanceToRecipientCalls() external view returns (SendBalanceToRecipientCall[] memory) {
-    return _sendBalanceToRecipientCalls;
+  function sendBalanceOnContractToRecipientCalls() external view returns (SendBalanceOnContractToRecipientCall[] memory) {
+    return _sendBalanceOnContractToRecipientCalls;
+  }
+
+  function sendToRecipientCalls() external view returns (SendToRecipientCall[] memory) {
+    return _sendToRecipientCalls;
   }
 
   function _takeFromMsgSender(IERC20 _token, uint256 _amount) internal override {
@@ -32,8 +43,17 @@ contract DCAHubCompanionTakeSendAndSwapHandlerMock is DCAHubCompanionTakeSendAnd
     super._takeFromMsgSender(_token, _amount);
   }
 
-  function _sendBalanceToRecipient(address _token, address _recipient) internal override {
-    _sendBalanceToRecipientCalls.push(SendBalanceToRecipientCall(_token, _recipient));
-    super._sendBalanceToRecipient(_token, _recipient);
+  function _sendBalanceOnContractToRecipient(address _token, address _recipient) internal override {
+    _sendBalanceOnContractToRecipientCalls.push(SendBalanceOnContractToRecipientCall(_token, _recipient));
+    super._sendBalanceOnContractToRecipient(_token, _recipient);
+  }
+
+  function _sendToRecipient(
+    address _token,
+    uint256 _amount,
+    address _recipient
+  ) internal override {
+    _sendToRecipientCalls.push(SendToRecipientCall(_token, _amount, _recipient));
+    super._sendToRecipient(_token, _amount, _recipient);
   }
 }

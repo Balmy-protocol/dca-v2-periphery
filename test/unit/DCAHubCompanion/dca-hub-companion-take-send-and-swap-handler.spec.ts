@@ -10,6 +10,8 @@ import { wallet } from '@test-utils';
 chai.use(smock.matchers);
 
 contract('DCAHubCompanionTakeSendAndSwapHandler', () => {
+  const AMOUNT = 123456789;
+  const RECIPIENT = Wallet.createRandom();
   let token: FakeContract<IERC20>;
   let TakeSendAndSwapHandler: DCAHubCompanionTakeSendAndSwapHandlerMock;
   let snapshotId: string;
@@ -32,26 +34,16 @@ contract('DCAHubCompanionTakeSendAndSwapHandler', () => {
   });
 
   describe('sendToRecipient', () => {
-    const AMOUNT = 123456789;
-    const RECIPIENT = Wallet.createRandom();
-    when('sending ERC20 tokens to the recipient', () => {
+    when('sending to a recipient', () => {
       given(async () => {
         await TakeSendAndSwapHandler.sendToRecipient(token.address, AMOUNT, RECIPIENT.address);
       });
-      then('transfer is executed', async () => {
-        expect(token.transfer).to.have.been.calledOnceWith(RECIPIENT.address, AMOUNT);
-      });
-    });
-    when('sending ETH to the recipient', () => {
-      given(async () => {
-        await wallet.setBalance({ account: TakeSendAndSwapHandler.address, balance: BigNumber.from(AMOUNT) });
-        await TakeSendAndSwapHandler.sendToRecipient(await TakeSendAndSwapHandler.PROTOCOL_TOKEN(), AMOUNT, RECIPIENT.address);
-      });
-      then('adapter no longer has balance', async () => {
-        expect(await ethers.provider.getBalance(TakeSendAndSwapHandler.address)).to.equal(0);
-      });
-      then('balance is transferred to recipient', async () => {
-        expect(await ethers.provider.getBalance(RECIPIENT.address)).to.equal(AMOUNT);
+      then('internal function is called correctly', async () => {
+        const calls = await TakeSendAndSwapHandler.sendToRecipientCalls();
+        expect(calls).to.have.lengthOf(1);
+        expect(calls[0].token).to.equal(token.address);
+        expect(calls[0].amount).to.equal(AMOUNT);
+        expect(calls[0].recipient).to.equal(RECIPIENT.address);
       });
     });
   });
@@ -78,7 +70,7 @@ contract('DCAHubCompanionTakeSendAndSwapHandler', () => {
         await TakeSendAndSwapHandler.sendBalanceOnContractToRecipient(token.address, RECIPIENT.address);
       });
       then('internal function is called correctly', async () => {
-        const calls = await TakeSendAndSwapHandler.sendBalanceToRecipientCalls();
+        const calls = await TakeSendAndSwapHandler.sendBalanceOnContractToRecipientCalls();
         expect(calls).to.have.lengthOf(1);
         expect(calls[0].token).to.equal(token.address);
         expect(calls[0].recipient).to.equal(RECIPIENT.address);
