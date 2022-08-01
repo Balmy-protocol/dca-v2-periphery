@@ -2,7 +2,6 @@
 pragma solidity >=0.8.7 <0.9.0;
 
 import '@mean-finance/swappers/solidity/contracts/SwapAdapter.sol';
-import '@mean-finance/swappers/solidity/contracts/extensions/Shared.sol';
 import '@openzeppelin/contracts/token/ERC20/IERC20.sol';
 import '@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol';
 import './utils/DeadlineValidation.sol';
@@ -85,6 +84,47 @@ abstract contract DCAHubSwapperSwapHandler is DeadlineValidation, DCAHubSwapperP
 
     // Clear the swap executor
     _swapExecutor = _NO_EXECUTOR;
+  }
+
+  /// @inheritdoc IDCAHubSwapperSwapHandler
+  function swapWithDexes(SwapWithDexesParams calldata _parameters) external payable returns (IDCAHub.SwapInfo memory) {
+    return _swapWithDexes(_parameters, false);
+  }
+
+  /// @inheritdoc IDCAHubSwapperSwapHandler
+  function swapWithDexesForMean(SwapWithDexesParams calldata _parameters) external payable returns (IDCAHub.SwapInfo memory) {
+    return _swapWithDexes(_parameters, true);
+  }
+
+  function _swapWithDexes(SwapWithDexesParams calldata _parameters, bool _sendToProvideLeftoverToHub)
+    internal
+    checkDeadline(_parameters.deadline)
+    returns (IDCAHub.SwapInfo memory)
+  {
+    // Approve whatever is necessary
+    for (uint256 i; i < _parameters.allowanceTargets.length; i++) {
+      Allowance memory _allowance = _parameters.allowanceTargets[i];
+      _maxApproveSpenderIfNeeded(_allowance.token, _allowance.allowanceTarget, false, _allowance.minAllowance);
+    }
+
+    // Prepare data for callback
+    SwapWithDexesCallbackData memory _callbackData = SwapWithDexesCallbackData({
+      swappers: _parameters.swappers,
+      executions: _parameters.executions,
+      leftoverRecipient: _parameters.leftoverRecipient,
+      sendToProvideLeftoverToHub: _sendToProvideLeftoverToHub
+    });
+
+    // Execute swap
+    return
+      _parameters.hub.swap(
+        _parameters.tokens,
+        _parameters.pairsToSwap,
+        address(this),
+        address(this),
+        new uint256[](_parameters.tokens.length),
+        abi.encode(SwapData({plan: SwapPlan.SWAP_WITH_DEXES, data: abi.encode(_callbackData)}))
+      );
   }
 
   /// @inheritdoc IDCAHubSwapperSwapHandler

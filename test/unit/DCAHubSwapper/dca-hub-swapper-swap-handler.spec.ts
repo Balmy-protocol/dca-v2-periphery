@@ -67,6 +67,7 @@ contract('DCAHubSwapperSwapHandler', () => {
     DCAHub.swap.reset();
     swapperRegistry.isSwapperAllowlisted.reset();
     swapperRegistry.isSwapperAllowlisted.returns(true);
+    swapperRegistry.isValidAllowanceTarget.returns(true);
   });
   describe('constructor', () => {
     when('contract is initiated', () => {
@@ -199,6 +200,112 @@ contract('DCAHubSwapperSwapHandler', () => {
       });
       then('swap executor is cleared', async () => {
         expect(await DCAHubSwapperSwapHandler.isSwapExecutorEmpty()).to.be.true;
+      });
+    });
+  });
+  describe('swapWithDexes', () => {
+    const BYTES = ethers.utils.randomBytes(10);
+    whenDeadlineHasExpiredThenTxReverts({
+      func: 'swapWithDexes',
+      args: () => [
+        {
+          hub: DCAHub.address,
+          tokens: [],
+          pairsToSwap: [],
+          allowanceTargets: [],
+          swappers: [],
+          executions: [],
+          leftoverRecipient: recipient.address,
+          deadline: 0,
+        },
+      ],
+    });
+    when('executing a swap with dexes', () => {
+      given(async () => {
+        await DCAHubSwapperSwapHandler.connect(swapper).swapWithDexes({
+          hub: DCAHub.address,
+          tokens: tokens,
+          pairsToSwap: INDEXES,
+          allowanceTargets: [{ token: tokenA.address, allowanceTarget: DEX, minAllowance: 2000 }],
+          swappers: [DEX],
+          executions: [{ swapData: BYTES, swapperIndex: 0 }],
+          leftoverRecipient: recipient.address,
+          deadline: constants.MAX_UINT_256,
+        });
+      });
+      then('allowance was called correctly', async () => {
+        const calls = await DCAHubSwapperSwapHandler.maxApproveSpenderCalls();
+        expect(calls).to.have.lengthOf(1);
+        expect(calls[0].token).to.equal(tokenA.address);
+        expect(calls[0].spender).to.equal(DEX);
+        expect(calls[0].minAllowance).to.equal(2000);
+        expect(calls[0].alreadyValidatedSpender).to.be.false;
+      });
+      thenHubIsCalledWith({
+        rewardRecipient: () => DCAHubSwapperSwapHandler,
+        data: () =>
+          encode({
+            plan: 'dexes',
+            bytes: {
+              swappers: [DEX],
+              executions: [{ data: BYTES, index: 0 }],
+              sendToProvideLeftoverToHub: false,
+              leftoverRecipient: recipient,
+            },
+          }),
+      });
+    });
+  });
+  describe('swapWithDexesForMean', () => {
+    const BYTES = ethers.utils.randomBytes(10);
+    whenDeadlineHasExpiredThenTxReverts({
+      func: 'swapWithDexesForMean',
+      args: () => [
+        {
+          hub: DCAHub.address,
+          tokens: [],
+          pairsToSwap: [],
+          allowanceTargets: [],
+          swappers: [],
+          executions: [],
+          leftoverRecipient: recipient.address,
+          deadline: 0,
+        },
+      ],
+    });
+    when('executing a swap with dexes', () => {
+      given(async () => {
+        await DCAHubSwapperSwapHandler.connect(swapper).swapWithDexesForMean({
+          hub: DCAHub.address,
+          tokens: tokens,
+          pairsToSwap: INDEXES,
+          allowanceTargets: [{ token: tokenA.address, allowanceTarget: DEX, minAllowance: 2000 }],
+          swappers: [DEX],
+          executions: [{ swapData: BYTES, swapperIndex: 0 }],
+          leftoverRecipient: recipient.address,
+          deadline: constants.MAX_UINT_256,
+        });
+      });
+      then('allowance was called correctly', async () => {
+        const calls = await DCAHubSwapperSwapHandler.maxApproveSpenderCalls();
+        expect(calls).to.have.lengthOf(1);
+        expect(calls[0].token).to.equal(tokenA.address);
+        expect(calls[0].spender).to.equal(DEX);
+        expect(calls[0].minAllowance).to.equal(2000);
+        expect(calls[0].alreadyValidatedSpender).to.be.false;
+      });
+      thenHubIsCalledWith({
+        rewardRecipient: () => DCAHubSwapperSwapHandler,
+        data: () =>
+          encode({
+            plan: 'dexes',
+            bytes: {
+              swappers: [DEX],
+              executions: [{ data: BYTES, index: 0 }],
+              sendToProvideLeftoverToHub: true,
+              leftoverRecipient: recipient,
+            },
+          }),
       });
     });
   });
@@ -795,8 +902,8 @@ contract('DCAHubSwapperSwapHandler', () => {
   }) {
     then('hub was called with the correct parameters', () => {
       expect(DCAHub.swap).to.have.been.calledOnce;
-      const [tokens, indexes, rewardRecipient, callbackHandler, borrow, data] = DCAHub.swap.getCall(0).args;
-      expect(tokens).to.eql(tokens);
+      const [tokensInHub, indexes, rewardRecipient, callbackHandler, borrow, data] = DCAHub.swap.getCall(0).args;
+      expect(tokensInHub).to.eql(tokens);
       expect((indexes as any)[0]).to.eql([0, 1]);
       expect(rewardRecipient).to.equal(
         typeof expectedRewardRecipient === 'string' ? expectedRewardRecipient : expectedRewardRecipient().address
