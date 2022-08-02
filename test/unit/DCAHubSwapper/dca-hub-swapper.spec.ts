@@ -1,12 +1,11 @@
 import chai, { expect } from 'chai';
 import { ethers } from 'hardhat';
-import { behaviours, constants, erc20, wallet } from '@test-utils';
+import { behaviours, constants, wallet } from '@test-utils';
 import { contract, given, then, when } from '@test-utils/bdd';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers';
 import { snapshot } from '@test-utils/evm';
 import { DCAHubSwapperMock, DCAHubSwapperMock__factory, IDCAHub, IERC20, ISwapper, ISwapperRegistry } from '@typechained';
 import { FakeContract, smock } from '@defi-wonderland/smock';
-import { ERC20TokenContract, TokenContract } from '@test-utils/erc20';
 import { BigNumberish } from '@ethersproject/bignumber';
 import { BytesLike } from '@ethersproject/bytes';
 import { TransactionResponse } from '@ethersproject/abstract-provider';
@@ -22,7 +21,7 @@ contract('DCAHubSwapper', () => {
   let DCAHubSwapperFactory: DCAHubSwapperMock__factory;
   let DCAHubSwapper: DCAHubSwapperMock;
   let swapperRegistry: FakeContract<ISwapperRegistry>;
-  let tokenA: ERC20TokenContract, tokenB: ERC20TokenContract;
+  let tokenA: FakeContract<IERC20>, tokenB: FakeContract<IERC20>;
   let swapExecutionRole: string, adminRole: string, superAdminRole: string;
   let snapshotId: string;
 
@@ -35,9 +34,8 @@ contract('DCAHubSwapper', () => {
     DCAHub = await smock.fake('IDCAHub');
     swapperRegistry = await smock.fake('ISwapperRegistry');
     DCAHubSwapper = await DCAHubSwapperFactory.deploy(swapperRegistry.address, superAdmin.address, [admin.address], [swapExecutioner.address]);
-    const deploy = (decimals: number) => erc20.deploy({ name: 'A name', symbol: 'SYMB', decimals });
-    const deployedTokens = await Promise.all([deploy(12), deploy(16)]);
-    [tokenA, tokenB] = deployedTokens.sort((a, b) => a.address.localeCompare(b.address));
+    tokenA = await smock.fake('IERC20');
+    tokenB = await smock.fake('IERC20');
     tokens = [tokenA.address, tokenB.address];
     swapExecutionRole = await DCAHubSwapper.SWAP_EXECUTION_ROLE();
     adminRole = await DCAHubSwapper.ADMIN_ROLE();
@@ -51,6 +49,11 @@ contract('DCAHubSwapper', () => {
     swapperRegistry.isSwapperAllowlisted.reset();
     swapperRegistry.isSwapperAllowlisted.returns(true);
     swapperRegistry.isValidAllowanceTarget.returns(true);
+    tokenA.transfer.reset();
+    tokenA.transfer.returns(true);
+    tokenB.transfer.returns(true);
+    tokenA.transferFrom.returns(true);
+    tokenB.transferFrom.returns(true);
   });
   describe('constructor', () => {
     when('super admin is zero address', () => {
@@ -128,21 +131,6 @@ contract('DCAHubSwapper', () => {
           message: 'RewardNotEnough',
         });
       });
-      behaviours.shouldBeExecutableOnlyByRole({
-        contract: () => DCAHubSwapper,
-        funcAndSignature: 'swapForCaller',
-        params: () => [
-          DCAHub.address,
-          tokens,
-          INDEXES,
-          [MIN_OUTPUT, MIN_OUTPUT],
-          [MAX_INPUT, MAX_INPUT],
-          SOME_RANDOM_ADDRESS,
-          constants.MAX_UINT_256,
-        ],
-        addressWithRole: () => swapExecutioner,
-        role: () => swapExecutionRole,
-      });
     });
     when('hub asks for more than maximum input', () => {
       const MIN_OUTPUT = 200000;
@@ -194,6 +182,21 @@ contract('DCAHubSwapper', () => {
       then('swap executor is cleared', async () => {
         expect(await DCAHubSwapper.isSwapExecutorEmpty()).to.be.true;
       });
+    });
+    behaviours.shouldBeExecutableOnlyByRole({
+      contract: () => DCAHubSwapper,
+      funcAndSignature: 'swapForCaller',
+      params: () => [
+        DCAHub.address,
+        tokens,
+        INDEXES,
+        [0, 0],
+        [constants.MAX_UINT_256, constants.MAX_UINT_256],
+        SOME_RANDOM_ADDRESS,
+        constants.MAX_UINT_256,
+      ],
+      addressWithRole: () => swapExecutioner,
+      role: () => swapExecutionRole,
     });
   });
   describe('swapWithDexes', () => {
@@ -360,9 +363,6 @@ contract('DCAHubSwapper', () => {
     });
   });
   describe('sendDust', () => {
-    given(async () => {
-      await tokenA.mint(DCAHubSwapper.address, 10000);
-    });
     when('function is called', () => {
       given(async () => {
         await DCAHubSwapper.connect(admin).sendDust(tokenA.address, 10000, recipient.address);
@@ -389,8 +389,8 @@ contract('DCAHubSwapper', () => {
     let hub: SignerWithAddress;
     given(async () => {
       tokensInSwap = [
-        { token: tokenB.address, toProvide: tokenB.asUnits(200), reward: 0, platformFee: 0 },
-        { token: tokenA.address, toProvide: tokenA.asUnits(100), reward: 0, platformFee: 0 },
+        { token: tokenB.address, toProvide: utils.parseEther('0.1'), reward: 0, platformFee: 0 },
+        { token: tokenA.address, toProvide: utils.parseEther('20'), reward: 0, platformFee: 0 },
       ];
       hub = await ethers.getSigner(DCAHub.address);
       await wallet.setBalance({ account: hub.address, balance: utils.parseEther('1') });
@@ -421,7 +421,6 @@ contract('DCAHubSwapper', () => {
     describe('handleSwapForCaller', () => {
       when('swap for caller plan is executed', () => {
         given(async () => {
-          await mintAndApproveTokens();
           await DCAHubSwapper.setSwapExecutor(swapExecutioner.address);
           await DCAHubSwapper.connect(hub).DCAHubSwapCall(
             DCAHubSwapper.address,
@@ -430,21 +429,13 @@ contract('DCAHubSwapper', () => {
             encode({ plan: 'swap for caller', bytes: 'none' })
           );
         });
-        then('tokens are sent from the swap executor to the hub correctly', async () => {
+        then('tokens are sent from the swap executor to the hub correctly', () => {
           for (const tokenInSwap of tokensInSwap) {
             const token = fromAddressToToken(tokenInSwap.token);
-            expect(await token.balanceOf(swapExecutioner.address)).to.equal(0);
-            expect(await token.balanceOf(hub.address)).to.equal(tokenInSwap.toProvide);
+            expect(token.transferFrom).to.have.been.calledWith(swapExecutioner.address, hub.address, tokenInSwap.toProvide);
           }
         });
       });
-      async function mintAndApproveTokens() {
-        for (const tokenInSwap of tokensInSwap) {
-          const token = fromAddressToToken(tokenInSwap.token);
-          await token.mint(swapExecutioner.address, tokenInSwap.toProvide);
-          await token.connect(swapExecutioner).approve(DCAHubSwapper.address, tokenInSwap.toProvide);
-        }
-      }
     });
     describe('handleSwapWithDexes', () => {
       const swapData = ({ callsToSwapper, sendToHubFlag }: { callsToSwapper: BytesLike[]; sendToHubFlag: boolean }) =>
@@ -458,14 +449,11 @@ contract('DCAHubSwapper', () => {
           },
         });
 
-      let token: FakeContract<IERC20>;
       let swapper: FakeContract<ISwapper>;
       let swapExecution: BytesLike;
       given(async () => {
-        token = await smock.fake('IERC20');
-        token.transfer.returns(true);
         swapper = await smock.fake('ISwapper');
-        const { data } = await swapper.populateTransaction.swap(token.address, 1000, token.address);
+        const { data } = await swapper.populateTransaction.swap(tokenA.address, 1000, tokenA.address);
         swapExecution = data!;
       });
       when('swapper is not allowlisted', () => {
@@ -548,23 +536,23 @@ contract('DCAHubSwapper', () => {
       }) {
         when(title, () => {
           given(async () => {
-            const tokensInSwap = [{ token: token.address, toProvide: toProvide ?? 0, reward: 0, platformFee: 0 }];
-            token.balanceOf.returns(balance);
+            const tokensInSwap = [{ token: tokenA.address, toProvide: toProvide ?? 0, reward: 0, platformFee: 0 }];
+            tokenA.balanceOf.returns(balance);
             const data = swapData({ callsToSwapper: [swapExecution], sendToHubFlag: sendToHubFlag ?? true });
             await DCAHubSwapper.connect(hub).DCAHubSwapCall(constants.ZERO_ADDRESS, tokensInSwap, [], data);
           });
-          then(thenTitle, () => assertion(token, recipient.address));
+          then(thenTitle, () => assertion(tokenA, recipient.address));
           then('registry is queried correctly', () => {
             expect(swapperRegistry.isSwapperAllowlisted).to.have.been.calledOnceWith(swapper.address);
           });
           then('swap is executed correctly', () => {
-            expect(swapper.swap).to.have.been.calledOnceWith(token.address, 1000, token.address);
+            expect(swapper.swap).to.have.been.calledOnceWith(tokenA.address, 1000, tokenA.address);
           });
         });
       }
     });
   });
-  function fromAddressToToken(tokenAddress: string): TokenContract<ERC20TokenContract> {
+  function fromAddressToToken(tokenAddress: string): FakeContract<IERC20> {
     switch (tokenAddress) {
       case tokenA.address:
         return tokenA;
