@@ -140,6 +140,13 @@ interface IDCAFeeManager {
   ) external;
 
   /**
+   * @notice Revokes ERC20 allowances for the given spenders
+   * @dev Can only be executed by admins
+   * @param revokeActions The spenders and tokens to revoke
+   */
+  function revokeAllowances(ISwapAdapter.RevokeAction[] calldata revokeActions) external;
+
+  /**
    * @notice Returns how much is available for withdraw, for the given tokens
    * @dev This is meant for off-chan purposes
    * @param hub The address of the DCA Hub

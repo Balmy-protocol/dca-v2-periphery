@@ -70,7 +70,11 @@ contract('DCAFeeManager', () => {
         const hasRole = await DCAFeeManager.hasRole(adminRole, admin.address);
         expect(hasRole).to.be.true;
       });
-      then('super admin role is set as admin role', async () => {
+      then('super admin role is set as admin for super admin role', async () => {
+        const admin = await DCAFeeManager.getRoleAdmin(superAdminRole);
+        expect(admin).to.equal(superAdminRole);
+      });
+      then('super admin role is set as admin for admin role', async () => {
         const admin = await DCAFeeManager.getRoleAdmin(adminRole);
         expect(admin).to.equal(superAdminRole);
       });
@@ -438,6 +442,28 @@ contract('DCAFeeManager', () => {
         rate: constants.Zero,
       };
     }
+  });
+
+  describe('revokeAllowances', () => {
+    when('allowance is revoked', () => {
+      given(async () => {
+        await DCAFeeManager.connect(admin).revokeAllowances([{ spender: random.address, tokens: [erc20Token.address] }]);
+      });
+      then('revoke was called correctly', async () => {
+        const calls = await DCAFeeManager.revokeAllowancesCalls();
+        expect(calls).to.have.lengthOf(1);
+        expect(calls[0]).to.have.lengthOf(1);
+        expect((calls[0][0] as any).spender).to.equal(random.address);
+        expect((calls[0][0] as any).tokens).to.eql([erc20Token.address]);
+      });
+    });
+    behaviours.shouldBeExecutableOnlyByRole({
+      contract: () => DCAFeeManager,
+      funcAndSignature: 'revokeAllowances',
+      params: [[]],
+      addressWithRole: () => admin,
+      role: () => adminRole,
+    });
   });
 
   type AmountToWithdraw = { token: string; amount: BigNumberish };

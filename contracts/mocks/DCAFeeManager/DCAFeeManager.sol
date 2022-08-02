@@ -11,6 +11,7 @@ contract DCAFeeManagerMock is DCAFeeManager {
   }
 
   SendToRecipientCall[] internal _sendToRecipientCalls;
+  RevokeAction[][] internal _revokeCalls;
 
   constructor(
     address _swapperRegistry,
@@ -20,6 +21,10 @@ contract DCAFeeManagerMock is DCAFeeManager {
 
   function sendToRecipientCalls() external view returns (SendToRecipientCall[] memory) {
     return _sendToRecipientCalls;
+  }
+
+  function revokeAllowancesCalls() external view returns (RevokeAction[][] memory) {
+    return _revokeCalls;
   }
 
   function setPosition(
@@ -46,5 +51,13 @@ contract DCAFeeManagerMock is DCAFeeManager {
     address _recipient
   ) internal override {
     _sendToRecipientCalls.push(SendToRecipientCall(_token, _amount, _recipient));
+  }
+
+  function _revokeAllowances(RevokeAction[] calldata _revokeActions) internal override {
+    _revokeCalls.push();
+    uint256 _currentCall = _revokeCalls.length - 1;
+    for (uint256 i; i < _revokeActions.length; i++) {
+      _revokeCalls[_currentCall].push(_revokeActions[i]);
+    }
   }
 }
