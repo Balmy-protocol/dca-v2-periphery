@@ -5,7 +5,7 @@ import '@mean-finance/dca-v2-core/contracts/interfaces/IDCAHub.sol';
 import '@mean-finance/dca-v2-core/contracts/interfaces/IDCAHubSwapCallee.sol';
 import '@mean-finance/swappers/solidity/contracts/extensions/Shared.sol';
 
-interface IDCAHubSwapperSwapHandler is IDCAHubSwapCallee {
+interface IDCAHubSwapper is IDCAHubSwapCallee {
   /// @notice Parameters to execute a swap with dexes
   struct SwapWithDexesParams {
     // The address of the DCAHub
@@ -82,5 +82,3 @@ interface IDCAHubSwapperSwapHandler is IDCAHubSwapCallee {
    */
   function swapWithDexesForMean(SwapWithDexesParams calldata parameters) external payable returns (IDCAHub.SwapInfo memory);
 }
-
-interface IDCAHubSwapper is IDCAHubSwapperSwapHandler {}

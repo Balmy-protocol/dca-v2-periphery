@@ -4,7 +4,7 @@ import { behaviours, constants, erc20, wallet } from '@test-utils';
 import { contract, given, then, when } from '@test-utils/bdd';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers';
 import { snapshot } from '@test-utils/evm';
-import { DCAHubSwapperSwapHandlerMock, DCAHubSwapperSwapHandlerMock__factory, IDCAHub, IERC20, ISwapper, ISwapperRegistry } from '@typechained';
+import { DCAHubSwapperMock, DCAHubSwapperMock__factory, IDCAHub, IERC20, ISwapper, ISwapperRegistry } from '@typechained';
 import { FakeContract, smock } from '@defi-wonderland/smock';
 import { ERC20TokenContract, TokenContract } from '@test-utils/erc20';
 import { BigNumberish } from '@ethersproject/bignumber';
@@ -14,13 +14,13 @@ import { utils } from 'ethers';
 
 chai.use(smock.matchers);
 
-contract('DCAHubSwapperSwapHandler', () => {
+contract('DCAHubSwapper', () => {
   const ABI_CODER = new ethers.utils.AbiCoder();
   const DEX = constants.NOT_ZERO_ADDRESS;
   let swapExecutioner: SignerWithAddress, recipient: SignerWithAddress, admin: SignerWithAddress;
   let DCAHub: FakeContract<IDCAHub>;
-  let DCAHubSwapperSwapHandlerFactory: DCAHubSwapperSwapHandlerMock__factory;
-  let DCAHubSwapperSwapHandler: DCAHubSwapperSwapHandlerMock;
+  let DCAHubSwapperFactory: DCAHubSwapperMock__factory;
+  let DCAHubSwapper: DCAHubSwapperMock;
   let swapperRegistry: FakeContract<ISwapperRegistry>;
   let tokenA: ERC20TokenContract, tokenB: ERC20TokenContract;
   let swapExecutionRole: string, adminRole: string;
@@ -31,18 +31,16 @@ contract('DCAHubSwapperSwapHandler', () => {
 
   before('Setup accounts and contracts', async () => {
     [, swapExecutioner, admin, recipient] = await ethers.getSigners();
-    DCAHubSwapperSwapHandlerFactory = await ethers.getContractFactory(
-      'contracts/mocks/DCAHubSwapper/DCAHubSwapperSwapHandler.sol:DCAHubSwapperSwapHandlerMock'
-    );
+    DCAHubSwapperFactory = await ethers.getContractFactory('contracts/mocks/DCAHubSwapper/DCAHubSwapper.sol:DCAHubSwapperMock');
     DCAHub = await smock.fake('IDCAHub');
     swapperRegistry = await smock.fake('ISwapperRegistry');
-    DCAHubSwapperSwapHandler = await DCAHubSwapperSwapHandlerFactory.deploy(swapperRegistry.address, admin.address, [swapExecutioner.address]);
+    DCAHubSwapper = await DCAHubSwapperFactory.deploy(swapperRegistry.address, admin.address, [swapExecutioner.address]);
     const deploy = (decimals: number) => erc20.deploy({ name: 'A name', symbol: 'SYMB', decimals });
     const deployedTokens = await Promise.all([deploy(12), deploy(16)]);
     [tokenA, tokenB] = deployedTokens.sort((a, b) => a.address.localeCompare(b.address));
     tokens = [tokenA.address, tokenB.address];
-    swapExecutionRole = await DCAHubSwapperSwapHandler.SWAP_EXECUTION_ROLE();
-    adminRole = await DCAHubSwapperSwapHandler.ADMIN_ROLE();
+    swapExecutionRole = await DCAHubSwapper.SWAP_EXECUTION_ROLE();
+    adminRole = await DCAHubSwapper.ADMIN_ROLE();
     snapshotId = await snapshot.take();
   });
 
@@ -57,7 +55,7 @@ contract('DCAHubSwapperSwapHandler', () => {
     when('super admin is zero address', () => {
       then('tx is reverted with reason error', async () => {
         await behaviours.deployShouldRevertWithMessage({
-          contract: DCAHubSwapperSwapHandlerFactory,
+          contract: DCAHubSwapperFactory,
           args: [swapperRegistry.address, constants.ZERO_ADDRESS, []],
           message: 'ZeroAddress',
         });
@@ -65,19 +63,19 @@ contract('DCAHubSwapperSwapHandler', () => {
     });
     when('contract is initiated', () => {
       then('admin is set correctly', async () => {
-        const hasRole = await DCAHubSwapperSwapHandler.hasRole(adminRole, admin.address);
+        const hasRole = await DCAHubSwapper.hasRole(adminRole, admin.address);
         expect(hasRole).to.be.true;
       });
       then('initial swap executioners are set correctly', async () => {
-        const hasRole = await DCAHubSwapperSwapHandler.hasRole(swapExecutionRole, swapExecutioner.address);
+        const hasRole = await DCAHubSwapper.hasRole(swapExecutionRole, swapExecutioner.address);
         expect(hasRole).to.be.true;
       });
       then('admin role is set as swap execution role', async () => {
-        const admin = await DCAHubSwapperSwapHandler.getRoleAdmin(swapExecutionRole);
+        const admin = await DCAHubSwapper.getRoleAdmin(swapExecutionRole);
         expect(admin).to.equal(adminRole);
       });
       then('swap executor starts empty', async () => {
-        expect(await DCAHubSwapperSwapHandler.isSwapExecutorEmpty()).to.be.true;
+        expect(await DCAHubSwapper.isSwapExecutorEmpty()).to.be.true;
       });
     });
   });
@@ -111,14 +109,14 @@ contract('DCAHubSwapperSwapHandler', () => {
       });
       then('reverts with message', async () => {
         await behaviours.txShouldRevertWithMessage({
-          contract: DCAHubSwapperSwapHandler.connect(swapExecutioner),
+          contract: DCAHubSwapper.connect(swapExecutioner),
           func: 'swapForCaller',
           args: [DCAHub.address, tokens, INDEXES, [MIN_OUTPUT, MIN_OUTPUT], [MAX_INPUT, MAX_INPUT], SOME_RANDOM_ADDRESS, constants.MAX_UINT_256],
           message: 'RewardNotEnough',
         });
       });
       behaviours.shouldBeExecutableOnlyByRole({
-        contract: () => DCAHubSwapperSwapHandler,
+        contract: () => DCAHubSwapper,
         funcAndSignature: 'swapForCaller',
         params: () => [
           DCAHub.address,
@@ -157,7 +155,7 @@ contract('DCAHubSwapperSwapHandler', () => {
       });
       then('reverts with message', async () => {
         await behaviours.txShouldRevertWithMessage({
-          contract: DCAHubSwapperSwapHandler.connect(swapExecutioner),
+          contract: DCAHubSwapper.connect(swapExecutioner),
           func: 'swapForCaller',
           args: [DCAHub.address, tokens, INDEXES, [MIN_OUTPUT, MIN_OUTPUT], [MAX_INPUT, MAX_INPUT], SOME_RANDOM_ADDRESS, constants.MAX_UINT_256],
           message: 'ToProvideIsTooMuch',
@@ -166,7 +164,7 @@ contract('DCAHubSwapperSwapHandler', () => {
     });
     when('swap is executed', () => {
       given(async () => {
-        await DCAHubSwapperSwapHandler.connect(swapExecutioner).swapForCaller(
+        await DCAHubSwapper.connect(swapExecutioner).swapForCaller(
           DCAHub.address,
           tokens,
           INDEXES,
@@ -181,7 +179,7 @@ contract('DCAHubSwapperSwapHandler', () => {
         data: () => encode({ plan: 'swap for caller', bytes: 'none' }),
       });
       then('swap executor is cleared', async () => {
-        expect(await DCAHubSwapperSwapHandler.isSwapExecutorEmpty()).to.be.true;
+        expect(await DCAHubSwapper.isSwapExecutorEmpty()).to.be.true;
       });
     });
   });
@@ -204,7 +202,7 @@ contract('DCAHubSwapperSwapHandler', () => {
     });
     when('executing a swap with dexes', () => {
       given(async () => {
-        await DCAHubSwapperSwapHandler.connect(swapExecutioner).swapWithDexes({
+        await DCAHubSwapper.connect(swapExecutioner).swapWithDexes({
           hub: DCAHub.address,
           tokens: tokens,
           pairsToSwap: INDEXES,
@@ -216,7 +214,7 @@ contract('DCAHubSwapperSwapHandler', () => {
         });
       });
       then('allowance was called correctly', async () => {
-        const calls = await DCAHubSwapperSwapHandler.maxApproveSpenderCalls();
+        const calls = await DCAHubSwapper.maxApproveSpenderCalls();
         expect(calls).to.have.lengthOf(1);
         expect(calls[0].token).to.equal(tokenA.address);
         expect(calls[0].spender).to.equal(DEX);
@@ -224,7 +222,7 @@ contract('DCAHubSwapperSwapHandler', () => {
         expect(calls[0].alreadyValidatedSpender).to.be.false;
       });
       thenHubIsCalledWith({
-        rewardRecipient: () => DCAHubSwapperSwapHandler,
+        rewardRecipient: () => DCAHubSwapper,
         data: () =>
           encode({
             plan: 'dexes',
@@ -238,7 +236,7 @@ contract('DCAHubSwapperSwapHandler', () => {
       });
     });
     behaviours.shouldBeExecutableOnlyByRole({
-      contract: () => DCAHubSwapperSwapHandler,
+      contract: () => DCAHubSwapper,
       funcAndSignature: 'swapWithDexes',
       params: () => [
         {
@@ -275,7 +273,7 @@ contract('DCAHubSwapperSwapHandler', () => {
     });
     when('executing a swap with dexes', () => {
       given(async () => {
-        await DCAHubSwapperSwapHandler.connect(swapExecutioner).swapWithDexesForMean({
+        await DCAHubSwapper.connect(swapExecutioner).swapWithDexesForMean({
           hub: DCAHub.address,
           tokens: tokens,
           pairsToSwap: INDEXES,
@@ -287,7 +285,7 @@ contract('DCAHubSwapperSwapHandler', () => {
         });
       });
       then('allowance was called correctly', async () => {
-        const calls = await DCAHubSwapperSwapHandler.maxApproveSpenderCalls();
+        const calls = await DCAHubSwapper.maxApproveSpenderCalls();
         expect(calls).to.have.lengthOf(1);
         expect(calls[0].token).to.equal(tokenA.address);
         expect(calls[0].spender).to.equal(DEX);
@@ -295,7 +293,7 @@ contract('DCAHubSwapperSwapHandler', () => {
         expect(calls[0].alreadyValidatedSpender).to.be.false;
       });
       thenHubIsCalledWith({
-        rewardRecipient: () => DCAHubSwapperSwapHandler,
+        rewardRecipient: () => DCAHubSwapper,
         data: () =>
           encode({
             plan: 'dexes',
@@ -309,7 +307,7 @@ contract('DCAHubSwapperSwapHandler', () => {
       });
     });
     behaviours.shouldBeExecutableOnlyByRole({
-      contract: () => DCAHubSwapperSwapHandler,
+      contract: () => DCAHubSwapper,
       funcAndSignature: 'swapWithDexesForMean',
       params: () => [
         {
@@ -342,9 +340,9 @@ contract('DCAHubSwapperSwapHandler', () => {
       const SWAP_DATA = ABI_CODER.encode(['tuple(uint256, bytes)'], [[0, ethers.utils.randomBytes(5)]]);
       then('reverts with message', async () => {
         await behaviours.txShouldRevertWithMessage({
-          contract: DCAHubSwapperSwapHandler.connect(hub),
+          contract: DCAHubSwapper.connect(hub),
           func: 'DCAHubSwapCall',
-          args: [DCAHubSwapperSwapHandler.address, tokensInSwap, [], SWAP_DATA],
+          args: [DCAHubSwapper.address, tokensInSwap, [], SWAP_DATA],
           message: 'UnexpectedSwapPlan',
         });
       });
@@ -353,9 +351,9 @@ contract('DCAHubSwapperSwapHandler', () => {
       const SWAP_DATA = ABI_CODER.encode(['tuple(uint256, bytes)'], [[10, ethers.utils.randomBytes(5)]]);
       then('reverts with message', async () => {
         await behaviours.txShouldRevertWithMessage({
-          contract: DCAHubSwapperSwapHandler.connect(hub),
+          contract: DCAHubSwapper.connect(hub),
           func: 'DCAHubSwapCall',
-          args: [DCAHubSwapperSwapHandler.address, tokensInSwap, [], SWAP_DATA],
+          args: [DCAHubSwapper.address, tokensInSwap, [], SWAP_DATA],
           // This happens when an invalid plan (not part of the enum) is sent
           message: `Transaction reverted and Hardhat couldn't infer the reason. Please report this to help us improve Hardhat.`,
         });
@@ -365,9 +363,9 @@ contract('DCAHubSwapperSwapHandler', () => {
       when('swap for caller plan is executed', () => {
         given(async () => {
           await mintAndApproveTokens();
-          await DCAHubSwapperSwapHandler.setSwapExecutor(swapExecutioner.address);
-          await DCAHubSwapperSwapHandler.connect(hub).DCAHubSwapCall(
-            DCAHubSwapperSwapHandler.address,
+          await DCAHubSwapper.setSwapExecutor(swapExecutioner.address);
+          await DCAHubSwapper.connect(hub).DCAHubSwapCall(
+            DCAHubSwapper.address,
             tokensInSwap,
             [],
             encode({ plan: 'swap for caller', bytes: 'none' })
@@ -385,7 +383,7 @@ contract('DCAHubSwapperSwapHandler', () => {
         for (const tokenInSwap of tokensInSwap) {
           const token = fromAddressToToken(tokenInSwap.token);
           await token.mint(swapExecutioner.address, tokenInSwap.toProvide);
-          await token.connect(swapExecutioner).approve(DCAHubSwapperSwapHandler.address, tokenInSwap.toProvide);
+          await token.connect(swapExecutioner).approve(DCAHubSwapper.address, tokenInSwap.toProvide);
         }
       }
     });
@@ -416,7 +414,7 @@ contract('DCAHubSwapperSwapHandler', () => {
         given(() => {
           swapperRegistry.isSwapperAllowlisted.returns(false);
           const data = swapData({ callsToSwapper: [], sendToHubFlag: true });
-          tx = DCAHubSwapperSwapHandler.connect(hub).DCAHubSwapCall(constants.ZERO_ADDRESS, [], [], data);
+          tx = DCAHubSwapper.connect(hub).DCAHubSwapCall(constants.ZERO_ADDRESS, [], [], data);
         });
         then('swap fails', async () => {
           await expect(tx).to.have.revertedWith('SwapperNotAllowlisted');
@@ -428,7 +426,7 @@ contract('DCAHubSwapperSwapHandler', () => {
         given(() => {
           swapper.swap.reverts();
           const data = swapData({ callsToSwapper: [swapExecution], sendToHubFlag: true });
-          tx = DCAHubSwapperSwapHandler.connect(hub).DCAHubSwapCall(constants.ZERO_ADDRESS, [], [], data);
+          tx = DCAHubSwapper.connect(hub).DCAHubSwapCall(constants.ZERO_ADDRESS, [], [], data);
         });
         then('then swap reverts', async () => {
           await expect(tx).to.have.revertedWith('Call to swapper failed');
@@ -494,7 +492,7 @@ contract('DCAHubSwapperSwapHandler', () => {
             const tokensInSwap = [{ token: token.address, toProvide: toProvide ?? 0, reward: 0, platformFee: 0 }];
             token.balanceOf.returns(balance);
             const data = swapData({ callsToSwapper: [swapExecution], sendToHubFlag: sendToHubFlag ?? true });
-            await DCAHubSwapperSwapHandler.connect(hub).DCAHubSwapCall(constants.ZERO_ADDRESS, tokensInSwap, [], data);
+            await DCAHubSwapper.connect(hub).DCAHubSwapCall(constants.ZERO_ADDRESS, tokensInSwap, [], data);
           });
           then(thenTitle, () => assertion(token, recipient.address));
           then('registry is queried correctly', () => {
@@ -516,11 +514,11 @@ contract('DCAHubSwapperSwapHandler', () => {
     }
     throw new Error('Unknown address');
   }
-  function whenDeadlineHasExpiredThenTxReverts({ func, args }: { func: keyof DCAHubSwapperSwapHandlerMock['functions']; args: () => any[] }) {
+  function whenDeadlineHasExpiredThenTxReverts({ func, args }: { func: keyof DCAHubSwapperMock['functions']; args: () => any[] }) {
     when('deadline has expired', () => {
       then('reverts with message', async () => {
         await behaviours.txShouldRevertWithMessage({
-          contract: DCAHubSwapperSwapHandler.connect(swapExecutioner),
+          contract: DCAHubSwapper.connect(swapExecutioner),
           func,
           args: args(),
           message: 'Transaction too old',
@@ -543,7 +541,7 @@ contract('DCAHubSwapperSwapHandler', () => {
       expect(rewardRecipient).to.equal(
         typeof expectedRewardRecipient === 'string' ? expectedRewardRecipient : expectedRewardRecipient().address
       );
-      expect(callbackHandler).to.equal(DCAHubSwapperSwapHandler.address);
+      expect(callbackHandler).to.equal(DCAHubSwapper.address);
       expect(borrow).to.eql([constants.ZERO, constants.ZERO]);
       expect(data).to.equal(expectedData());
     });
