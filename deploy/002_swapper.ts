@@ -15,8 +15,8 @@ const deployFunction: DeployFunction = async function (hre: HardhatRuntimeEnviro
     contract: 'contracts/DCAHubSwapper/DCAHubSwapper.sol:DCAHubSwapper',
     bytecode,
     constructorArgs: {
-      types: ['address', 'address', 'address[]'],
-      values: [swapperRegistry.address, governor, []],
+      types: ['address', 'address', 'address[]', 'address[]'],
+      values: [swapperRegistry.address, governor, [governor], []],
     },
     log: !process.env.TEST,
   });
