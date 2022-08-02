@@ -1,13 +1,13 @@
 // SPDX-License-Identifier: GPL-2.0-or-later
 pragma solidity >=0.8.7 <0.9.0;
 
+import '@openzeppelin/contracts/access/AccessControl.sol';
 import '@mean-finance/swappers/solidity/contracts/SwapAdapter.sol';
-import '@openzeppelin/contracts/token/ERC20/IERC20.sol';
 import '@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol';
 import '../interfaces/IDCAHubSwapper.sol';
 import './utils/DeadlineValidation.sol';
 
-abstract contract DCAHubSwapperSwapHandler is DeadlineValidation, SwapAdapter, IDCAHubSwapperSwapHandler {
+abstract contract DCAHubSwapperSwapHandler is DeadlineValidation, AccessControl, SwapAdapter, IDCAHubSwapperSwapHandler {
   enum SwapPlan {
     // Used only for tests
     NONE,
@@ -36,12 +36,26 @@ abstract contract DCAHubSwapperSwapHandler is DeadlineValidation, SwapAdapter, I
   using SafeERC20 for IERC20;
   using Address for address;
 
+  bytes32 public constant ADMIN_ROLE = keccak256('ADMIN_ROLE');
+  bytes32 public constant SWAP_EXECUTION_ROLE = keccak256('SWAP_EXECUTION_ROLE');
+
   /// @notice Represents the lack of an executor. We are not using the zero address so that it's cheaper to modify
   address internal constant _NO_EXECUTOR = 0x000000000000000000000000000000000000dEaD;
   /// @notice The caller who initiated a swap execution
   address internal _swapExecutor = _NO_EXECUTOR;
 
-  constructor(address _swapperRegistry) SwapAdapter(_swapperRegistry) {}
+  constructor(
+    address _swapperRegistry,
+    address _admin,
+    address[] memory _initialSwapExecutors
+  ) SwapAdapter(_swapperRegistry) {
+    if (_admin == address(0)) revert ZeroAddress();
+    _setupRole(ADMIN_ROLE, _admin);
+    _setRoleAdmin(SWAP_EXECUTION_ROLE, ADMIN_ROLE);
+    for (uint256 i; i < _initialSwapExecutors.length; i++) {
+      _setupRole(SWAP_EXECUTION_ROLE, _initialSwapExecutors[i]);
+    }
+  }
 
   /// @inheritdoc IDCAHubSwapperSwapHandler
   function swapForCaller(

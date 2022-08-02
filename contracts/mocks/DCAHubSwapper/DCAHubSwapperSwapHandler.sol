@@ -13,7 +13,11 @@ contract DCAHubSwapperSwapHandlerMock is DCAHubSwapperSwapHandler {
 
   MaxApproveSpenderCall[] internal _maxApproveSpenderCalls;
 
-  constructor(address _swapperRegistry) DCAHubSwapperSwapHandler(_swapperRegistry) {}
+  constructor(
+    address _swapperRegistry,
+    address _admin,
+    address[] memory _initialSwapExecutors
+  ) DCAHubSwapperSwapHandler(_swapperRegistry, _admin, _initialSwapExecutors) {}
 
   function maxApproveSpenderCalls() external view returns (MaxApproveSpenderCall[] memory) {
     return _maxApproveSpenderCalls;

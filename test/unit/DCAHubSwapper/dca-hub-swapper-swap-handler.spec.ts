@@ -17,28 +17,32 @@ chai.use(smock.matchers);
 contract('DCAHubSwapperSwapHandler', () => {
   const ABI_CODER = new ethers.utils.AbiCoder();
   const DEX = constants.NOT_ZERO_ADDRESS;
-  let swapExecutioner: SignerWithAddress, recipient: SignerWithAddress;
+  let swapExecutioner: SignerWithAddress, recipient: SignerWithAddress, admin: SignerWithAddress;
   let DCAHub: FakeContract<IDCAHub>;
+  let DCAHubSwapperSwapHandlerFactory: DCAHubSwapperSwapHandlerMock__factory;
   let DCAHubSwapperSwapHandler: DCAHubSwapperSwapHandlerMock;
   let swapperRegistry: FakeContract<ISwapperRegistry>;
   let tokenA: ERC20TokenContract, tokenB: ERC20TokenContract;
+  let swapExecutionRole: string, adminRole: string;
   let snapshotId: string;
 
   const INDEXES = [{ indexTokenA: 0, indexTokenB: 1 }];
   let tokens: string[];
 
   before('Setup accounts and contracts', async () => {
-    [, swapExecutioner, recipient] = await ethers.getSigners();
-    const DCAHubSwapperSwapHandlerFactory = await ethers.getContractFactory<DCAHubSwapperSwapHandlerMock__factory>(
+    [, swapExecutioner, admin, recipient] = await ethers.getSigners();
+    DCAHubSwapperSwapHandlerFactory = await ethers.getContractFactory(
       'contracts/mocks/DCAHubSwapper/DCAHubSwapperSwapHandler.sol:DCAHubSwapperSwapHandlerMock'
     );
     DCAHub = await smock.fake('IDCAHub');
     swapperRegistry = await smock.fake('ISwapperRegistry');
-    DCAHubSwapperSwapHandler = await DCAHubSwapperSwapHandlerFactory.deploy(swapperRegistry.address);
+    DCAHubSwapperSwapHandler = await DCAHubSwapperSwapHandlerFactory.deploy(swapperRegistry.address, admin.address, [swapExecutioner.address]);
     const deploy = (decimals: number) => erc20.deploy({ name: 'A name', symbol: 'SYMB', decimals });
     const deployedTokens = await Promise.all([deploy(12), deploy(16)]);
     [tokenA, tokenB] = deployedTokens.sort((a, b) => a.address.localeCompare(b.address));
     tokens = [tokenA.address, tokenB.address];
+    swapExecutionRole = await DCAHubSwapperSwapHandler.SWAP_EXECUTION_ROLE();
+    adminRole = await DCAHubSwapperSwapHandler.ADMIN_ROLE();
     snapshotId = await snapshot.take();
   });
 
@@ -50,7 +54,28 @@ contract('DCAHubSwapperSwapHandler', () => {
     swapperRegistry.isValidAllowanceTarget.returns(true);
   });
   describe('constructor', () => {
+    when('super admin is zero address', () => {
+      then('tx is reverted with reason error', async () => {
+        await behaviours.deployShouldRevertWithMessage({
+          contract: DCAHubSwapperSwapHandlerFactory,
+          args: [swapperRegistry.address, constants.ZERO_ADDRESS, []],
+          message: 'ZeroAddress',
+        });
+      });
+    });
     when('contract is initiated', () => {
+      then('admin is set correctly', async () => {
+        const hasRole = await DCAHubSwapperSwapHandler.hasRole(adminRole, admin.address);
+        expect(hasRole).to.be.true;
+      });
+      then('initial swap executioners are set correctly', async () => {
+        const hasRole = await DCAHubSwapperSwapHandler.hasRole(swapExecutionRole, swapExecutioner.address);
+        expect(hasRole).to.be.true;
+      });
+      then('admin role is set as swap execution role', async () => {
+        const admin = await DCAHubSwapperSwapHandler.getRoleAdmin(swapExecutionRole);
+        expect(admin).to.equal(adminRole);
+      });
       then('swap executor starts empty', async () => {
         expect(await DCAHubSwapperSwapHandler.isSwapExecutorEmpty()).to.be.true;
       });
