@@ -4,7 +4,7 @@ import { JsonRpcSigner } from '@ethersproject/providers';
 import { constants, wallet } from '@test-utils';
 import { contract } from '@test-utils/bdd';
 import evm from '@test-utils/evm';
-import { DCAHubSwapper, IERC20, DCAFeeManager } from '@typechained';
+import { DCAHubSwapper, IERC20, DCAFeeManager, ISwapperRegistry } from '@typechained';
 import { DCAHub } from '@mean-finance/dca-v2-core/typechained';
 import { abi as IERC20_ABI } from '@openzeppelin/contracts/build/contracts/IERC20.json';
 import { BigNumber, utils } from 'ethers';
@@ -12,6 +12,7 @@ import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers';
 import { SwapInterval } from '@test-utils/interval-utils';
 import forkBlockNumber from '@integration/fork-block-numbers';
 import { DeterministicFactory, DeterministicFactory__factory } from '@mean-finance/deterministic-factory/typechained';
+import { TransformerRegistry } from '@mean-finance/transformers/typechained';
 import { buildSwapInput } from '@test-utils/swap-utils';
 
 const WETH_ADDRESS = '0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2';
@@ -29,6 +30,8 @@ contract('DCAFeeManager', () => {
   let DCAFeeManager: DCAFeeManager;
   let DCAHubSwapper: DCAHubSwapper;
   let DCAHub: DCAHub;
+  let transformerRegistry: TransformerRegistry;
+  let swapperRegistry: ISwapperRegistry;
 
   before(async () => {
     await evm.reset({
@@ -50,20 +53,27 @@ contract('DCAFeeManager', () => {
 
     await deterministicFactory.connect(superAdmin).grantRole(await deterministicFactory.DEPLOYER_ROLE(), namedAccounts.deployer);
 
-    await deployments.run(['DCAHub', 'SwapperRegistry', 'DCAHubSwapper', 'DCAFeeManager'], {
-      resetMemory: true,
-      deletePreviousDeployments: false,
-      writeDeploymentsToFiles: false,
-    });
+    await deployments.run(
+      ['DCAHub', 'ProtocolTokenWrapperTransformer', 'TransformerRegistry', 'SwapperRegistry', 'DCAHubSwapper', 'DCAFeeManager'],
+      {
+        resetMemory: true,
+        deletePreviousDeployments: false,
+        writeDeploymentsToFiles: false,
+      }
+    );
 
     DCAHub = await ethers.getContract('DCAHub');
     DCAHubSwapper = await ethers.getContract('DCAHubSwapper');
     DCAFeeManager = await ethers.getContract('DCAFeeManager');
+    transformerRegistry = await ethers.getContract('TransformerRegistry');
+    swapperRegistry = await ethers.getContract('SwapperRegistry');
+    const protocolTokenTransformer = await ethers.getContract('ProtocolTokenWrapperTransformer');
 
     // Set up tokens and permissions
     await DCAHub.connect(superAdmin).setAllowedTokens([WETH_ADDRESS, USDC_ADDRESS, WBTC_ADDRESS], [true, true, true]);
     await DCAHub.connect(superAdmin).grantRole(await DCAHub.PLATFORM_WITHDRAW_ROLE(), DCAFeeManager.address);
     await DCAFeeManager.connect(superAdmin).grantRole(await DCAFeeManager.ADMIN_ROLE(), allowed.address);
+    await swapperRegistry.connect(superAdmin).allowSwappers([transformerRegistry.address]);
 
     WETH = await ethers.getContractAt(IERC20_ABI, WETH_ADDRESS);
     USDC = await ethers.getContractAt(IERC20_ABI, USDC_ADDRESS);
@@ -71,6 +81,9 @@ contract('DCAFeeManager', () => {
 
     // Send tokens from whales, to our users
     await distributeTokensToUsers();
+    await transformerRegistry
+      .connect(superAdmin)
+      .registerTransformers([{ transformer: protocolTokenTransformer.address, dependents: [WETH.address] }]);
 
     // Handle approvals
     await USDC.connect(swapper).approve(DCAHubSwapper.address, constants.MAX_UINT_256);
@@ -150,8 +163,22 @@ contract('DCAFeeManager', () => {
       [{ token: WETH.address, positionIds: [position1.positionId, position2.positionId] }],
       DCAFeeManager.address
     );
-    const { data: unwrapData } = await DCAFeeManager.populateTransaction.unwrapWToken(total);
-    const { data: withdrawProtocolTokenData } = await DCAFeeManager.populateTransaction.withdrawProtocolToken(total, RECIPIENT);
+    const { data: unwrapExecutionData } = await transformerRegistry.populateTransaction.transformToUnderlying(
+      WETH.address,
+      total,
+      DCAFeeManager.address
+    );
+    const { data: unwrapData } = await DCAFeeManager.populateTransaction.runSwap({
+      swapper: transformerRegistry.address,
+      allowanceTarget: transformerRegistry.address,
+      swapData: unwrapExecutionData!,
+      tokenIn: WETH.address,
+      amountIn: total,
+    });
+    const { data: withdrawProtocolTokenData } = await DCAFeeManager.populateTransaction.withdrawFromBalance(
+      [{ token: await DCAFeeManager.PROTOCOL_TOKEN(), amount: total }],
+      RECIPIENT
+    );
     await DCAFeeManager.connect(allowed).multicall([
       withdrawPlatformBalanceData!,
       withdrawPositionsData!,

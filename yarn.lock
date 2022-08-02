@@ -843,6 +843,14 @@
     "@mean-finance/deterministic-factory" "1.3.1"
     "@openzeppelin/contracts" "4.6.0"
 
+"@mean-finance/transformers@1.0.0-rc3":
+  version "1.0.0-rc3"
+  resolved "https://registry.yarnpkg.com/@mean-finance/transformers/-/transformers-1.0.0-rc3.tgz#143d7b7480800cde1702a80dec486029ba21c410"
+  integrity sha512-c9h4vgZTFfDeXyM0QeFzD7bl16yE5DBGVUx1c1Nn4Av2FZb7iU4SP0hT3py3qES0ojjbcW8cHVf1uGzjV5TVGA==
+  dependencies:
+    "@mean-finance/deterministic-factory" "1.3.1"
+    "@openzeppelin/contracts" "4.7.1"
+
 "@metamask/eth-sig-util@^4.0.0":
   version "4.0.0"
   resolved "https://registry.yarnpkg.com/@metamask/eth-sig-util/-/eth-sig-util-4.0.0.tgz#11553ba06de0d1352332c1bde28c8edd00e0dcf6"
@@ -936,6 +944,11 @@
   version "4.6.0"
   resolved "https://registry.yarnpkg.com/@openzeppelin/contracts/-/contracts-4.6.0.tgz#c91cf64bc27f573836dba4122758b4743418c1b3"
   integrity sha512-8vi4d50NNya/bQqCmaVzvHNmwHvS0OBKb7HNtuNwEE3scXWrP31fKQoGxNMT+KbzmrNZzatE3QK5p2gFONI/hg==
+
+"@openzeppelin/contracts@4.7.1":
+  version "4.7.1"
+  resolved "https://registry.yarnpkg.com/@openzeppelin/contracts/-/contracts-4.7.1.tgz#33d0a857b76b18d313e6bb6ed28cdaf367e90cfe"
+  integrity sha512-UXmAjKARsXORHlHZu5GCD7ZbRKm6nU8UHnbuT/QJJa2JEOEcbvV/X8w/sUk62Sl9VZuuljM1akrZLyAtzUgsxw==
 
 "@rari-capital/solmate@6.2.0":
   version "6.2.0"
