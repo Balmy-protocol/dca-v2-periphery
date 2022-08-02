@@ -28,8 +28,10 @@ contract DCAFeeManager is RunSwap, AccessControl, Multicall, IDCAFeeManager {
     address[] memory _initialAdmins
   ) SwapAdapter(_swapperRegistry) {
     if (_superAdmin == address(0)) revert ZeroAddress();
-    _setupRole(SUPER_ADMIN_ROLE, _superAdmin);
+    // We are setting the super admin role as its own admin so we can transfer it
+    _setRoleAdmin(SUPER_ADMIN_ROLE, SUPER_ADMIN_ROLE);
     _setRoleAdmin(ADMIN_ROLE, SUPER_ADMIN_ROLE);
+    _setupRole(SUPER_ADMIN_ROLE, _superAdmin);
     for (uint256 i; i < _initialAdmins.length; i++) {
       _setupRole(ADMIN_ROLE, _initialAdmins[i]);
     }
@@ -109,6 +111,11 @@ contract DCAFeeManager is RunSwap, AccessControl, Multicall, IDCAFeeManager {
       _hub.terminate(_positionId, _recipient, _recipient);
       delete positions[getPositionKey(address(_position.from), address(_position.to))];
     }
+  }
+
+  /// @inheritdoc IDCAFeeManager
+  function revokeAllowances(RevokeAction[] calldata _revokeActions) external onlyRole(ADMIN_ROLE) {
+    _revokeAllowances(_revokeActions);
   }
 
   /// @inheritdoc IDCAFeeManager
