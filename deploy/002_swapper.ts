@@ -4,7 +4,7 @@ import { bytecode } from '../artifacts/contracts/DCAHubSwapper/DCAHubSwapper.sol
 import { deployThroughDeterministicFactory } from '@mean-finance/deterministic-factory/utils/deployment';
 
 const deployFunction: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
-  const { deployer } = await hre.getNamedAccounts();
+  const { deployer, governor } = await hre.getNamedAccounts();
 
   const swapperRegistry = await hre.deployments.get('SwapperRegistry');
 
@@ -15,8 +15,8 @@ const deployFunction: DeployFunction = async function (hre: HardhatRuntimeEnviro
     contract: 'contracts/DCAHubSwapper/DCAHubSwapper.sol:DCAHubSwapper',
     bytecode,
     constructorArgs: {
-      types: ['address'],
-      values: [swapperRegistry.address],
+      types: ['address', 'address', 'address[]'],
+      values: [swapperRegistry.address, governor, []],
     },
     log: !process.env.TEST,
   });
