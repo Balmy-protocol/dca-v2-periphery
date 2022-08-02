@@ -1,10 +1,10 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity >=0.8.7 <0.9.0;
 
-import '../../DCAHubCompanion/DCAHubCompanionTakeSendAndSwapHandler.sol';
+import '../../utils/BaseCompanion.sol';
 
-contract DCAHubCompanionTakeSendAndSwapHandlerMock is DCAHubCompanionTakeSendAndSwapHandler {
-  constructor(address _swapperRegistry) SwapAdapter(_swapperRegistry) {}
+contract BaseCompanionMock is BaseCompanion {
+  constructor(address _swapperRegistry, address _governor) BaseCompanion(_swapperRegistry, _governor) {}
 
   struct TakeFromMsgSenderCall {
     IERC20 token;

@@ -2,27 +2,24 @@ import chai, { expect } from 'chai';
 import { ethers } from 'hardhat';
 import { contract, given, then, when } from '@test-utils/bdd';
 import { snapshot } from '@test-utils/evm';
-import { DCAHubCompanionTakeSendAndSwapHandlerMock, DCAHubCompanionTakeSendAndSwapHandlerMock__factory, IERC20 } from '@typechained';
+import { BaseCompanionMock, BaseCompanionMock__factory, IERC20 } from '@typechained';
 import { FakeContract, smock } from '@defi-wonderland/smock';
-import { BigNumber, Wallet } from 'ethers';
-import { wallet } from '@test-utils';
+import { Wallet } from 'ethers';
 
 chai.use(smock.matchers);
 
-contract('DCAHubCompanionTakeSendAndSwapHandler', () => {
+contract('BaseCompanion', () => {
   const AMOUNT = 123456789;
   const RECIPIENT = Wallet.createRandom();
   let token: FakeContract<IERC20>;
-  let TakeSendAndSwapHandler: DCAHubCompanionTakeSendAndSwapHandlerMock;
+  let baseCompanion: BaseCompanionMock;
   let snapshotId: string;
 
   before('Setup accounts and contracts', async () => {
-    const DCAHubCompanionHubProxyHandlerFactory: DCAHubCompanionTakeSendAndSwapHandlerMock__factory = await ethers.getContractFactory(
-      'DCAHubCompanionTakeSendAndSwapHandlerMock'
-    );
+    const baseCompanionFactory: BaseCompanionMock__factory = await ethers.getContractFactory('BaseCompanionMock');
     const registry = await smock.fake('ISwapperRegistry');
     token = await smock.fake('IERC20');
-    TakeSendAndSwapHandler = await DCAHubCompanionHubProxyHandlerFactory.deploy(registry.address);
+    baseCompanion = await baseCompanionFactory.deploy(registry.address, RECIPIENT.address);
     snapshotId = await snapshot.take();
   });
 
@@ -36,10 +33,10 @@ contract('DCAHubCompanionTakeSendAndSwapHandler', () => {
   describe('sendToRecipient', () => {
     when('sending to a recipient', () => {
       given(async () => {
-        await TakeSendAndSwapHandler.sendToRecipient(token.address, AMOUNT, RECIPIENT.address);
+        await baseCompanion.sendToRecipient(token.address, AMOUNT, RECIPIENT.address);
       });
       then('internal function is called correctly', async () => {
-        const calls = await TakeSendAndSwapHandler.sendToRecipientCalls();
+        const calls = await baseCompanion.sendToRecipientCalls();
         expect(calls).to.have.lengthOf(1);
         expect(calls[0].token).to.equal(token.address);
         expect(calls[0].amount).to.equal(AMOUNT);
@@ -52,10 +49,10 @@ contract('DCAHubCompanionTakeSendAndSwapHandler', () => {
     const AMOUNT = 123456789;
     when('taking token from caller', () => {
       given(async () => {
-        await TakeSendAndSwapHandler.takeFromCaller(token.address, AMOUNT);
+        await baseCompanion.takeFromCaller(token.address, AMOUNT);
       });
       then('internal function is called correctly', async () => {
-        const calls = await TakeSendAndSwapHandler.takeFromMsgSenderCalls();
+        const calls = await baseCompanion.takeFromMsgSenderCalls();
         expect(calls).to.have.lengthOf(1);
         expect(calls[0].token).to.equal(token.address);
         expect(calls[0].amount).to.equal(AMOUNT);
@@ -67,10 +64,10 @@ contract('DCAHubCompanionTakeSendAndSwapHandler', () => {
     const RECIPIENT = Wallet.createRandom();
     when('sending balance on contract to a recipient', () => {
       given(async () => {
-        await TakeSendAndSwapHandler.sendBalanceOnContractToRecipient(token.address, RECIPIENT.address);
+        await baseCompanion.sendBalanceOnContractToRecipient(token.address, RECIPIENT.address);
       });
       then('internal function is called correctly', async () => {
-        const calls = await TakeSendAndSwapHandler.sendBalanceOnContractToRecipientCalls();
+        const calls = await baseCompanion.sendBalanceOnContractToRecipientCalls();
         expect(calls).to.have.lengthOf(1);
         expect(calls[0].token).to.equal(token.address);
         expect(calls[0].recipient).to.equal(RECIPIENT.address);
