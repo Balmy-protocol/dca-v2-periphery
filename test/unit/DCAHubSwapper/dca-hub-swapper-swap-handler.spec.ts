@@ -111,11 +111,26 @@ contract('DCAHubSwapperSwapHandler', () => {
       });
       then('reverts with message', async () => {
         await behaviours.txShouldRevertWithMessage({
-          contract: DCAHubSwapperSwapHandler,
+          contract: DCAHubSwapperSwapHandler.connect(swapExecutioner),
           func: 'swapForCaller',
           args: [DCAHub.address, tokens, INDEXES, [MIN_OUTPUT, MIN_OUTPUT], [MAX_INPUT, MAX_INPUT], SOME_RANDOM_ADDRESS, constants.MAX_UINT_256],
           message: 'RewardNotEnough',
         });
+      });
+      behaviours.shouldBeExecutableOnlyByRole({
+        contract: () => DCAHubSwapperSwapHandler,
+        funcAndSignature: 'swapForCaller',
+        params: () => [
+          DCAHub.address,
+          tokens,
+          INDEXES,
+          [MIN_OUTPUT, MIN_OUTPUT],
+          [MAX_INPUT, MAX_INPUT],
+          SOME_RANDOM_ADDRESS,
+          constants.MAX_UINT_256,
+        ],
+        addressWithRole: () => swapExecutioner,
+        role: () => swapExecutionRole,
       });
     });
     when('hub asks for more than maximum input', () => {
@@ -142,7 +157,7 @@ contract('DCAHubSwapperSwapHandler', () => {
       });
       then('reverts with message', async () => {
         await behaviours.txShouldRevertWithMessage({
-          contract: DCAHubSwapperSwapHandler,
+          contract: DCAHubSwapperSwapHandler.connect(swapExecutioner),
           func: 'swapForCaller',
           args: [DCAHub.address, tokens, INDEXES, [MIN_OUTPUT, MIN_OUTPUT], [MAX_INPUT, MAX_INPUT], SOME_RANDOM_ADDRESS, constants.MAX_UINT_256],
           message: 'ToProvideIsTooMuch',
@@ -222,6 +237,24 @@ contract('DCAHubSwapperSwapHandler', () => {
           }),
       });
     });
+    behaviours.shouldBeExecutableOnlyByRole({
+      contract: () => DCAHubSwapperSwapHandler,
+      funcAndSignature: 'swapWithDexes',
+      params: () => [
+        {
+          hub: DCAHub.address,
+          tokens: tokens,
+          pairsToSwap: INDEXES,
+          allowanceTargets: [{ token: tokenA.address, allowanceTarget: DEX, minAllowance: 2000 }],
+          swappers: [DEX],
+          executions: [{ swapData: BYTES, swapperIndex: 0 }],
+          leftoverRecipient: recipient.address,
+          deadline: constants.MAX_UINT_256,
+        },
+      ],
+      addressWithRole: () => swapExecutioner,
+      role: () => swapExecutionRole,
+    });
   });
   describe('swapWithDexesForMean', () => {
     const BYTES = ethers.utils.randomBytes(10);
@@ -274,6 +307,24 @@ contract('DCAHubSwapperSwapHandler', () => {
             },
           }),
       });
+    });
+    behaviours.shouldBeExecutableOnlyByRole({
+      contract: () => DCAHubSwapperSwapHandler,
+      funcAndSignature: 'swapWithDexesForMean',
+      params: () => [
+        {
+          hub: DCAHub.address,
+          tokens: tokens,
+          pairsToSwap: INDEXES,
+          allowanceTargets: [{ token: tokenA.address, allowanceTarget: DEX, minAllowance: 2000 }],
+          swappers: [DEX],
+          executions: [{ swapData: BYTES, swapperIndex: 0 }],
+          leftoverRecipient: recipient.address,
+          deadline: constants.MAX_UINT_256,
+        },
+      ],
+      addressWithRole: () => swapExecutioner,
+      role: () => swapExecutionRole,
     });
   });
   describe('DCAHubSwapCall', () => {
@@ -469,7 +520,7 @@ contract('DCAHubSwapperSwapHandler', () => {
     when('deadline has expired', () => {
       then('reverts with message', async () => {
         await behaviours.txShouldRevertWithMessage({
-          contract: DCAHubSwapperSwapHandler,
+          contract: DCAHubSwapperSwapHandler.connect(swapExecutioner),
           func,
           args: args(),
           message: 'Transaction too old',
