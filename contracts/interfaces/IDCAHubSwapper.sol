@@ -3,6 +3,7 @@ pragma solidity >=0.8.7 <0.9.0;
 
 import '@mean-finance/dca-v2-core/contracts/interfaces/IDCAHub.sol';
 import '@mean-finance/dca-v2-core/contracts/interfaces/IDCAHubSwapCallee.sol';
+import '@mean-finance/swappers/solidity/interfaces/ISwapAdapter.sol';
 import '@mean-finance/swappers/solidity/contracts/extensions/Shared.sol';
 
 interface IDCAHubSwapper is IDCAHubSwapCallee {
@@ -45,7 +46,8 @@ interface IDCAHubSwapper is IDCAHubSwapCallee {
 
   /**
    * @notice Executes a swap for the caller, by sending them the reward, and taking from them the needed tokens
-   * @dev Will revert:
+   * @dev Can only be called by user with appropriate role
+   *      Will revert:
    *      - With RewardNotEnough if the minimum output is not met
    *      - With ToProvideIsTooMuch if the hub swap requires more than the given maximum input
    * @param hub The address of the DCAHub
@@ -69,6 +71,7 @@ interface IDCAHubSwapper is IDCAHubSwapCallee {
 
   /**
    * @notice Executes a swap with the given swappers, and sends all unspent tokens to the given recipient
+   * @dev Can only be called by user with appropriate role
    * @return The information about the executed swap
    */
   function swapWithDexes(SwapWithDexesParams calldata parameters) external payable returns (IDCAHub.SwapInfo memory);
@@ -78,7 +81,28 @@ interface IDCAHubSwapper is IDCAHubSwapCallee {
    *         swap with the given swappers, but sends some of the unspent tokens back to the hub. This means that they
    *         will be considered part of the protocol's balance. Unspent tokens that were given as reward will be
    *         sent to the provided recipient
+   * @dev Can only be called by user with appropriate role
    * @return The information about the executed swap
    */
   function swapWithDexesForMean(SwapWithDexesParams calldata parameters) external payable returns (IDCAHub.SwapInfo memory);
+
+  /**
+   * @notice Revokes ERC20 allowances for the given spenders
+   * @dev Can only be called an admin
+   * @param revokeActions The spenders and tokens to revoke
+   */
+  function revokeAllowances(ISwapAdapter.RevokeAction[] calldata revokeActions) external;
+
+  /**
+   * @notice Sends the given token to the recipient
+   * @dev Can only be called an admin
+   * @param token The token to send to the recipient (can be an ERC20 or the protocol token)
+   * @param amount The amount to transfer to the recipient
+   * @param recipient The address of the recipient
+   */
+  function sendDust(
+    address token,
+    uint256 amount,
+    address recipient
+  ) external;
 }
