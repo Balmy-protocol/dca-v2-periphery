@@ -66,7 +66,7 @@ abstract contract DCAHubSwapperSwapHandler is DeadlineValidation, AccessControl,
     uint256[] calldata _maximumInput,
     address _recipient,
     uint256 _deadline
-  ) external payable checkDeadline(_deadline) returns (IDCAHub.SwapInfo memory _swapInfo) {
+  ) external payable checkDeadline(_deadline) onlyRole(SWAP_EXECUTION_ROLE) returns (IDCAHub.SwapInfo memory _swapInfo) {
     // Set the swap's executor
     _swapExecutor = msg.sender;
 
@@ -96,12 +96,22 @@ abstract contract DCAHubSwapperSwapHandler is DeadlineValidation, AccessControl,
   }
 
   /// @inheritdoc IDCAHubSwapperSwapHandler
-  function swapWithDexes(SwapWithDexesParams calldata _parameters) external payable returns (IDCAHub.SwapInfo memory) {
+  function swapWithDexes(SwapWithDexesParams calldata _parameters)
+    external
+    payable
+    onlyRole(SWAP_EXECUTION_ROLE)
+    returns (IDCAHub.SwapInfo memory)
+  {
     return _swapWithDexes(_parameters, false);
   }
 
   /// @inheritdoc IDCAHubSwapperSwapHandler
-  function swapWithDexesForMean(SwapWithDexesParams calldata _parameters) external payable returns (IDCAHub.SwapInfo memory) {
+  function swapWithDexesForMean(SwapWithDexesParams calldata _parameters)
+    external
+    payable
+    onlyRole(SWAP_EXECUTION_ROLE)
+    returns (IDCAHub.SwapInfo memory)
+  {
     return _swapWithDexes(_parameters, true);
   }
 
