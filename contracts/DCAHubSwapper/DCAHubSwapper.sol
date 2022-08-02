@@ -36,6 +36,7 @@ contract DCAHubSwapper is DeadlineValidation, AccessControl, SwapAdapter, IDCAHu
   using SafeERC20 for IERC20;
   using Address for address;
 
+  bytes32 public constant SUPER_ADMIN_ROLE = keccak256('SUPER_ADMIN_ROLE');
   bytes32 public constant ADMIN_ROLE = keccak256('ADMIN_ROLE');
   bytes32 public constant SWAP_EXECUTION_ROLE = keccak256('SWAP_EXECUTION_ROLE');
 
@@ -46,12 +47,19 @@ contract DCAHubSwapper is DeadlineValidation, AccessControl, SwapAdapter, IDCAHu
 
   constructor(
     address _swapperRegistry,
-    address _admin,
+    address _superAdmin,
+    address[] memory _initialAdmins,
     address[] memory _initialSwapExecutors
   ) SwapAdapter(_swapperRegistry) {
-    if (_admin == address(0)) revert ZeroAddress();
-    _setupRole(ADMIN_ROLE, _admin);
-    _setRoleAdmin(SWAP_EXECUTION_ROLE, ADMIN_ROLE);
+    if (_superAdmin == address(0)) revert ZeroAddress();
+    // We are setting the super admin role as its own admin so we can transfer it
+    _setRoleAdmin(SUPER_ADMIN_ROLE, SUPER_ADMIN_ROLE);
+    _setRoleAdmin(ADMIN_ROLE, SUPER_ADMIN_ROLE);
+    _setRoleAdmin(SWAP_EXECUTION_ROLE, SUPER_ADMIN_ROLE);
+    _setupRole(SUPER_ADMIN_ROLE, _superAdmin);
+    for (uint256 i; i < _initialAdmins.length; i++) {
+      _setupRole(ADMIN_ROLE, _initialAdmins[i]);
+    }
     for (uint256 i; i < _initialSwapExecutors.length; i++) {
       _setupRole(SWAP_EXECUTION_ROLE, _initialSwapExecutors[i]);
     }

@@ -17,30 +17,31 @@ chai.use(smock.matchers);
 contract('DCAHubSwapper', () => {
   const ABI_CODER = new ethers.utils.AbiCoder();
   const DEX = constants.NOT_ZERO_ADDRESS;
-  let swapExecutioner: SignerWithAddress, recipient: SignerWithAddress, admin: SignerWithAddress;
+  let swapExecutioner: SignerWithAddress, recipient: SignerWithAddress, admin: SignerWithAddress, superAdmin: SignerWithAddress;
   let DCAHub: FakeContract<IDCAHub>;
   let DCAHubSwapperFactory: DCAHubSwapperMock__factory;
   let DCAHubSwapper: DCAHubSwapperMock;
   let swapperRegistry: FakeContract<ISwapperRegistry>;
   let tokenA: ERC20TokenContract, tokenB: ERC20TokenContract;
-  let swapExecutionRole: string, adminRole: string;
+  let swapExecutionRole: string, adminRole: string, superAdminRole: string;
   let snapshotId: string;
 
   const INDEXES = [{ indexTokenA: 0, indexTokenB: 1 }];
   let tokens: string[];
 
   before('Setup accounts and contracts', async () => {
-    [, swapExecutioner, admin, recipient] = await ethers.getSigners();
+    [, swapExecutioner, admin, recipient, superAdmin] = await ethers.getSigners();
     DCAHubSwapperFactory = await ethers.getContractFactory('contracts/mocks/DCAHubSwapper/DCAHubSwapper.sol:DCAHubSwapperMock');
     DCAHub = await smock.fake('IDCAHub');
     swapperRegistry = await smock.fake('ISwapperRegistry');
-    DCAHubSwapper = await DCAHubSwapperFactory.deploy(swapperRegistry.address, admin.address, [swapExecutioner.address]);
+    DCAHubSwapper = await DCAHubSwapperFactory.deploy(swapperRegistry.address, superAdmin.address, [admin.address], [swapExecutioner.address]);
     const deploy = (decimals: number) => erc20.deploy({ name: 'A name', symbol: 'SYMB', decimals });
     const deployedTokens = await Promise.all([deploy(12), deploy(16)]);
     [tokenA, tokenB] = deployedTokens.sort((a, b) => a.address.localeCompare(b.address));
     tokens = [tokenA.address, tokenB.address];
     swapExecutionRole = await DCAHubSwapper.SWAP_EXECUTION_ROLE();
     adminRole = await DCAHubSwapper.ADMIN_ROLE();
+    superAdminRole = await DCAHubSwapper.SUPER_ADMIN_ROLE();
     snapshotId = await snapshot.take();
   });
 
@@ -56,13 +57,17 @@ contract('DCAHubSwapper', () => {
       then('tx is reverted with reason error', async () => {
         await behaviours.deployShouldRevertWithMessage({
           contract: DCAHubSwapperFactory,
-          args: [swapperRegistry.address, constants.ZERO_ADDRESS, []],
+          args: [swapperRegistry.address, constants.ZERO_ADDRESS, [], []],
           message: 'ZeroAddress',
         });
       });
     });
     when('contract is initiated', () => {
-      then('admin is set correctly', async () => {
+      then('super admin is set correctly', async () => {
+        const hasRole = await DCAHubSwapper.hasRole(superAdminRole, superAdmin.address);
+        expect(hasRole).to.be.true;
+      });
+      then('initial admins are set correctly', async () => {
         const hasRole = await DCAHubSwapper.hasRole(adminRole, admin.address);
         expect(hasRole).to.be.true;
       });
@@ -70,9 +75,17 @@ contract('DCAHubSwapper', () => {
         const hasRole = await DCAHubSwapper.hasRole(swapExecutionRole, swapExecutioner.address);
         expect(hasRole).to.be.true;
       });
-      then('admin role is set as swap execution role', async () => {
+      then('super admin role is set as admin for super admin role', async () => {
+        const admin = await DCAHubSwapper.getRoleAdmin(superAdminRole);
+        expect(admin).to.equal(superAdminRole);
+      });
+      then('super admin role is set as admin for swap execution role', async () => {
         const admin = await DCAHubSwapper.getRoleAdmin(swapExecutionRole);
-        expect(admin).to.equal(adminRole);
+        expect(admin).to.equal(superAdminRole);
+      });
+      then('super admin role is set as admin for admin role', async () => {
+        const admin = await DCAHubSwapper.getRoleAdmin(adminRole);
+        expect(admin).to.equal(superAdminRole);
       });
       then('swap executor starts empty', async () => {
         expect(await DCAHubSwapper.isSwapExecutorEmpty()).to.be.true;

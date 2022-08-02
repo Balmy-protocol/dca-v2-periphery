@@ -15,9 +15,10 @@ contract DCAHubSwapperMock is DCAHubSwapper {
 
   constructor(
     address _swapperRegistry,
-    address _admin,
+    address _superAdmin,
+    address[] memory _initialAdmins,
     address[] memory _initialSwapExecutors
-  ) DCAHubSwapper(_swapperRegistry, _admin, _initialSwapExecutors) {}
+  ) DCAHubSwapper(_swapperRegistry, _superAdmin, _initialAdmins, _initialSwapExecutors) {}
 
   function maxApproveSpenderCalls() external view returns (MaxApproveSpenderCall[] memory) {
     return _maxApproveSpenderCalls;
