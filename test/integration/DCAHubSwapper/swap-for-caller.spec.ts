@@ -66,6 +66,9 @@ contract('Swap for caller', () => {
     // Allow one minute interval
     await DCAHub.connect(governor).addSwapIntervalsToAllowedList([SwapInterval.ONE_MINUTE.seconds]);
 
+    // Allow swapper
+    await DCAHubSwapper.connect(governor).grantRole(await DCAHubSwapper.SWAP_EXECUTION_ROLE(), swapper.address);
+
     WETH = await ethers.getContractAt(IERC20_ABI, WETH_ADDRESS);
     USDC = await ethers.getContractAt(IERC20_ABI, USDC_ADDRESS);
 

@@ -74,6 +74,8 @@ contract('Single pair swap with DEX', () => {
     await DCAHub.connect(governor).addSwapIntervalsToAllowedList([SwapInterval.ONE_MINUTE.seconds]);
     //We are setting a very high fee, so that there is a surplus in both reward and toProvide tokens
     await DCAHub.connect(timelock).setSwapFee(20000); // 2%
+    // Allow swapper
+    await DCAHubSwapper.connect(governor).grantRole(await DCAHubSwapper.SWAP_EXECUTION_ROLE(), cindy.address);
 
     WETH = await ethers.getContractAt(IERC20_ABI, WETH_ADDRESS);
     USDC = await ethers.getContractAt(IERC20_ABI, USDC_ADDRESS);

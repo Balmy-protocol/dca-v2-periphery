@@ -74,6 +74,7 @@ contract('DCAFeeManager', () => {
     await DCAHub.connect(superAdmin).grantRole(await DCAHub.PLATFORM_WITHDRAW_ROLE(), DCAFeeManager.address);
     await DCAFeeManager.connect(superAdmin).grantRole(await DCAFeeManager.ADMIN_ROLE(), allowed.address);
     await swapperRegistry.connect(superAdmin).allowSwappers([transformerRegistry.address]);
+    await DCAHubSwapper.connect(superAdmin).grantRole(await DCAHubSwapper.SWAP_EXECUTION_ROLE(), swapper.address);
 
     WETH = await ethers.getContractAt(IERC20_ABI, WETH_ADDRESS);
     USDC = await ethers.getContractAt(IERC20_ABI, USDC_ADDRESS);
