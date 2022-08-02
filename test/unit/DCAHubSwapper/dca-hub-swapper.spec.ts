@@ -338,6 +338,52 @@ contract('DCAHubSwapper', () => {
       role: () => swapExecutionRole,
     });
   });
+  describe('revokeAllowances', () => {
+    when('allowance is revoked', () => {
+      given(async () => {
+        await DCAHubSwapper.connect(admin).revokeAllowances([{ spender: recipient.address, tokens: [tokenA.address] }]);
+      });
+      then('revoke was called correctly', async () => {
+        const calls = await DCAHubSwapper.revokeAllowancesCalls();
+        expect(calls).to.have.lengthOf(1);
+        expect(calls[0]).to.have.lengthOf(1);
+        expect((calls[0][0] as any).spender).to.equal(recipient.address);
+        expect((calls[0][0] as any).tokens).to.eql([tokenA.address]);
+      });
+    });
+    behaviours.shouldBeExecutableOnlyByRole({
+      contract: () => DCAHubSwapper,
+      funcAndSignature: 'revokeAllowances',
+      params: [[]],
+      addressWithRole: () => admin,
+      role: () => adminRole,
+    });
+  });
+  describe('sendDust', () => {
+    given(async () => {
+      await tokenA.mint(DCAHubSwapper.address, 10000);
+    });
+    when('function is called', () => {
+      given(async () => {
+        await DCAHubSwapper.connect(admin).sendDust(tokenA.address, 10000, recipient.address);
+      });
+      then('send to recipient was called correctly', async () => {
+        const calls = await DCAHubSwapper.sendToRecipientCalls();
+        expect(calls).to.have.lengthOf(1);
+        expect(calls).to.have.lengthOf(1);
+        expect(calls[0].token).to.equal(tokenA.address);
+        expect(calls[0].amount).to.equal(10000);
+        expect(calls[0].recipient).to.equal(recipient.address);
+      });
+    });
+    behaviours.shouldBeExecutableOnlyByRole({
+      contract: () => DCAHubSwapper,
+      funcAndSignature: 'sendDust',
+      params: () => [tokenA.address, 10000, recipient.address],
+      addressWithRole: () => admin,
+      role: () => adminRole,
+    });
+  });
   describe('DCAHubSwapCall', () => {
     let tokensInSwap: { token: string; toProvide: BigNumberish; reward: BigNumberish; platformFee: BigNumberish }[];
     let hub: SignerWithAddress;

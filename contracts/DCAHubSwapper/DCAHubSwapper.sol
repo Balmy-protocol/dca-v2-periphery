@@ -2,12 +2,12 @@
 pragma solidity >=0.8.7 <0.9.0;
 
 import '@openzeppelin/contracts/access/AccessControl.sol';
-import '@mean-finance/swappers/solidity/contracts/SwapAdapter.sol';
+import '@mean-finance/swappers/solidity/contracts/extensions/GetBalances.sol';
 import '@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol';
 import '../interfaces/IDCAHubSwapper.sol';
 import './utils/DeadlineValidation.sol';
 
-contract DCAHubSwapper is DeadlineValidation, AccessControl, SwapAdapter, IDCAHubSwapper {
+contract DCAHubSwapper is DeadlineValidation, AccessControl, GetBalances, IDCAHubSwapper {
   enum SwapPlan {
     // Used only for tests
     NONE,
@@ -121,6 +121,20 @@ contract DCAHubSwapper is DeadlineValidation, AccessControl, SwapAdapter, IDCAHu
     returns (IDCAHub.SwapInfo memory)
   {
     return _swapWithDexes(_parameters, true);
+  }
+
+  /// @inheritdoc IDCAHubSwapper
+  function revokeAllowances(RevokeAction[] calldata _revokeActions) external onlyRole(ADMIN_ROLE) {
+    _revokeAllowances(_revokeActions);
+  }
+
+  /// @inheritdoc IDCAHubSwapper
+  function sendDust(
+    address _token,
+    uint256 _amount,
+    address _recipient
+  ) external onlyRole(ADMIN_ROLE) {
+    _sendToRecipient(_token, _amount, _recipient);
   }
 
   function _swapWithDexes(SwapWithDexesParams calldata _parameters, bool _sendToProvideLeftoverToHub)

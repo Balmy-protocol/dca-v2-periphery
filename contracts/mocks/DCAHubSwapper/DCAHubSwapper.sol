@@ -11,7 +11,15 @@ contract DCAHubSwapperMock is DCAHubSwapper {
     uint256 minAllowance;
   }
 
+  struct SendToRecipientCall {
+    address token;
+    uint256 amount;
+    address recipient;
+  }
+
   MaxApproveSpenderCall[] internal _maxApproveSpenderCalls;
+  SendToRecipientCall[] internal _sendToRecipientCalls;
+  RevokeAction[][] internal _revokeCalls;
 
   constructor(
     address _swapperRegistry,
@@ -24,6 +32,14 @@ contract DCAHubSwapperMock is DCAHubSwapper {
     return _maxApproveSpenderCalls;
   }
 
+  function sendToRecipientCalls() external view returns (SendToRecipientCall[] memory) {
+    return _sendToRecipientCalls;
+  }
+
+  function revokeAllowancesCalls() external view returns (RevokeAction[][] memory) {
+    return _revokeCalls;
+  }
+
   function _maxApproveSpenderIfNeeded(
     IERC20 _token,
     address _spender,
@@ -32,6 +48,24 @@ contract DCAHubSwapperMock is DCAHubSwapper {
   ) internal override {
     _maxApproveSpenderCalls.push(MaxApproveSpenderCall(_token, _spender, _alreadyValidatedSpender, _minAllowance));
     super._maxApproveSpenderIfNeeded(_token, _spender, _alreadyValidatedSpender, _minAllowance);
+  }
+
+  function _revokeAllowances(RevokeAction[] calldata _revokeActions) internal override {
+    _revokeCalls.push();
+    uint256 _currentCall = _revokeCalls.length - 1;
+    for (uint256 i; i < _revokeActions.length; i++) {
+      _revokeCalls[_currentCall].push(_revokeActions[i]);
+    }
+    super._revokeAllowances(_revokeActions);
+  }
+
+  function _sendToRecipient(
+    address _token,
+    uint256 _amount,
+    address _recipient
+  ) internal override {
+    _sendToRecipientCalls.push(SendToRecipientCall(_token, _amount, _recipient));
+    super._sendToRecipient(_token, _amount, _recipient);
   }
 
   function isSwapExecutorEmpty() external view returns (bool) {
