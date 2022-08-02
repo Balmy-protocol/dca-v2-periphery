@@ -1,9 +1,9 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity >=0.8.7 <0.9.0;
 
-import '../../DCAHubSwapper/DCAHubSwapperSwapHandler.sol';
+import '../../DCAHubSwapper/DCAHubSwapper.sol';
 
-contract DCAHubSwapperSwapHandlerMock is DCAHubSwapperSwapHandler {
+contract DCAHubSwapperMock is DCAHubSwapper {
   struct MaxApproveSpenderCall {
     IERC20 token;
     address spender;
@@ -17,7 +17,7 @@ contract DCAHubSwapperSwapHandlerMock is DCAHubSwapperSwapHandler {
     address _swapperRegistry,
     address _admin,
     address[] memory _initialSwapExecutors
-  ) DCAHubSwapperSwapHandler(_swapperRegistry, _admin, _initialSwapExecutors) {}
+  ) DCAHubSwapper(_swapperRegistry, _admin, _initialSwapExecutors) {}
 
   function maxApproveSpenderCalls() external view returns (MaxApproveSpenderCall[] memory) {
     return _maxApproveSpenderCalls;
