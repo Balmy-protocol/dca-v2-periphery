@@ -4,7 +4,7 @@ import { TransactionResponse } from '@ethersproject/providers';
 import { constants, wallet } from '@test-utils';
 import { contract, given, then, when } from '@test-utils/bdd';
 import evm, { snapshot } from '@test-utils/evm';
-import { PositionMigrator, DCAHubSwapper__factory, IERC20 } from '@typechained';
+import { IERC20, DCAHubCompanion, DCAHubSwapper } from '@typechained';
 import { DCAHub, OracleAggregator } from '@mean-finance/dca-v2-core/typechained';
 import { abi as DCA_HUB_ABI } from '@mean-finance/dca-v2-core/artifacts/contracts/DCAHub/DCAHub.sol/DCAHub.json';
 import { abi as IERC20_ABI } from '@openzeppelin/contracts/build/contracts/IERC20.json';
@@ -22,11 +22,11 @@ const USDC_WHALE_ADDRESS = '0xad7b4c162707e0b2b5f6fddbd3f8538a5fba0d60';
 const BETA_HUB = '0x24F85583FAa9F8BD0B8Aa7B1D1f4f53F0F450038';
 const VULN_HUB = '0x230C63702D1B5034461ab2ca889a30E343D81349';
 
-contract('PositionMigrator', () => {
+describe.only('Position Migration', () => {
   let WETH: IERC20, USDC: IERC20;
   let positionOwner: SignerWithAddress, swapper: SignerWithAddress;
   let vulnDCAHub: DCAHub, betaDCAHub: DCAHub, DCAHub: DCAHub;
-  let migrator: PositionMigrator;
+  let DCAHubCompanion: DCAHubCompanion, DCAHubSwapper: DCAHubSwapper;
   let snapshotId: string;
   let chainId: BigNumber;
 
@@ -53,14 +53,15 @@ contract('PositionMigrator', () => {
 
     await deterministicFactory.connect(governor).grantRole(await deterministicFactory.DEPLOYER_ROLE(), namedAccounts.deployer);
 
-    await deployments.run(['DCAHub', 'PositionMigrator'], {
+    await deployments.run(['DCAHub', 'SwapperRegistry', 'DCAHubSwapper', 'PositionMigrator', 'DCAHubCompanion'], {
       resetMemory: true,
       deletePreviousDeployments: false,
       writeDeploymentsToFiles: false,
     });
 
     DCAHub = await ethers.getContract('DCAHub');
-    migrator = await ethers.getContract('PositionMigrator');
+    DCAHubCompanion = await ethers.getContract('DCAHubCompanion');
+    DCAHubSwapper = await ethers.getContract('DCAHubSwapper');
     betaDCAHub = await ethers.getContractAt(DCA_HUB_ABI, BETA_HUB);
     vulnDCAHub = await ethers.getContractAt(DCA_HUB_ABI, VULN_HUB);
 
@@ -86,6 +87,9 @@ contract('PositionMigrator', () => {
     // Send tokens from whales, to our users
     await distributeTokensToUsers();
 
+    // Approve swapper
+    await DCAHubSwapper.connect(governor).grantRole(await DCAHubSwapper.SWAP_EXECUTION_ROLE(), swapper.address);
+
     chainId = BigNumber.from((await ethers.provider.getNetwork()).chainId);
     snapshotId = await snapshot.take();
   });
@@ -110,11 +114,36 @@ contract('PositionMigrator', () => {
     when(title, () => {
       let sourcePositionId: BigNumber, targetPositionId: BigNumber;
       let swappedBalance: BigNumber, unswappedBalance: BigNumber;
-      let tx: TransactionResponse;
       given(async () => {
         ({ positionId: sourcePositionId, swappedBalance, unswappedBalance } = await depositInHubAndSwap(sourceHub()));
         const signature = await generateSignature(sourceHub(), positionOwner, sourcePositionId);
-        tx = await migrator.migrate(sourceHub().address, sourcePositionId, signature, targetHub().address);
+        const position = await sourceHub().userPosition(sourcePositionId);
+        const { data: permissionData } = await DCAHubCompanion.populateTransaction.permissionPermit(
+          await sourceHub().permissionManager(),
+          signature.permissions,
+          sourcePositionId,
+          signature.deadline,
+          signature.v,
+          signature.r,
+          signature.s
+        );
+        const { data: terminateData } = await DCAHubCompanion.populateTransaction.terminate(
+          sourceHub().address,
+          sourcePositionId,
+          DCAHubCompanion.address,
+          positionOwner.address
+        );
+        const { data: depositData } = await DCAHubCompanion.populateTransaction.depositWithBalanceOnContract(
+          targetHub().address,
+          position.from,
+          position.to,
+          position.swapsLeft,
+          position.swapInterval,
+          positionOwner.address,
+          [],
+          []
+        );
+        const tx = await DCAHubCompanion.multicall([permissionData!, terminateData!, depositData!]);
         const event = await getHubEvent(tx, 'Deposited');
         targetPositionId = event.args.positionId;
       });
@@ -136,9 +165,6 @@ contract('PositionMigrator', () => {
         expect(swapsLeft).to.equal(AMOUNT_OF_SWAPS - 1);
         expect(remaining).to.equal(unswappedBalance);
         expect(rate).to.equal(RATE);
-      });
-      then('event is emitted', async () => {
-        await expect(tx).to.emit(migrator, 'Migrated').withArgs(sourceHub().address, sourcePositionId, targetHub().address, targetPositionId);
       });
     });
   }
@@ -168,10 +194,6 @@ contract('PositionMigrator', () => {
     const event = await getHubEvent(tx, 'Deposited');
     const positionId = event.args.positionId;
 
-    const DCAHubSwapperFactory: DCAHubSwapper__factory = await ethers.getContractFactory(
-      'contracts/DCAHubSwapper/DCAHubSwapper.sol:DCAHubSwapper'
-    );
-    const DCAHubSwapper = await DCAHubSwapperFactory.deploy(constants.NOT_ZERO_ADDRESS, constants.NOT_ZERO_ADDRESS, [], [swapper.address]);
     await WETH.connect(swapper).approve(DCAHubSwapper.address, constants.MAX_UINT_256);
     await DCAHubSwapper.connect(swapper).swapForCaller(
       hub.address,
@@ -213,7 +235,7 @@ contract('PositionMigrator', () => {
   }
 
   async function generateSignature(sourceHub: DCAHub, signer: SignerWithAddress, tokenId: BigNumber) {
-    const permissions = [{ operator: migrator.address, permissions: [Permission.TERMINATE] }];
+    const permissions = [{ operator: DCAHubCompanion.address, permissions: [Permission.TERMINATE] }];
     const { v, r, s } = await getSignature(sourceHub, signer, tokenId, permissions);
     return {
       permissions,
