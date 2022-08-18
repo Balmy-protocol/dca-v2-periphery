@@ -50,6 +50,10 @@ describe('Position Migration', () => {
 
     const { msig, eoaAdmin } = await deploy('DCAHubCompanion');
 
+    // Hardhat deploy does not reset addresses in each test, so it's not taking the correct msig for optimismi
+    const optimismMsig = await wallet.impersonate('0x308810881807189cAe91950888b2cB73A1CC5920');
+    await ethers.provider.send('hardhat_setBalance', [optimismMsig._address, '0xffffffffffffffff']);
+
     DCAHub = await ethers.getContract('DCAHub');
     DCAHubCompanion = await ethers.getContract('DCAHubCompanion');
     DCAHubSwapper = await ethers.getContract('DCAHubSwapper');
@@ -66,11 +70,11 @@ describe('Position Migration', () => {
     // Allow one minute interval
     await betaDCAHub.connect(eoaAdmin).addSwapIntervalsToAllowedList([SwapInterval.ONE_MINUTE.seconds]);
     await vulnDCAHub.connect(eoaAdmin).addSwapIntervalsToAllowedList([SwapInterval.ONE_MINUTE.seconds]);
-    await yieldlessDCAHub.connect(msig).addSwapIntervalsToAllowedList([SwapInterval.ONE_MINUTE.seconds]);
+    await yieldlessDCAHub.connect(optimismMsig).addSwapIntervalsToAllowedList([SwapInterval.ONE_MINUTE.seconds]);
     await DCAHub.connect(msig).addSwapIntervalsToAllowedList([SwapInterval.ONE_MINUTE.seconds]);
 
     // Allow tokens
-    await yieldlessDCAHub.connect(msig).setAllowedTokens([WETH_ADDRESS, USDC_ADDRESS], [true, true]);
+    await yieldlessDCAHub.connect(optimismMsig).setAllowedTokens([WETH_ADDRESS, USDC_ADDRESS], [true, true]);
     await DCAHub.connect(msig).setAllowedTokens([WETH_ADDRESS, USDC_ADDRESS], [true, true]);
 
     // Configure chainlink registry & oracle so it can be used (Uniswap takes a lot longer to configure)
