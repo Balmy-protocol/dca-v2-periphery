@@ -6,7 +6,7 @@ import { DCAFeeManagerMock, DCAFeeManagerMock__factory, IDCAHub, IDCAHubPosition
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers';
 import { duration } from 'moment';
 import { behaviours, wallet } from '@test-utils';
-import { IDCAFeeManager } from '@typechained/DCAFeeManager';
+import { IDCAFeeManager } from '@typechained/contracts/DCAFeeManager/DCAFeeManager';
 import { FakeContract, smock } from '@defi-wonderland/smock';
 import { BigNumber, BigNumberish, constants, utils } from 'ethers';
 
@@ -244,7 +244,8 @@ contract('DCAFeeManager', () => {
         });
         then('position is stored for the to token', async () => {
           const positions = await DCAFeeManager.positionsWithToken(TOKEN_B);
-          expect(positions).to.eql([BigNumber.from(POSITION_ID_TOKEN_B)]);
+          expect(positions).to.have.lengthOf(1);
+          expect(positions[0]).to.equal(POSITION_ID_TOKEN_B);
         });
         then('allowance is not set', () => {
           expect(erc20Token.approve).to.not.have.been.called;
@@ -295,11 +296,13 @@ contract('DCAFeeManager', () => {
         });
         then('position is stored for token A', async () => {
           const positions = await DCAFeeManager.positionsWithToken(TOKEN_A);
-          expect(positions).to.eql([BigNumber.from(POSITION_ID_TOKEN_A)]);
+          expect(positions).to.have.lengthOf(1);
+          expect(positions[0]).to.equal(POSITION_ID_TOKEN_A);
         });
         then('position is stored for token B', async () => {
-          const positions = await DCAFeeManager.positionsWithToken(TOKEN_A);
-          expect(positions).to.eql([BigNumber.from(POSITION_ID_TOKEN_A)]);
+          const positions = await DCAFeeManager.positionsWithToken(TOKEN_B);
+          expect(positions).to.have.lengthOf(1);
+          expect(positions[0]).to.equal(POSITION_ID_TOKEN_B);
         });
       });
     });
@@ -480,7 +483,10 @@ contract('DCAFeeManager', () => {
     expect(actual).to.have.lengthOf(expected.length);
     for (let i = 0; i < actual.length; i++) {
       expect(actual[i].token).to.equal(expected[i].token);
-      expect(actual[i].positionIds).to.eql(expected[i].positionIds.map(BigNumber.from));
+      expect(actual[i].positionIds).to.have.lengthOf(expected[i].positionIds.length);
+      for (let j = 0; j < actual[i].positionIds.length; j++) {
+        expect(actual[i].positionIds[j]).to.equal(expected[i].positionIds[j]);
+      }
     }
   }
 });

@@ -189,7 +189,7 @@ describe.skip('Position Migration', () => {
 
     await WETH.connect(swapper).approve(DCAHubSwapper.address, constants.MAX_UINT_256);
     await DCAHubSwapper.connect(swapper).swapForCaller({
-      hub: DCAHub.address,
+      hub: hub.address,
       tokens: [USDC_ADDRESS, WETH_ADDRESS],
       pairsToSwap: [{ indexTokenA: 0, indexTokenB: 1 }],
       oracleData: [],

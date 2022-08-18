@@ -37,14 +37,23 @@ interface IDCAHubSwapper is IDCAHubSwapCallee {
     bytes swapData;
   }
 
+  /// @notice Parameters to execute a swap for caller
   struct SwapForCallerParams {
+    // The address of the DCAHub
     IDCAHub hub;
+    // The tokens involved in the swap
     address[] tokens;
+    // The pairs to swap
     IDCAHub.PairIndexes[] pairsToSwap;
+    // Bytes to send to the oracle when executing a quote
     bytes oracleData;
+    // The minimum amount of tokens to receive as part of the swap
     uint256[] minimumOutput;
+    // The maximum amount of tokens to provide as part of the swap
     uint256[] maximumInput;
+    // Address that will receive all the tokens from the swap
     address recipient;
+    // Deadline when the swap becomes invalid
     uint256 deadline;
   }
 

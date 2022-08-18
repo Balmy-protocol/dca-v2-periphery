@@ -636,7 +636,9 @@ contract('DCAHubSwapper', () => {
         typeof expectedRewardRecipient === 'string' ? expectedRewardRecipient : expectedRewardRecipient().address
       );
       expect(callbackHandler).to.equal(DCAHubSwapper.address);
-      expect(borrow).to.eql([constants.ZERO, constants.ZERO]);
+      expect(borrow).to.have.lengthOf(2);
+      expect((borrow as any)[0]).to.equal(constants.ZERO);
+      expect((borrow as any)[1]).to.equal(constants.ZERO);
       expect(callbackData).to.equal(expectedCalbackData());
       expect(oracleData).to.equal(expectedOracleData);
     });
