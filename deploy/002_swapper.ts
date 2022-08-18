@@ -19,6 +19,9 @@ const deployFunction: DeployFunction = async function (hre: HardhatRuntimeEnviro
       values: [swapperRegistry.address, msig, [msig], []],
     },
     log: !process.env.TEST,
+    overrides: {
+      gasLimit: 6_000_000,
+    },
   });
 };
 
