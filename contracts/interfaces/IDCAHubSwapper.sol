@@ -5,6 +5,7 @@ import '@mean-finance/dca-v2-core/contracts/interfaces/IDCAHub.sol';
 import '@mean-finance/dca-v2-core/contracts/interfaces/IDCAHubSwapCallee.sol';
 import '@mean-finance/swappers/solidity/interfaces/ISwapAdapter.sol';
 import '@mean-finance/swappers/solidity/contracts/extensions/Shared.sol';
+import './ILegacyDCAHub.sol';
 
 interface IDCAHubSwapper is IDCAHubSwapCallee {
   /// @notice Parameters to execute a swap with dexes
@@ -57,6 +58,24 @@ interface IDCAHubSwapper is IDCAHubSwapCallee {
     uint256 deadline;
   }
 
+  /// @notice Parameters to execute a swap for caller
+  struct LegacySwapForCallerParams {
+    // The address of the DCAHub
+    ILegacyDCAHub hub;
+    // The tokens involved in the swap
+    address[] tokens;
+    // The pairs to swap
+    ILegacyDCAHub.PairIndexes[] pairsToSwap;
+    // The minimum amount of tokens to receive as part of the swap
+    uint256[] minimumOutput;
+    // The maximum amount of tokens to provide as part of the swap
+    uint256[] maximumInput;
+    // Address that will receive all the tokens from the swap
+    address recipient;
+    // Deadline when the swap becomes invalid
+    uint256 deadline;
+  }
+
   /// @notice Thrown when the reward is less that the specified minimum
   error RewardNotEnough();
 
@@ -75,6 +94,16 @@ interface IDCAHubSwapper is IDCAHubSwapCallee {
    * @return The information about the executed swap
    */
   function swapForCaller(SwapForCallerParams calldata parameters) external payable returns (IDCAHub.SwapInfo memory);
+
+  /**
+   * @notice Executes a swap for the caller, by sending them the reward, and taking from them the needed tokens
+   * @dev Can only be called by user with appropriate role
+   *      Will revert:
+   *      - With RewardNotEnough if the minimum output is not met
+   *      - With ToProvideIsTooMuch if the hub swap requires more than the given maximum input
+   * @return The information about the executed swap
+   */
+  function legacySwapForCaller(LegacySwapForCallerParams calldata parameters) external payable returns (ILegacyDCAHub.SwapInfo memory);
 
   /**
    * @notice Executes a swap with the given swappers, and sends all unspent tokens to the given recipient

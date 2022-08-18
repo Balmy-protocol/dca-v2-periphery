@@ -4,7 +4,7 @@ import { behaviours, constants, wallet } from '@test-utils';
 import { contract, given, then, when } from '@test-utils/bdd';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers';
 import { snapshot } from '@test-utils/evm';
-import { DCAHubSwapperMock, DCAHubSwapperMock__factory, IDCAHub, IERC20, ISwapper, ISwapperRegistry } from '@typechained';
+import { DCAHubSwapperMock, DCAHubSwapperMock__factory, IDCAHub, IERC20, ILegacyDCAHub, ISwapper, ISwapperRegistry } from '@typechained';
 import { FakeContract, smock } from '@defi-wonderland/smock';
 import { BigNumberish } from '@ethersproject/bignumber';
 import { BytesLike } from '@ethersproject/bytes';
@@ -19,6 +19,7 @@ contract('DCAHubSwapper', () => {
   const DEX = constants.NOT_ZERO_ADDRESS;
   let swapExecutioner: SignerWithAddress, recipient: SignerWithAddress, admin: SignerWithAddress, superAdmin: SignerWithAddress;
   let DCAHub: FakeContract<IDCAHub>;
+  let legacyDCAHub: FakeContract<ILegacyDCAHub>;
   let DCAHubSwapperFactory: DCAHubSwapperMock__factory;
   let DCAHubSwapper: DCAHubSwapperMock;
   let swapperRegistry: FakeContract<ISwapperRegistry>;
@@ -33,6 +34,7 @@ contract('DCAHubSwapper', () => {
     [, swapExecutioner, admin, recipient, superAdmin] = await ethers.getSigners();
     DCAHubSwapperFactory = await ethers.getContractFactory('contracts/mocks/DCAHubSwapper/DCAHubSwapper.sol:DCAHubSwapperMock');
     DCAHub = await smock.fake('IDCAHub');
+    legacyDCAHub = await smock.fake('ILegacyDCAHub');
     swapperRegistry = await smock.fake('ISwapperRegistry');
     DCAHubSwapper = await DCAHubSwapperFactory.deploy(swapperRegistry.address, superAdmin.address, [admin.address], [swapExecutioner.address]);
     tokenA = await smock.fake('IERC20');
@@ -47,6 +49,7 @@ contract('DCAHubSwapper', () => {
   beforeEach('Deploy and configure', async () => {
     await snapshot.revert(snapshotId);
     DCAHub.swap.reset();
+    legacyDCAHub.swap.reset();
     swapperRegistry.isSwapperAllowlisted.reset();
     swapperRegistry.isSwapperAllowlisted.returns(true);
     swapperRegistry.isValidAllowanceTarget.returns(true);
@@ -225,6 +228,143 @@ contract('DCAHubSwapper', () => {
       params: () => [
         {
           hub: DCAHub.address,
+          tokens,
+          pairsToSwap: INDEXES,
+          oracleData: BYTES,
+          minimumOutput: [0, 0],
+          maximumInput: [constants.MAX_UINT_256, constants.MAX_UINT_256],
+          recipient: SOME_RANDOM_ADDRESS,
+          deadline: constants.MAX_UINT_256,
+        },
+      ],
+      addressWithRole: () => swapExecutioner,
+      role: () => swapExecutionRole,
+    });
+  });
+  describe('legacySwapForCaller', () => {
+    const SOME_RANDOM_ADDRESS = wallet.generateRandomAddress();
+    whenDeadlineHasExpiredThenTxReverts({
+      func: 'legacySwapForCaller',
+      args: () => [
+        {
+          hub: legacyDCAHub.address,
+          tokens,
+          pairsToSwap: INDEXES,
+          minimumOutput: [],
+          maximumInput: [],
+          recipient: SOME_RANDOM_ADDRESS,
+          deadline: 0,
+        },
+      ],
+    });
+    when('hub returns less than minimum output', () => {
+      const MIN_OUTPUT = 200000;
+      const MAX_INPUT = constants.MAX_UINT_256;
+      given(() => {
+        legacyDCAHub.swap.returns({
+          tokens: [
+            {
+              token: tokenA.address,
+              reward: MIN_OUTPUT - 1,
+              toProvide: MAX_INPUT,
+              platformFee: 0,
+            },
+            {
+              token: tokenB.address,
+              reward: MIN_OUTPUT - 1,
+              toProvide: MAX_INPUT,
+              platformFee: 0,
+            },
+          ],
+          pairs: [],
+        });
+      });
+      then('reverts with message', async () => {
+        await behaviours.txShouldRevertWithMessage({
+          contract: DCAHubSwapper.connect(swapExecutioner),
+          func: 'legacySwapForCaller',
+          args: [
+            {
+              hub: legacyDCAHub.address,
+              tokens,
+              pairsToSwap: INDEXES,
+              minimumOutput: [MIN_OUTPUT, MIN_OUTPUT],
+              maximumInput: [MAX_INPUT, MAX_INPUT],
+              recipient: SOME_RANDOM_ADDRESS,
+              deadline: constants.MAX_UINT_256,
+            },
+          ],
+          message: 'RewardNotEnough',
+        });
+      });
+    });
+    when('hub asks for more than maximum input', () => {
+      const MIN_OUTPUT = 200000;
+      const MAX_INPUT = 5000000;
+      given(() => {
+        legacyDCAHub.swap.returns({
+          tokens: [
+            {
+              token: tokenA.address,
+              reward: MIN_OUTPUT,
+              toProvide: MAX_INPUT + 1,
+              platformFee: 0,
+            },
+            {
+              token: tokenB.address,
+              reward: MIN_OUTPUT,
+              toProvide: MAX_INPUT + 1,
+              platformFee: 0,
+            },
+          ],
+          pairs: [],
+        });
+      });
+      then('reverts with message', async () => {
+        await behaviours.txShouldRevertWithMessage({
+          contract: DCAHubSwapper.connect(swapExecutioner),
+          func: 'legacySwapForCaller',
+          args: [
+            {
+              hub: legacyDCAHub.address,
+              tokens,
+              pairsToSwap: INDEXES,
+              minimumOutput: [MIN_OUTPUT, MIN_OUTPUT],
+              maximumInput: [MAX_INPUT, MAX_INPUT],
+              recipient: SOME_RANDOM_ADDRESS,
+              deadline: constants.MAX_UINT_256,
+            },
+          ],
+          message: 'ToProvideIsTooMuch',
+        });
+      });
+    });
+    when('swap is executed', () => {
+      given(async () => {
+        await DCAHubSwapper.connect(swapExecutioner).legacySwapForCaller({
+          hub: legacyDCAHub.address,
+          tokens,
+          pairsToSwap: INDEXES,
+          minimumOutput: [],
+          maximumInput: [],
+          recipient: SOME_RANDOM_ADDRESS,
+          deadline: constants.MAX_UINT_256,
+        });
+      });
+      thenLegacyHubIsCalledWith({
+        rewardRecipient: SOME_RANDOM_ADDRESS,
+        callbackData: () => encode({ plan: 'swap for caller', bytes: 'none' }),
+      });
+      then('swap executor is cleared', async () => {
+        expect(await DCAHubSwapper.isSwapExecutorEmpty()).to.be.true;
+      });
+    });
+    behaviours.shouldBeExecutableOnlyByRole({
+      contract: () => DCAHubSwapper,
+      funcAndSignature: 'legacySwapForCaller',
+      params: () => [
+        {
+          hub: legacyDCAHub.address,
           tokens,
           pairsToSwap: INDEXES,
           oracleData: BYTES,
@@ -616,6 +756,28 @@ contract('DCAHubSwapper', () => {
           message: 'Transaction too old',
         });
       });
+    });
+  }
+  function thenLegacyHubIsCalledWith({
+    callbackData: expectedCalbackData,
+    rewardRecipient: expectedRewardRecipient,
+  }: {
+    rewardRecipient: string | (() => { address: string });
+    callbackData: () => BytesLike;
+  }) {
+    then('legacy hub was called with the correct parameters', () => {
+      expect(legacyDCAHub.swap).to.have.been.calledOnce;
+      const [tokensInHub, indexes, rewardRecipient, callbackHandler, borrow, callbackData] = legacyDCAHub.swap.getCall(0).args;
+      expect(tokensInHub).to.eql(tokens);
+      expect((indexes as any)[0]).to.eql([0, 1]);
+      expect(rewardRecipient).to.equal(
+        typeof expectedRewardRecipient === 'string' ? expectedRewardRecipient : expectedRewardRecipient().address
+      );
+      expect(callbackHandler).to.equal(DCAHubSwapper.address);
+      expect(borrow).to.have.lengthOf(2);
+      expect((borrow as any)[0]).to.equal(constants.ZERO);
+      expect((borrow as any)[1]).to.equal(constants.ZERO);
+      expect(callbackData).to.equal(expectedCalbackData());
     });
   }
   function thenHubIsCalledWith({
