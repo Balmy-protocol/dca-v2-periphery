@@ -38,6 +38,26 @@ interface IDCAHubSwapper is IDCAHubSwapCallee {
     bytes swapData;
   }
 
+  /// @notice Parameters to execute a swap with dexes
+  struct LegacySwapWithDexesParams {
+    // The address of the DCAHub
+    ILegacyDCAHub hub;
+    // The tokens involved in the swap
+    address[] tokens;
+    // The pairs to swap
+    ILegacyDCAHub.PairIndexes[] pairsToSwap;
+    // The accounts that should be approved for spending
+    Allowance[] allowanceTargets;
+    // The different swappers involved in the swap
+    address[] swappers;
+    // The different swaps to execute
+    SwapExecution[] executions;
+    // Address that will receive all unspent tokens
+    address leftoverRecipient;
+    // Deadline when the swap becomes invalid
+    uint256 deadline;
+  }
+
   /// @notice Parameters to execute a swap for caller
   struct SwapForCallerParams {
     // The address of the DCAHub
@@ -113,6 +133,13 @@ interface IDCAHubSwapper is IDCAHubSwapCallee {
   function swapWithDexes(SwapWithDexesParams calldata parameters) external payable returns (IDCAHub.SwapInfo memory);
 
   /**
+   * @notice Executes a swap with the given swappers, and sends all unspent tokens to the given recipient
+   * @dev Can only be called by user with appropriate role
+   * @return The information about the executed swap
+   */
+  function legacySwapWithDexes(LegacySwapWithDexesParams calldata parameters) external payable returns (ILegacyDCAHub.SwapInfo memory);
+
+  /**
    * @notice Meant to be used by Mean Finance keepers, as an cheaper way to execute swaps. This function executes a
    *         swap with the given swappers, but sends some of the unspent tokens back to the hub. This means that they
    *         will be considered part of the protocol's balance. Unspent tokens that were given as reward will be
@@ -121,6 +148,16 @@ interface IDCAHubSwapper is IDCAHubSwapCallee {
    * @return The information about the executed swap
    */
   function swapWithDexesForMean(SwapWithDexesParams calldata parameters) external payable returns (IDCAHub.SwapInfo memory);
+
+  /**
+   * @notice Meant to be used by Mean Finance keepers, as an cheaper way to execute swaps. This function executes a
+   *         swap with the given swappers, but sends some of the unspent tokens back to the hub. This means that they
+   *         will be considered part of the protocol's balance. Unspent tokens that were given as reward will be
+   *         sent to the provided recipient
+   * @dev Can only be called by user with appropriate role
+   * @return The information about the executed swap
+   */
+  function legacySwapWithDexesForMean(LegacySwapWithDexesParams calldata parameters) external payable returns (ILegacyDCAHub.SwapInfo memory);
 
   /**
    * @notice Revokes ERC20 allowances for the given spenders

@@ -147,6 +147,16 @@ contract DCAHubSwapper is DeadlineValidation, AccessControl, GetBalances, IDCAHu
   }
 
   /// @inheritdoc IDCAHubSwapper
+  function legacySwapWithDexes(LegacySwapWithDexesParams calldata _parameters)
+    external
+    payable
+    onlyRole(SWAP_EXECUTION_ROLE)
+    returns (ILegacyDCAHub.SwapInfo memory)
+  {
+    return _legacySwapWithDexes(_parameters, false);
+  }
+
+  /// @inheritdoc IDCAHubSwapper
   function swapWithDexesForMean(SwapWithDexesParams calldata _parameters)
     external
     payable
@@ -154,6 +164,16 @@ contract DCAHubSwapper is DeadlineValidation, AccessControl, GetBalances, IDCAHu
     returns (IDCAHub.SwapInfo memory)
   {
     return _swapWithDexes(_parameters, true);
+  }
+
+  /// @inheritdoc IDCAHubSwapper
+  function legacySwapWithDexesForMean(LegacySwapWithDexesParams calldata _parameters)
+    external
+    payable
+    onlyRole(SWAP_EXECUTION_ROLE)
+    returns (ILegacyDCAHub.SwapInfo memory)
+  {
+    return _legacySwapWithDexes(_parameters, true);
   }
 
   /// @inheritdoc IDCAHubSwapper
@@ -199,6 +219,37 @@ contract DCAHubSwapper is DeadlineValidation, AccessControl, GetBalances, IDCAHu
         new uint256[](_parameters.tokens.length),
         abi.encode(SwapData({plan: SwapPlan.SWAP_WITH_DEXES, data: abi.encode(_callbackData)})),
         _parameters.oracleData
+      );
+  }
+
+  function _legacySwapWithDexes(LegacySwapWithDexesParams calldata _parameters, bool _sendToProvideLeftoverToHub)
+    internal
+    checkDeadline(_parameters.deadline)
+    returns (ILegacyDCAHub.SwapInfo memory)
+  {
+    // Approve whatever is necessary
+    for (uint256 i; i < _parameters.allowanceTargets.length; i++) {
+      Allowance memory _allowance = _parameters.allowanceTargets[i];
+      _maxApproveSpenderIfNeeded(_allowance.token, _allowance.allowanceTarget, false, _allowance.minAllowance);
+    }
+
+    // Prepare data for callback
+    SwapWithDexesCallbackData memory _callbackData = SwapWithDexesCallbackData({
+      swappers: _parameters.swappers,
+      executions: _parameters.executions,
+      leftoverRecipient: _parameters.leftoverRecipient,
+      sendToProvideLeftoverToHub: _sendToProvideLeftoverToHub
+    });
+
+    // Execute swap
+    return
+      _parameters.hub.swap(
+        _parameters.tokens,
+        _parameters.pairsToSwap,
+        address(this),
+        address(this),
+        new uint256[](_parameters.tokens.length),
+        abi.encode(SwapData({plan: SwapPlan.SWAP_WITH_DEXES, data: abi.encode(_callbackData)}))
       );
   }
 
