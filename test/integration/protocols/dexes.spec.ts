@@ -12,6 +12,7 @@ import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers';
 import { SwapInterval } from '@test-utils/interval-utils';
 import paraswap from '@test-utils/dexes/paraswap';
 import { DeterministicFactory, DeterministicFactory__factory } from '@mean-finance/deterministic-factory/typechained';
+import { deploy } from '@integration/utils';
 
 const WETH_ADDRESS_BY_NETWORK: { [network: string]: string } = {
   polygon: '0x7ceb23fd6bc0add59e62ac25578270cff1b9f619',
@@ -66,30 +67,15 @@ describe.skip('Dexes', () => {
   async function liquidityTestSetup({ network, swapFee }: { network: string; swapFee?: number }): Promise<string> {
     await evm.reset({
       network,
-      skipHardhatDeployFork: true,
     });
     [sender, recipient] = await ethers.getSigners();
-    const namedAccounts = await getNamedAccounts();
-    const governorAddress = namedAccounts.governor;
-    governor = await wallet.impersonate(governorAddress);
 
-    const deterministicFactory = await ethers.getContractAt<DeterministicFactory>(
-      DeterministicFactory__factory.abi,
-      '0xbb681d77506df5CA21D2214ab3923b4C056aa3e2'
-    );
+    ({ msig: governor } = await deploy('DCAHubCompanion'));
 
-    await deterministicFactory.connect(governor).grantRole(await deterministicFactory.DEPLOYER_ROLE(), namedAccounts.deployer);
-
-    await deployments.run(['DCAHub', 'DCAHubCompanion', 'SwapperRegistry', 'DCAHubSwapper'], {
-      resetMemory: true,
-      deletePreviousDeployments: false,
-      writeDeploymentsToFiles: false,
-    });
     DCAHub = await ethers.getContract('DCAHub');
     DCAHubCompanion = await ethers.getContract('DCAHubCompanion');
     swapperRegistry = await ethers.getContract('SwapperRegistry');
     DCAHubSwapper = await ethers.getContract('DCAHubSwapper');
-    await wallet.setBalance({ account: governorAddress, balance: constants.MAX_UINT_256 });
     const timelockContract = await ethers.getContract('Timelock');
     const timelock = await wallet.impersonate(timelockContract.address);
     await wallet.setBalance({ account: timelock._address, balance: constants.MAX_UINT_256 });
@@ -161,6 +147,7 @@ describe.skip('Dexes', () => {
           hub: DCAHub.address,
           tokens: sortedTokens,
           pairsToSwap: [{ indexTokenA: 0, indexTokenB: 1 }],
+          oracleData: [],
           allowanceTargets: [{ token: WETH.address, allowanceTarget: dexQuote.allowanceTarget, minAllowance: 0 }],
           swappers: [dexQuote.to],
           executions: [{ swapperIndex: 0, swapData: dexQuote.data }],

@@ -13,6 +13,8 @@ interface IDCAHubSwapper is IDCAHubSwapCallee {
     IDCAHub hub;
     // The tokens involved in the swap
     address[] tokens;
+    // Bytes to send to the oracle when executing a quote
+    bytes oracleData;
     // The pairs to swap
     IDCAHub.PairIndexes[] pairsToSwap;
     // The accounts that should be approved for spending
@@ -35,6 +37,17 @@ interface IDCAHubSwapper is IDCAHubSwapCallee {
     bytes swapData;
   }
 
+  struct SwapForCallerParams {
+    IDCAHub hub;
+    address[] tokens;
+    IDCAHub.PairIndexes[] pairsToSwap;
+    bytes oracleData;
+    uint256[] minimumOutput;
+    uint256[] maximumInput;
+    address recipient;
+    uint256 deadline;
+  }
+
   /// @notice Thrown when the reward is less that the specified minimum
   error RewardNotEnough();
 
@@ -50,24 +63,9 @@ interface IDCAHubSwapper is IDCAHubSwapCallee {
    *      Will revert:
    *      - With RewardNotEnough if the minimum output is not met
    *      - With ToProvideIsTooMuch if the hub swap requires more than the given maximum input
-   * @param hub The address of the DCAHub
-   * @param tokens The tokens involved in the swap
-   * @param pairsToSwap The pairs to swap
-   * @param minimumOutput The minimum amount of tokens to receive as part of the swap
-   * @param maximumInput The maximum amount of tokens to provide as part of the swap
-   * @param recipient Address that will receive all the tokens from the swap
-   * @param deadline Deadline when the swap becomes invalid
    * @return The information about the executed swap
    */
-  function swapForCaller(
-    IDCAHub hub,
-    address[] calldata tokens,
-    IDCAHub.PairIndexes[] calldata pairsToSwap,
-    uint256[] calldata minimumOutput,
-    uint256[] calldata maximumInput,
-    address recipient,
-    uint256 deadline
-  ) external payable returns (IDCAHub.SwapInfo memory);
+  function swapForCaller(SwapForCallerParams calldata parameters) external payable returns (IDCAHub.SwapInfo memory);
 
   /**
    * @notice Executes a swap with the given swappers, and sends all unspent tokens to the given recipient

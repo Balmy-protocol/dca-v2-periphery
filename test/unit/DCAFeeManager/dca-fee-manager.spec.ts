@@ -356,9 +356,9 @@ contract('DCAFeeManager', () => {
     const POSITION_IDS = [1, 2];
     when('function is executed', () => {
       given(async () => {
-        DCAHub.userPosition.returns(({ _positionId }: { _positionId: BigNumber }) => ({
+        DCAHub.userPosition.returns(({ positionId }: { positionId: BigNumber }) => ({
           from: erc20Token.address,
-          to: _positionId.eq(1) ? TOKEN_A : TOKEN_B,
+          to: positionId.eq(1) ? TOKEN_A : TOKEN_B,
           swapInterval: constants.Zero,
           swapsExecuted: constants.Zero,
           swapped: constants.Zero,
@@ -403,7 +403,7 @@ contract('DCAFeeManager', () => {
         erc20Token.balanceOf.returns(FEE_MANAGER_BALANCE);
         position1 = positionWith(TOKEN_A, erc20Token.address, utils.parseEther('1'));
         position2 = positionWith(TOKEN_B, erc20Token.address, utils.parseEther('3'));
-        DCAHub.userPosition.returns(({ _positionId }: { _positionId: BigNumber }) => (_positionId.eq(1) ? position1 : position2));
+        DCAHub.userPosition.returns(({ positionId }: { positionId: BigNumber }) => (positionId.eq(1) ? position1 : position2));
         await DCAFeeManager.setPositionsWithToken(erc20Token.address, [1, 2]);
       });
       then('balances are returned correctly', async () => {

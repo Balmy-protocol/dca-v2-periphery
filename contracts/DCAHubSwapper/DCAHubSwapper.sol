@@ -66,35 +66,33 @@ contract DCAHubSwapper is DeadlineValidation, AccessControl, GetBalances, IDCAHu
   }
 
   /// @inheritdoc IDCAHubSwapper
-  function swapForCaller(
-    IDCAHub _hub,
-    address[] calldata _tokens,
-    IDCAHub.PairIndexes[] calldata _pairsToSwap,
-    uint256[] calldata _minimumOutput,
-    uint256[] calldata _maximumInput,
-    address _recipient,
-    uint256 _deadline
-  ) external payable checkDeadline(_deadline) onlyRole(SWAP_EXECUTION_ROLE) returns (IDCAHub.SwapInfo memory _swapInfo) {
+  function swapForCaller(SwapForCallerParams calldata _parameters)
+    external
+    payable
+    checkDeadline(_parameters.deadline)
+    onlyRole(SWAP_EXECUTION_ROLE)
+    returns (IDCAHub.SwapInfo memory _swapInfo)
+  {
     // Set the swap's executor
     _swapExecutor = msg.sender;
 
     // Execute swap
-    uint256[] memory _borrow = new uint256[](_tokens.length);
-    _swapInfo = _hub.swap(
-      _tokens,
-      _pairsToSwap,
-      _recipient,
+    _swapInfo = _parameters.hub.swap(
+      _parameters.tokens,
+      _parameters.pairsToSwap,
+      _parameters.recipient,
       address(this),
-      _borrow,
-      abi.encode(SwapData({plan: SwapPlan.SWAP_FOR_CALLER, data: ''}))
+      new uint256[](_parameters.tokens.length),
+      abi.encode(SwapData({plan: SwapPlan.SWAP_FOR_CALLER, data: ''})),
+      _parameters.oracleData
     );
 
     // Check that limits were met
     for (uint256 i; i < _swapInfo.tokens.length; i++) {
       IDCAHub.TokenInSwap memory _tokenInSwap = _swapInfo.tokens[i];
-      if (_tokenInSwap.reward < _minimumOutput[i]) {
+      if (_tokenInSwap.reward < _parameters.minimumOutput[i]) {
         revert RewardNotEnough();
-      } else if (_tokenInSwap.toProvide > _maximumInput[i]) {
+      } else if (_tokenInSwap.toProvide > _parameters.maximumInput[i]) {
         revert ToProvideIsTooMuch();
       }
     }
@@ -164,7 +162,8 @@ contract DCAHubSwapper is DeadlineValidation, AccessControl, GetBalances, IDCAHu
         address(this),
         address(this),
         new uint256[](_parameters.tokens.length),
-        abi.encode(SwapData({plan: SwapPlan.SWAP_WITH_DEXES, data: abi.encode(_callbackData)}))
+        abi.encode(SwapData({plan: SwapPlan.SWAP_WITH_DEXES, data: abi.encode(_callbackData)})),
+        _parameters.oracleData
       );
   }
 
@@ -227,12 +226,12 @@ contract DCAHubSwapper is DeadlineValidation, AccessControl, GetBalances, IDCAHu
 
   function _handleSwapForCallerCallback(IDCAHub.TokenInSwap[] calldata _tokens) internal {
     // Load to mem to avoid reading storage multiple times
-    address _swapExecutorMen = _swapExecutor;
+    address _swapExecutorMem = _swapExecutor;
     for (uint256 i; i < _tokens.length; i++) {
       IDCAHub.TokenInSwap memory _token = _tokens[i];
       if (_token.toProvide > 0) {
         // We assume that msg.sender is the DCAHub
-        IERC20(_token.token).safeTransferFrom(_swapExecutorMen, msg.sender, _token.toProvide);
+        IERC20(_token.token).safeTransferFrom(_swapExecutorMem, msg.sender, _token.toProvide);
       }
     }
   }

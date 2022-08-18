@@ -1,5 +1,5 @@
 import { expect } from 'chai';
-import { deployments, ethers, getNamedAccounts } from 'hardhat';
+import { ethers } from 'hardhat';
 import { TransactionResponse } from '@ethersproject/providers';
 import { constants, wallet } from '@test-utils';
 import { contract, given, then, when } from '@test-utils/bdd';
@@ -13,7 +13,7 @@ import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers';
 import { SwapInterval } from '@test-utils/interval-utils';
 import forkBlockNumber from '@integration/fork-block-numbers';
 import { fromRpcSig } from 'ethereumjs-util';
-import { DeterministicFactory, DeterministicFactory__factory } from '@mean-finance/deterministic-factory/typechained';
+import { deploy } from '@integration/utils';
 
 const WETH_ADDRESS = '0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2';
 const USDC_ADDRESS = '0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48';
@@ -27,7 +27,6 @@ contract('Multicall', () => {
   let DCAPermissionManager: DCAPermissionsManager;
   let DCAHub: DCAHub;
   let DCAHubSwapper: DCAHubSwapper;
-  let initialRecipientProtocolBalance: BigNumber;
   let chainId: BigNumber;
   let snapshotId: string;
 
@@ -36,29 +35,12 @@ contract('Multicall', () => {
 
   before(async () => {
     await evm.reset({
-      network: 'mainnet',
+      network: 'ethereum',
       blockNumber: forkBlockNumber['multicall'],
-      skipHardhatDeployFork: true,
     });
     [positionOwner, swapper, recipient] = await ethers.getSigners();
 
-    const namedAccounts = await getNamedAccounts();
-    const governorAddress = namedAccounts.governor;
-    const governor = await wallet.impersonate(governorAddress);
-    await ethers.provider.send('hardhat_setBalance', [governorAddress, '0xffffffffffffffff']);
-
-    const deterministicFactory = await ethers.getContractAt<DeterministicFactory>(
-      DeterministicFactory__factory.abi,
-      '0xbb681d77506df5CA21D2214ab3923b4C056aa3e2'
-    );
-
-    await deterministicFactory.connect(governor).grantRole(await deterministicFactory.DEPLOYER_ROLE(), namedAccounts.deployer);
-
-    await deployments.run(['DCAHub', 'DCAHubCompanion', 'SwapperRegistry', 'DCAHubSwapper'], {
-      resetMemory: true,
-      deletePreviousDeployments: false,
-      writeDeploymentsToFiles: false,
-    });
+    const { msig: admin } = await deploy('DCAHubCompanion');
 
     DCAHub = await ethers.getContract('DCAHub');
     DCAHubCompanion = await ethers.getContract('DCAHubCompanion');
@@ -68,19 +50,18 @@ contract('Multicall', () => {
     await ethers.provider.send('hardhat_setBalance', [DCAHubSwapper.address, '0x0']);
 
     // Allow one minute interval
-    await DCAHub.connect(governor).addSwapIntervalsToAllowedList([SwapInterval.ONE_MINUTE.seconds]);
+    await DCAHub.connect(admin).addSwapIntervalsToAllowedList([SwapInterval.ONE_MINUTE.seconds]);
 
     WETH = await ethers.getContractAt(IERC20_ABI, WETH_ADDRESS);
     USDC = await ethers.getContractAt(IERC20_ABI, USDC_ADDRESS);
 
     // Allow tokens and swapper
-    await DCAHub.connect(governor).setAllowedTokens([WETH_ADDRESS, USDC_ADDRESS], [true, true]);
-    await DCAHubSwapper.connect(governor).grantRole(await DCAHubSwapper.SWAP_EXECUTION_ROLE(), swapper.address);
+    await DCAHub.connect(admin).setAllowedTokens([WETH_ADDRESS, USDC_ADDRESS], [true, true]);
+    await DCAHubSwapper.connect(admin).grantRole(await DCAHubSwapper.SWAP_EXECUTION_ROLE(), swapper.address);
 
     // Send tokens from whales, to our users
     await distributeTokensToUsers();
 
-    initialRecipientProtocolBalance = await ethers.provider.getBalance(recipient.address);
     chainId = BigNumber.from((await ethers.provider.getNetwork()).chainId);
     snapshotId = await snapshot.take();
   });
@@ -425,15 +406,16 @@ contract('Multicall', () => {
     const positionId = event.args.positionId;
 
     await WETH.connect(swapper).approve(DCAHubSwapper.address, constants.MAX_UINT_256);
-    await DCAHubSwapper.connect(swapper).swapForCaller(
-      DCAHub.address,
-      [USDC_ADDRESS, WETH_ADDRESS],
-      [{ indexTokenA: 0, indexTokenB: 1 }],
-      [0, 0],
-      [constants.MAX_UINT_256, constants.MAX_UINT_256],
-      swapper.address,
-      constants.MAX_UINT_256
-    );
+    await DCAHubSwapper.connect(swapper).swapForCaller({
+      hub: DCAHub.address,
+      tokens: [USDC_ADDRESS, WETH_ADDRESS],
+      pairsToSwap: [{ indexTokenA: 0, indexTokenB: 1 }],
+      oracleData: [],
+      minimumOutput: [0, 0],
+      maximumInput: [constants.MAX_UINT_256, constants.MAX_UINT_256],
+      recipient: swapper.address,
+      deadline: constants.MAX_UINT_256,
+    });
 
     const { swapped } = await DCAHub.userPosition(positionId);
     return { positionId, swappedBalance: swapped, unswappedBalance: RATE.mul(AMOUNT_OF_SWAPS - 1) };
@@ -501,7 +483,7 @@ contract('Multicall', () => {
     return {
       primaryType: 'PermissionPermit',
       types: { PermissionSet, PermissionPermit },
-      domain: { name: 'Mean Finance - DCA Position', version: '1', chainId, verifyingContract: DCAPermissionManager.address },
+      domain: { name: 'Mean Finance - DCA Position', version: '2', chainId, verifyingContract: DCAPermissionManager.address },
       value: { tokenId, permissions, nonce: 0, deadline: constants.MAX_UINT_256 },
     };
   }

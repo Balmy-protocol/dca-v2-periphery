@@ -14,7 +14,8 @@ import { utils } from 'ethers';
 chai.use(smock.matchers);
 
 contract('DCAHubSwapper', () => {
-  const ABI_CODER = new ethers.utils.AbiCoder();
+  const ABI_CODER = new utils.AbiCoder();
+  const BYTES = utils.hexlify(utils.randomBytes(10));
   const DEX = constants.NOT_ZERO_ADDRESS;
   let swapExecutioner: SignerWithAddress, recipient: SignerWithAddress, admin: SignerWithAddress, superAdmin: SignerWithAddress;
   let DCAHub: FakeContract<IDCAHub>;
@@ -99,7 +100,18 @@ contract('DCAHubSwapper', () => {
     const SOME_RANDOM_ADDRESS = wallet.generateRandomAddress();
     whenDeadlineHasExpiredThenTxReverts({
       func: 'swapForCaller',
-      args: () => [DCAHub.address, tokens, INDEXES, [], [], SOME_RANDOM_ADDRESS, 0],
+      args: () => [
+        {
+          hub: DCAHub.address,
+          tokens,
+          pairsToSwap: INDEXES,
+          oracleData: BYTES,
+          minimumOutput: [],
+          maximumInput: [],
+          recipient: SOME_RANDOM_ADDRESS,
+          deadline: 0,
+        },
+      ],
     });
     when('hub returns less than minimum output', () => {
       const MIN_OUTPUT = 200000;
@@ -127,7 +139,18 @@ contract('DCAHubSwapper', () => {
         await behaviours.txShouldRevertWithMessage({
           contract: DCAHubSwapper.connect(swapExecutioner),
           func: 'swapForCaller',
-          args: [DCAHub.address, tokens, INDEXES, [MIN_OUTPUT, MIN_OUTPUT], [MAX_INPUT, MAX_INPUT], SOME_RANDOM_ADDRESS, constants.MAX_UINT_256],
+          args: [
+            {
+              hub: DCAHub.address,
+              tokens,
+              pairsToSwap: INDEXES,
+              oracleData: BYTES,
+              minimumOutput: [MIN_OUTPUT, MIN_OUTPUT],
+              maximumInput: [MAX_INPUT, MAX_INPUT],
+              recipient: SOME_RANDOM_ADDRESS,
+              deadline: constants.MAX_UINT_256,
+            },
+          ],
           message: 'RewardNotEnough',
         });
       });
@@ -158,26 +181,39 @@ contract('DCAHubSwapper', () => {
         await behaviours.txShouldRevertWithMessage({
           contract: DCAHubSwapper.connect(swapExecutioner),
           func: 'swapForCaller',
-          args: [DCAHub.address, tokens, INDEXES, [MIN_OUTPUT, MIN_OUTPUT], [MAX_INPUT, MAX_INPUT], SOME_RANDOM_ADDRESS, constants.MAX_UINT_256],
+          args: [
+            {
+              hub: DCAHub.address,
+              tokens,
+              pairsToSwap: INDEXES,
+              oracleData: BYTES,
+              minimumOutput: [MIN_OUTPUT, MIN_OUTPUT],
+              maximumInput: [MAX_INPUT, MAX_INPUT],
+              recipient: SOME_RANDOM_ADDRESS,
+              deadline: constants.MAX_UINT_256,
+            },
+          ],
           message: 'ToProvideIsTooMuch',
         });
       });
     });
     when('swap is executed', () => {
       given(async () => {
-        await DCAHubSwapper.connect(swapExecutioner).swapForCaller(
-          DCAHub.address,
+        await DCAHubSwapper.connect(swapExecutioner).swapForCaller({
+          hub: DCAHub.address,
           tokens,
-          INDEXES,
-          [],
-          [],
-          SOME_RANDOM_ADDRESS,
-          constants.MAX_UINT_256
-        );
+          pairsToSwap: INDEXES,
+          oracleData: BYTES,
+          minimumOutput: [],
+          maximumInput: [],
+          recipient: SOME_RANDOM_ADDRESS,
+          deadline: constants.MAX_UINT_256,
+        });
       });
       thenHubIsCalledWith({
         rewardRecipient: SOME_RANDOM_ADDRESS,
-        data: () => encode({ plan: 'swap for caller', bytes: 'none' }),
+        oracleData: BYTES,
+        callbackData: () => encode({ plan: 'swap for caller', bytes: 'none' }),
       });
       then('swap executor is cleared', async () => {
         expect(await DCAHubSwapper.isSwapExecutorEmpty()).to.be.true;
@@ -187,20 +223,22 @@ contract('DCAHubSwapper', () => {
       contract: () => DCAHubSwapper,
       funcAndSignature: 'swapForCaller',
       params: () => [
-        DCAHub.address,
-        tokens,
-        INDEXES,
-        [0, 0],
-        [constants.MAX_UINT_256, constants.MAX_UINT_256],
-        SOME_RANDOM_ADDRESS,
-        constants.MAX_UINT_256,
+        {
+          hub: DCAHub.address,
+          tokens,
+          pairsToSwap: INDEXES,
+          oracleData: BYTES,
+          minimumOutput: [0, 0],
+          maximumInput: [constants.MAX_UINT_256, constants.MAX_UINT_256],
+          recipient: SOME_RANDOM_ADDRESS,
+          deadline: constants.MAX_UINT_256,
+        },
       ],
       addressWithRole: () => swapExecutioner,
       role: () => swapExecutionRole,
     });
   });
   describe('swapWithDexes', () => {
-    const BYTES = ethers.utils.randomBytes(10);
     whenDeadlineHasExpiredThenTxReverts({
       func: 'swapWithDexes',
       args: () => [
@@ -208,6 +246,7 @@ contract('DCAHubSwapper', () => {
           hub: DCAHub.address,
           tokens: [],
           pairsToSwap: [],
+          oracleData: BYTES,
           allowanceTargets: [],
           swappers: [],
           executions: [],
@@ -222,6 +261,7 @@ contract('DCAHubSwapper', () => {
           hub: DCAHub.address,
           tokens: tokens,
           pairsToSwap: INDEXES,
+          oracleData: BYTES,
           allowanceTargets: [{ token: tokenA.address, allowanceTarget: DEX, minAllowance: 2000 }],
           swappers: [DEX],
           executions: [{ swapData: BYTES, swapperIndex: 0 }],
@@ -239,7 +279,8 @@ contract('DCAHubSwapper', () => {
       });
       thenHubIsCalledWith({
         rewardRecipient: () => DCAHubSwapper,
-        data: () =>
+        oracleData: BYTES,
+        callbackData: () =>
           encode({
             plan: 'dexes',
             bytes: {
@@ -259,6 +300,7 @@ contract('DCAHubSwapper', () => {
           hub: DCAHub.address,
           tokens: tokens,
           pairsToSwap: INDEXES,
+          oracleData: BYTES,
           allowanceTargets: [{ token: tokenA.address, allowanceTarget: DEX, minAllowance: 2000 }],
           swappers: [DEX],
           executions: [{ swapData: BYTES, swapperIndex: 0 }],
@@ -271,7 +313,6 @@ contract('DCAHubSwapper', () => {
     });
   });
   describe('swapWithDexesForMean', () => {
-    const BYTES = ethers.utils.randomBytes(10);
     whenDeadlineHasExpiredThenTxReverts({
       func: 'swapWithDexesForMean',
       args: () => [
@@ -279,6 +320,7 @@ contract('DCAHubSwapper', () => {
           hub: DCAHub.address,
           tokens: [],
           pairsToSwap: [],
+          oracleData: BYTES,
           allowanceTargets: [],
           swappers: [],
           executions: [],
@@ -293,6 +335,7 @@ contract('DCAHubSwapper', () => {
           hub: DCAHub.address,
           tokens: tokens,
           pairsToSwap: INDEXES,
+          oracleData: BYTES,
           allowanceTargets: [{ token: tokenA.address, allowanceTarget: DEX, minAllowance: 2000 }],
           swappers: [DEX],
           executions: [{ swapData: BYTES, swapperIndex: 0 }],
@@ -310,7 +353,8 @@ contract('DCAHubSwapper', () => {
       });
       thenHubIsCalledWith({
         rewardRecipient: () => DCAHubSwapper,
-        data: () =>
+        oracleData: BYTES,
+        callbackData: () =>
           encode({
             plan: 'dexes',
             bytes: {
@@ -330,6 +374,7 @@ contract('DCAHubSwapper', () => {
           hub: DCAHub.address,
           tokens: tokens,
           pairsToSwap: INDEXES,
+          oracleData: BYTES,
           allowanceTargets: [{ token: tokenA.address, allowanceTarget: DEX, minAllowance: 2000 }],
           swappers: [DEX],
           executions: [{ swapData: BYTES, swapperIndex: 0 }],
@@ -574,15 +619,17 @@ contract('DCAHubSwapper', () => {
     });
   }
   function thenHubIsCalledWith({
-    data: expectedData,
+    callbackData: expectedCalbackData,
+    oracleData: expectedOracleData,
     rewardRecipient: expectedRewardRecipient,
   }: {
     rewardRecipient: string | (() => { address: string });
-    data: () => BytesLike;
+    callbackData: () => BytesLike;
+    oracleData: BytesLike;
   }) {
     then('hub was called with the correct parameters', () => {
       expect(DCAHub.swap).to.have.been.calledOnce;
-      const [tokensInHub, indexes, rewardRecipient, callbackHandler, borrow, data] = DCAHub.swap.getCall(0).args;
+      const [tokensInHub, indexes, rewardRecipient, callbackHandler, borrow, callbackData, oracleData] = DCAHub.swap.getCall(0).args;
       expect(tokensInHub).to.eql(tokens);
       expect((indexes as any)[0]).to.eql([0, 1]);
       expect(rewardRecipient).to.equal(
@@ -590,7 +637,8 @@ contract('DCAHubSwapper', () => {
       );
       expect(callbackHandler).to.equal(DCAHubSwapper.address);
       expect(borrow).to.eql([constants.ZERO, constants.ZERO]);
-      expect(data).to.equal(expectedData());
+      expect(callbackData).to.equal(expectedCalbackData());
+      expect(oracleData).to.equal(expectedOracleData);
     });
   }
   type SwapWithDexes = {
