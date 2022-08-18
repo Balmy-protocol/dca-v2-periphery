@@ -24,9 +24,15 @@ interface IDCAHubCompanionLibrariesHandler {
    * @dev Tokens in pairs may be passed in either tokenA/tokenB or tokenB/tokenA order
    * @param hub The address of the DCAHub
    * @param pairs Pairs to check
+   * @param calculatePrivilegedAvailability Some accounts get privileged availability and can execute swaps before others. This flag provides
+   *        the possibility to calculate the seconds until next swap for privileged and non-privileged accounts
    * @return The amount of seconds until next swap for each of the pairs
    */
-  function secondsUntilNextSwap(IDCAHub hub, Pair[] calldata pairs) external view returns (uint256[] memory);
+  function secondsUntilNextSwap(
+    IDCAHub hub,
+    Pair[] calldata pairs,
+    bool calculatePrivilegedAvailability
+  ) external view returns (uint256[] memory);
 }
 
 interface IDCAHubCompanionHubProxyHandler {

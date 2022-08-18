@@ -13,7 +13,11 @@ abstract contract DCAHubCompanionLibrariesHandler is IDCAHubCompanionLibrariesHa
   }
 
   /// @inheritdoc IDCAHubCompanionLibrariesHandler
-  function secondsUntilNextSwap(IDCAHub _hub, Pair[] calldata _pairs) external view returns (uint256[] memory) {
-    return SecondsUntilNextSwap.secondsUntilNextSwap(_hub, _pairs);
+  function secondsUntilNextSwap(
+    IDCAHub _hub,
+    Pair[] calldata _pairs,
+    bool _calculatePrivilegedAvailability
+  ) external view returns (uint256[] memory) {
+    return SecondsUntilNextSwap.secondsUntilNextSwap(_hub, _pairs, _calculatePrivilegedAvailability);
   }
 }
