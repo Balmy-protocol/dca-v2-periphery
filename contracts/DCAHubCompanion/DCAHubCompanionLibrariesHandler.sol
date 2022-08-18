@@ -7,9 +7,20 @@ import '../interfaces/IDCAHubCompanion.sol';
 
 abstract contract DCAHubCompanionLibrariesHandler is IDCAHubCompanionLibrariesHandler {
   /// @inheritdoc IDCAHubCompanionLibrariesHandler
-  function getNextSwapInfo(IDCAHub _hub, Pair[] calldata _pairs) external view returns (IDCAHub.SwapInfo memory) {
+  function getNextSwapInfo(
+    IDCAHub _hub,
+    Pair[] calldata _pairs,
+    bool _calculatePrivilegedAvailability,
+    bytes calldata _oracleData
+  ) external view returns (IDCAHub.SwapInfo memory) {
     (address[] memory _tokens, IDCAHub.PairIndexes[] memory _indexes) = InputBuilding.buildGetNextSwapInfoInput(_pairs);
-    return _hub.getNextSwapInfo(_tokens, _indexes, true, '');
+    return _hub.getNextSwapInfo(_tokens, _indexes, _calculatePrivilegedAvailability, _oracleData);
+  }
+
+  /// @inheritdoc IDCAHubCompanionLibrariesHandler
+  function legacyGetNextSwapInfo(ILegacyDCAHub _hub, Pair[] calldata _pairs) external view returns (ILegacyDCAHub.SwapInfo memory) {
+    (address[] memory _tokens, IDCAHub.PairIndexes[] memory _indexes) = InputBuilding.buildGetNextSwapInfoInput(_pairs);
+    return _hub.getNextSwapInfo(_tokens, _indexes);
   }
 
   /// @inheritdoc IDCAHubCompanionLibrariesHandler
