@@ -666,6 +666,65 @@ contract('DCAHubSwapper', () => {
       role: () => swapExecutionRole,
     });
   });
+  describe('optimizedSwap', () => {
+    whenDeadlineHasExpiredThenTxReverts({
+      func: 'optimizedSwap',
+      args: () => [
+        {
+          hub: DCAHub.address,
+          tokens: [],
+          pairsToSwap: [],
+          oracleData: BYTES,
+          allowanceTargets: [],
+          callbackData: BYTES,
+          deadline: 0,
+        },
+      ],
+    });
+    when('executing a swap with dexes', () => {
+      given(async () => {
+        await DCAHubSwapper.connect(swapExecutioner).optimizedSwap({
+          hub: DCAHub.address,
+          tokens: tokens,
+          pairsToSwap: INDEXES,
+          oracleData: BYTES,
+          allowanceTargets: [{ token: tokenA.address, allowanceTarget: DEX, minAllowance: 2000 }],
+          callbackData: BYTES,
+          deadline: constants.MAX_UINT_256,
+        });
+      });
+      then('allowance was called correctly', async () => {
+        const calls = await DCAHubSwapper.maxApproveSpenderCalls();
+        expect(calls).to.have.lengthOf(1);
+        expect(calls[0].token).to.equal(tokenA.address);
+        expect(calls[0].spender).to.equal(DEX);
+        expect(calls[0].minAllowance).to.equal(2000);
+        expect(calls[0].alreadyValidatedSpender).to.be.false;
+      });
+      thenHubIsCalledWith({
+        rewardRecipient: () => DCAHubSwapper,
+        oracleData: BYTES,
+        callbackData: () => BYTES,
+      });
+    });
+    behaviours.shouldBeExecutableOnlyByRole({
+      contract: () => DCAHubSwapper,
+      funcAndSignature: 'optimizedSwap',
+      params: () => [
+        {
+          hub: DCAHub.address,
+          tokens: tokens,
+          pairsToSwap: INDEXES,
+          oracleData: BYTES,
+          allowanceTargets: [{ token: tokenA.address, allowanceTarget: DEX, minAllowance: 2000 }],
+          callbackData: BYTES,
+          deadline: constants.MAX_UINT_256,
+        },
+      ],
+      addressWithRole: () => swapExecutioner,
+      role: () => swapExecutionRole,
+    });
+  });
   describe('revokeAllowances', () => {
     when('allowance is revoked', () => {
       given(async () => {
