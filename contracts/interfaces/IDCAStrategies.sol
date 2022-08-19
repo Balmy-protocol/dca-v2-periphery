@@ -14,6 +14,17 @@ interface IDCAStrategiesBase {
     SYNC
   }
 
+  struct DepositParams {
+    IDCAHub hub;
+    uint80 strategyId;
+    address from;
+    uint256 amount;
+    uint32 amountOfSwaps;
+    uint32 swapInterval;
+    address owner;
+    PermissionSet[] permissions;
+  }
+
   struct Position {
     IDCAHub hub; // 20 bytes
     uint80 strategyId; // 10 bytes
@@ -184,15 +195,7 @@ interface IDCAStrategiesPermissionsHandler is IDCAStrategiesBase, IERC721, IERC7
 }
 
 interface IDCAStrategiesPositionsHandler is IDCAStrategiesBase {
-  function deposit(
-    uint80 strategyId,
-    address from,
-    uint256 amount,
-    uint32 amountOfSwaps,
-    uint32 swapInterval,
-    address owner,
-    PermissionSet[] memory permissions
-  ) external returns (uint256);
+  function deposit(DepositParams calldata parameters) external returns (uint256);
 
   function withdrawSwapped(uint256 positionId, address recipient) external returns (uint256);
 
