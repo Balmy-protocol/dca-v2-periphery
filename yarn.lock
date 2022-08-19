@@ -1131,6 +1131,17 @@
     "@uniswap/v3-periphery" "1.2.0"
     base64-sol "1.0.1"
 
+"@mean-finance/dca-v2-core@2.2.0-rc1":
+  version "2.2.0-rc1"
+  resolved "https://registry.yarnpkg.com/@mean-finance/dca-v2-core/-/dca-v2-core-2.2.0-rc1.tgz#c9cf25fa21b085274c683169ac40de27852fba94"
+  integrity sha512-u+Hx0Urc7/CCo0y26mvKkLd2GYlVXi2vP3gEA1orgNVI0EI+SdMOGqsq/4J5C+4WmZlg0CBLDPXyKqKxBf8obg==
+  dependencies:
+    "@chainlink/contracts" "0.2.2"
+    "@mean-finance/deterministic-factory" "1.3.1"
+    "@openzeppelin/contracts" "4.4.2"
+    "@uniswap/v3-periphery" "1.2.0"
+    base64-sol "1.0.1"
+
 "@mean-finance/deterministic-factory@1.3.1":
   version "1.3.1"
   resolved "https://registry.yarnpkg.com/@mean-finance/deterministic-factory/-/deterministic-factory-1.3.1.tgz#c80cfadc7b2a66ecd957297d74d1649ca8235d29"
@@ -1138,6 +1149,23 @@
   dependencies:
     "@openzeppelin/contracts" "4.6.0"
     "@rari-capital/solmate" "6.2.0"
+
+"@mean-finance/deterministic-factory@1.3.2":
+  version "1.3.2"
+  resolved "https://registry.yarnpkg.com/@mean-finance/deterministic-factory/-/deterministic-factory-1.3.2.tgz#d4a7beb6cf853d98c113673fcd85db875169ab48"
+  integrity sha512-ffjshsydfKX2ywacAXEdIR40FHLH4on8wVYO8QpAQTRvwdtI12mSYqjKTitj7xfx6+huE3REnITLUIriQOIyAg==
+  dependencies:
+    "@openzeppelin/contracts" "4.6.0"
+    "@rari-capital/solmate" "6.2.0"
+
+"@mean-finance/nft-descriptors@^1.0.0-rc4":
+  version "1.0.0-rc4"
+  resolved "https://registry.yarnpkg.com/@mean-finance/nft-descriptors/-/nft-descriptors-1.0.0-rc4.tgz#8c44d837f38756dbbc915f66834d59f61224dbf0"
+  integrity sha512-y6tR9t6XsH5FfVDk+uLSdc80xhclaRAOnC2RPlEqYHplrTKhtYpyDIKUr3vNNKtan79/ZBU8d+nWA5ueIB/O6A==
+  dependencies:
+    "@mean-finance/dca-v2-core" "2.2.0-rc1"
+    "@mean-finance/deterministic-factory" "1.3.2"
+    "@openzeppelin/contracts" "4.7.3"
 
 "@mean-finance/swappers@1.0.0-rc5":
   version "1.0.0-rc5"
