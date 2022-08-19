@@ -38,25 +38,25 @@ interface IDCAStrategiesBase {
 }
 
 interface IDCAStrategiesManagementHandler is IDCAStrategiesBase {
-  function getStrategy(uint80 _strategyId) external view returns (Strategy memory);
+  function getStrategy(uint80 strategyId) external view returns (Strategy memory);
 
-  function getStrategyIdByName(string memory _strategyName) external view returns (uint80 _strategyId);
+  function getStrategyIdByName(string memory strategyName) external view returns (uint80 strategyId);
 
   function createStrategy(
-    string memory _strategyName,
-    ShareOfToken[] memory _tokens,
-    address _owner
-  ) external returns (uint80 _strategyId);
+    string memory strategyName,
+    ShareOfToken[] memory tokens,
+    address owner
+  ) external returns (uint80 strategyId);
 
-  function updateStrategyTokens(uint80 _strategyId, ShareOfToken[] memory _tokens) external;
+  function updateStrategyTokens(uint80 strategyId, ShareOfToken[] memory tokens) external;
 
-  function updateStrategyName(uint80 _strategyId, string memory _newStrategyName) external;
+  function updateStrategyName(uint80 strategyId, string memory newStrategyName) external;
 
-  function transferStrategyOwnership(uint80 _strategyId, address _newOwner) external;
+  function transferStrategyOwnership(uint80 strategyId, address newOwner) external;
 
-  function acceptStrategyOwnership(uint80 _strategyId) external;
+  function acceptStrategyOwnership(uint80 strategyId) external;
 
-  function cancelStrategyOwnershipTransfer(uint80 _strategyId) external;
+  function cancelStrategyOwnershipTransfer(uint80 strategyId) external;
 }
 
 interface IDCAStrategiesPermissionsHandler is IDCAStrategiesBase, IERC721Enumerable {
@@ -95,154 +95,138 @@ interface IDCAStrategiesPermissionsHandler is IDCAStrategiesBase, IERC721Enumera
   function nftDescriptor() external returns (IDCAHubPositionDescriptor);
 
   /**
-   * @notice Returns the address of the DCA Hub
-   * @return The address of the DCA Hub
-   */
-  function hub() external returns (address);
-
-  /**
    * @notice Returns the next nonce to use for a given user
-   * @param _user The address of the user
-   * @return _nonce The next nonce to use
+   * @param user The address of the user
+   * @return nonce The next nonce to use
    */
-  function nonces(address _user) external returns (uint256 _nonce);
+  function nonces(address user) external returns (uint256 nonce);
 
   /**
    * @notice Returns whether the given address has the permission for the given token
-   * @param _id The id of the token to check
-   * @param _account The address of the user to check
-   * @param _permission The permission to check
+   * @param id The id of the token to check
+   * @param account The address of the user to check
+   * @param permission The permission to check
    * @return Whether the user has the permission or not
    */
   function hasPermission(
-    uint256 _id,
-    address _account,
-    Permission _permission
+    uint256 id,
+    address account,
+    Permission permission
   ) external view returns (bool);
 
   /**
    * @notice Returns whether the given address has the permissions for the given token
-   * @param _id The id of the token to check
-   * @param _account The address of the user to check
-   * @param _permissions The permissions to check
-   * @return _hasPermissions Whether the user has each permission or not
+   * @param id The id of the token to check
+   * @param account The address of the user to check
+   * @param permissions The permissions to check
+   * @return hasPermissions Whether the user has each permission or not
    */
   function hasPermissions(
-    uint256 _id,
-    address _account,
-    Permission[] calldata _permissions
-  ) external view returns (bool[] memory _hasPermissions);
-
-  /**
-   * @notice Sets the address for the hub
-   * @dev Can only be successfully executed once. Once it's set, it can be modified again
-   *      Will revert:
-   *      - With ZeroAddress if address is zero
-   *      - With HubAlreadySet if the hub has already been set
-   * @param _hub The address to set for the hub
-   */
-  function setHub(address _hub) external;
+    uint256 id,
+    address account,
+    Permission[] calldata permissions
+  ) external view returns (bool[] memory hasPermissions);
 
   /**
    * @notice Sets new permissions for the given tokens
    * @dev Will revert with NotOwner if the caller is not the token's owner.
    *      Operators that are not part of the given permission sets do not see their permissions modified.
    *      In order to remove permissions to an operator, provide an empty list of permissions for them
-   * @param _id The token's id
-   * @param _permissions A list of permission sets
+   * @param id The token's id
+   * @param permissions A list of permission sets
    */
-  function modify(uint256 _id, PermissionSet[] calldata _permissions) external;
+  function modify(uint256 id, PermissionSet[] calldata permissions) external;
 
   /**
    * @notice Approves spending of a specific token ID by spender via signature
-   * @param _spender The account that is being approved
-   * @param _tokenId The ID of the token that is being approved for spending
-   * @param _deadline The deadline timestamp by which the call must be mined for the approve to work
-   * @param _v Must produce valid secp256k1 signature from the holder along with `r` and `s`
-   * @param _r Must produce valid secp256k1 signature from the holder along with `v` and `s`
-   * @param _s Must produce valid secp256k1 signature from the holder along with `r` and `v`
+   * @param spender The account that is being approved
+   * @param tokenId The ID of the token that is being approved for spending
+   * @param deadline The deadline timestamp by which the call must be mined for the approve to work
+   * @param v Must produce valid secp256k1 signature from the holder along with `r` and `s`
+   * @param r Must produce valid secp256k1 signature from the holder along with `v` and `s`
+   * @param s Must produce valid secp256k1 signature from the holder along with `r` and `v`
    */
   function permit(
-    address _spender,
-    uint256 _tokenId,
-    uint256 _deadline,
-    uint8 _v,
-    bytes32 _r,
-    bytes32 _s
+    address spender,
+    uint256 tokenId,
+    uint256 deadline,
+    uint8 v,
+    bytes32 r,
+    bytes32 s
   ) external;
 
   /**
    * @notice Sets permissions via signature
    * @dev This method works similarly to `modify`, but instead of being executed by the owner, it can be set my signature
-   * @param _permissions The permissions to set
-   * @param _tokenId The token's id
-   * @param _deadline The deadline timestamp by which the call must be mined for the approve to work
-   * @param _v Must produce valid secp256k1 signature from the holder along with `r` and `s`
-   * @param _r Must produce valid secp256k1 signature from the holder along with `v` and `s`
-   * @param _s Must produce valid secp256k1 signature from the holder along with `r` and `v`
+   * @param permissions The permissions to set
+   * @param tokenId The token's id
+   * @param deadline The deadline timestamp by which the call must be mined for the approve to work
+   * @param v Must produce valid secp256k1 signature from the holder along with `r` and `s`
+   * @param r Must produce valid secp256k1 signature from the holder along with `v` and `s`
+   * @param s Must produce valid secp256k1 signature from the holder along with `r` and `v`
    */
   function permissionPermit(
-    PermissionSet[] calldata _permissions,
-    uint256 _tokenId,
-    uint256 _deadline,
-    uint8 _v,
-    bytes32 _r,
-    bytes32 _s
+    PermissionSet[] calldata permissions,
+    uint256 tokenId,
+    uint256 deadline,
+    uint8 v,
+    bytes32 r,
+    bytes32 s
   ) external;
 
   /**
    * @notice Sets a new NFT descriptor
    * @dev Will revert with ZeroAddress if address is zero
-   * @param _descriptor The new NFT descriptor contract
+   * @param descriptor The new NFT descriptor contract
    */
-  function setNFTDescriptor(IDCAHubPositionDescriptor _descriptor) external;
+  function setNFTDescriptor(IDCAHubPositionDescriptor descriptor) external;
 }
 
 interface IDCAStrategiesPositionsHandler is IDCAStrategiesBase {
   function deposit(
-    uint80 _strategyId,
-    address _from,
-    uint256 _amount,
-    uint256 _amountOfSwaps,
-    uint256 _swapInterval,
-    address _owner,
-    PermissionSet[] memory _permissions
+    uint80 strategyId,
+    address from,
+    uint256 amount,
+    uint256 amountOfSwaps,
+    uint256 swapInterval,
+    address owner,
+    PermissionSet[] memory permissions
   ) external returns (uint256);
 
-  function withdrawSwapped(uint256 _positionId, address _recipient) external returns (uint256);
+  function withdrawSwapped(uint256 positionId, address recipient) external returns (uint256);
 
   function increasePosition(
-    uint256 _positionId,
-    uint256 _amount,
-    uint256 _newSwaps
+    uint256 positionId,
+    uint256 amount,
+    uint256 newSwaps
   ) external;
 
   function reducePosition(
-    uint256 _positionId,
-    uint256 _amount,
-    uint256 _newSwaps,
-    address _recipient
+    uint256 positionId,
+    uint256 amount,
+    uint256 newSwaps,
+    address recipient
   ) external;
 
   function terminate(
-    uint256 _positionId,
-    address _recipientUnswapped,
-    address _recipientSwapped
-  ) external returns (uint256 _unswapped, uint256 _swapped);
+    uint256 positionId,
+    address recipientUnswapped,
+    address recipientSwapped
+  ) external returns (uint256 unswapped, uint256 swapped);
 
-  function syncPositionToLatestStrategyVersion(uint256 _positionId) external;
+  function syncPositionToLatestStrategyVersion(uint256 positionId) external;
 
   function increaseAndSyncPositionToLatestStrategyVersion(
-    uint256 _positionId,
-    uint256 _amount,
-    uint256 _newSwaps
+    uint256 positionId,
+    uint256 amount,
+    uint256 newSwaps
   ) external;
 
   function reduceAndSyncPositionToLatestStrategyVersion(
-    uint256 _positionId,
-    uint256 _amount,
-    uint256 _newSwaps,
-    address _recipient
+    uint256 positionId,
+    uint256 amount,
+    uint256 newSwaps,
+    address recipient
   ) external;
 }
 

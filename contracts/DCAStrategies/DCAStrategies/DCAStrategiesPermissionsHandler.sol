@@ -20,8 +20,6 @@ abstract contract DCAStrategiesPermissionsHandler is IDCAStrategiesPermissionsHa
   // TODO: update this after building the new descriptor
   function nftDescriptor() external override returns (IDCAHubPositionDescriptor) {}
 
-  function hub() external override returns (address) {}
-
   function nonces(address _user) external override returns (uint256 _nonce) {}
 
   function hasPermission(
@@ -35,8 +33,6 @@ abstract contract DCAStrategiesPermissionsHandler is IDCAStrategiesPermissionsHa
     address _account,
     Permission[] calldata _permissions
   ) external view override returns (bool[] memory _hasPermissions) {}
-
-  function setHub(address _hub) external override {}
 
   function modify(uint256 _id, PermissionSet[] calldata _permissions) external override {}
 
