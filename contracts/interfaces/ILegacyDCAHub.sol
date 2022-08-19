@@ -1,6 +1,8 @@
 // SPDX-License-Identifier: GPL-2.0-or-later
 pragma solidity >=0.8.7 <0.9.0;
 
+import '@mean-finance/dca-v2-core/contracts/interfaces/IDCAHub.sol';
+
 interface ILegacyDCAHub {
   /// @notice Information about a swap
   struct SwapInfo {
@@ -36,14 +38,6 @@ interface ILegacyDCAHub {
     bytes1 intervalsInSwap;
   }
 
-  /// @notice A pair of tokens, represented by their indexes in an array
-  struct PairIndexes {
-    // The index of the token A
-    uint8 indexTokenA;
-    // The index of the token B
-    uint8 indexTokenB;
-  }
-
   /**
    * @notice Returns all information related to the next swap
    * @dev Will revert with:
@@ -53,7 +47,10 @@ interface ILegacyDCAHub {
    * @param pairs The pairs that you want to swap. Each element of the list points to the index of the token in the tokens array
    * @return swapInformation The information about the next swap
    */
-  function getNextSwapInfo(address[] calldata tokens, PairIndexes[] calldata pairs) external view returns (SwapInfo memory swapInformation);
+  function getNextSwapInfo(address[] calldata tokens, IDCAHub.PairIndexes[] calldata pairs)
+    external
+    view
+    returns (SwapInfo memory swapInformation);
 
   /**
    * @notice Executes a flash swap
@@ -73,7 +70,7 @@ interface ILegacyDCAHub {
    */
   function swap(
     address[] calldata tokens,
-    PairIndexes[] calldata pairsToSwap,
+    IDCAHub.PairIndexes[] calldata pairsToSwap,
     address rewardRecipient,
     address callbackHandler,
     uint256[] calldata borrow,

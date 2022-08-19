@@ -58,6 +58,7 @@ contract('Single pair swap with DEX', () => {
     //We are setting a very high fee, so that there is a surplus in both reward and toProvide tokens
     await DCAHub.connect(timelock).setSwapFee(20000); // 2%
     // Allow swapper
+    await DCAHub.connect(governor).grantRole(await DCAHub.PRIVILEGED_SWAPPER_ROLE(), DCAHubSwapper.address);
     await DCAHubSwapper.connect(governor).grantRole(await DCAHubSwapper.SWAP_EXECUTION_ROLE(), cindy.address);
 
     WETH = await ethers.getContractAt(IERC20_ABI, WETH_ADDRESS);
@@ -119,7 +120,7 @@ contract('Single pair swap with DEX', () => {
         initialRecipientUSDCBalance = await USDC.balanceOf(recipient.address);
         const {
           tokens: [, weth],
-        } = await DCAHubCompanion.getNextSwapInfo(DCAHub.address, [{ tokenA: WETH_ADDRESS, tokenB: USDC_ADDRESS }]);
+        } = await DCAHubCompanion.getNextSwapInfo(DCAHub.address, [{ tokenA: WETH_ADDRESS, tokenB: USDC_ADDRESS }], true, []);
         const dexQuote = await zrx.quote({
           chainId: 1,
           sellToken: WETH_ADDRESS,

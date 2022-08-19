@@ -45,7 +45,7 @@ interface IDCAHubSwapper is IDCAHubSwapCallee {
     // The tokens involved in the swap
     address[] tokens;
     // The pairs to swap
-    ILegacyDCAHub.PairIndexes[] pairsToSwap;
+    IDCAHub.PairIndexes[] pairsToSwap;
     // The accounts that should be approved for spending
     Allowance[] allowanceTargets;
     // The different swappers involved in the swap
@@ -85,7 +85,7 @@ interface IDCAHubSwapper is IDCAHubSwapCallee {
     // The tokens involved in the swap
     address[] tokens;
     // The pairs to swap
-    ILegacyDCAHub.PairIndexes[] pairsToSwap;
+    IDCAHub.PairIndexes[] pairsToSwap;
     // The minimum amount of tokens to receive as part of the swap
     uint256[] minimumOutput;
     // The maximum amount of tokens to provide as part of the swap
