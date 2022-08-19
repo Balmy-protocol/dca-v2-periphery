@@ -102,6 +102,41 @@ contract DCAHubSwapper is DeadlineValidation, AccessControl, GetBalances, IDCAHu
   }
 
   /// @inheritdoc IDCAHubSwapper
+  function legacySwapForCaller(LegacySwapForCallerParams calldata _parameters)
+    external
+    payable
+    checkDeadline(_parameters.deadline)
+    onlyRole(SWAP_EXECUTION_ROLE)
+    returns (ILegacyDCAHub.SwapInfo memory _swapInfo)
+  {
+    // Set the swap's executor
+    _swapExecutor = msg.sender;
+
+    // Execute swap
+    _swapInfo = _parameters.hub.swap(
+      _parameters.tokens,
+      _parameters.pairsToSwap,
+      _parameters.recipient,
+      address(this),
+      new uint256[](_parameters.tokens.length),
+      abi.encode(SwapData({plan: SwapPlan.SWAP_FOR_CALLER, data: ''}))
+    );
+
+    // Check that limits were met
+    for (uint256 i; i < _swapInfo.tokens.length; i++) {
+      ILegacyDCAHub.TokenInSwap memory _tokenInSwap = _swapInfo.tokens[i];
+      if (_tokenInSwap.reward < _parameters.minimumOutput[i]) {
+        revert RewardNotEnough();
+      } else if (_tokenInSwap.toProvide > _parameters.maximumInput[i]) {
+        revert ToProvideIsTooMuch();
+      }
+    }
+
+    // Clear the swap executor
+    _swapExecutor = _NO_EXECUTOR;
+  }
+
+  /// @inheritdoc IDCAHubSwapper
   function swapWithDexes(SwapWithDexesParams calldata _parameters)
     external
     payable
