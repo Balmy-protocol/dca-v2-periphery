@@ -22,5 +22,5 @@ abstract contract DCAStrategiesManagementHandler is IDCAStrategiesManagementHand
 
   function acceptStrategyOwnership(uint80 _strategyId) external override {}
 
-  function cancelStrategyOwnershipTransfer(uint80 _strategyId, address _newOwner) external override {}
+  function cancelStrategyOwnershipTransfer(uint80 _strategyId) external override {}
 }

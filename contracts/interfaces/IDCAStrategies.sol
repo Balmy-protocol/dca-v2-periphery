@@ -56,7 +56,7 @@ interface IDCAStrategiesManagementHandler is IDCAStrategiesBase {
 
   function acceptStrategyOwnership(uint80 _strategyId) external;
 
-  function cancelStrategyOwnershipTransfer(uint80 _strategyId, address _newOwner) external;
+  function cancelStrategyOwnershipTransfer(uint80 _strategyId) external;
 }
 
 interface IDCAStrategiesPermissionsHandler is IDCAStrategiesBase, IERC721Enumerable {
