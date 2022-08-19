@@ -452,6 +452,76 @@ contract('DCAHubSwapper', () => {
       role: () => swapExecutionRole,
     });
   });
+  describe('legacySwapWithDexes', () => {
+    whenDeadlineHasExpiredThenTxReverts({
+      func: 'legacySwapWithDexes',
+      args: () => [
+        {
+          hub: legacyDCAHub.address,
+          tokens: [],
+          pairsToSwap: [],
+          allowanceTargets: [],
+          swappers: [],
+          executions: [],
+          leftoverRecipient: recipient.address,
+          deadline: 0,
+        },
+      ],
+    });
+    when('executing a swap with dexes', () => {
+      given(async () => {
+        await DCAHubSwapper.connect(swapExecutioner).legacySwapWithDexes({
+          hub: legacyDCAHub.address,
+          tokens: tokens,
+          pairsToSwap: INDEXES,
+          allowanceTargets: [{ token: tokenA.address, allowanceTarget: DEX, minAllowance: 2000 }],
+          swappers: [DEX],
+          executions: [{ swapData: BYTES, swapperIndex: 0 }],
+          leftoverRecipient: recipient.address,
+          deadline: constants.MAX_UINT_256,
+        });
+      });
+      then('allowance was called correctly', async () => {
+        const calls = await DCAHubSwapper.maxApproveSpenderCalls();
+        expect(calls).to.have.lengthOf(1);
+        expect(calls[0].token).to.equal(tokenA.address);
+        expect(calls[0].spender).to.equal(DEX);
+        expect(calls[0].minAllowance).to.equal(2000);
+        expect(calls[0].alreadyValidatedSpender).to.be.false;
+      });
+      thenLegacyHubIsCalledWith({
+        rewardRecipient: () => DCAHubSwapper,
+        callbackData: () =>
+          encode({
+            plan: 'dexes',
+            bytes: {
+              swappers: [DEX],
+              executions: [{ data: BYTES, index: 0 }],
+              sendToProvideLeftoverToHub: false,
+              leftoverRecipient: recipient,
+            },
+          }),
+      });
+    });
+    behaviours.shouldBeExecutableOnlyByRole({
+      contract: () => DCAHubSwapper,
+      funcAndSignature: 'legacySwapWithDexes',
+      params: () => [
+        {
+          hub: legacyDCAHub.address,
+          tokens: tokens,
+          pairsToSwap: INDEXES,
+          allowanceTargets: [{ token: tokenA.address, allowanceTarget: DEX, minAllowance: 2000 }],
+          swappers: [DEX],
+          executions: [{ swapData: BYTES, swapperIndex: 0 }],
+          leftoverRecipient: recipient.address,
+          deadline: constants.MAX_UINT_256,
+        },
+      ],
+      addressWithRole: () => swapExecutioner,
+      role: () => swapExecutionRole,
+    });
+  });
   describe('swapWithDexesForMean', () => {
     whenDeadlineHasExpiredThenTxReverts({
       func: 'swapWithDexesForMean',
@@ -515,6 +585,76 @@ contract('DCAHubSwapper', () => {
           tokens: tokens,
           pairsToSwap: INDEXES,
           oracleData: BYTES,
+          allowanceTargets: [{ token: tokenA.address, allowanceTarget: DEX, minAllowance: 2000 }],
+          swappers: [DEX],
+          executions: [{ swapData: BYTES, swapperIndex: 0 }],
+          leftoverRecipient: recipient.address,
+          deadline: constants.MAX_UINT_256,
+        },
+      ],
+      addressWithRole: () => swapExecutioner,
+      role: () => swapExecutionRole,
+    });
+  });
+  describe('legacySwapWithDexesForMean', () => {
+    whenDeadlineHasExpiredThenTxReverts({
+      func: 'legacySwapWithDexesForMean',
+      args: () => [
+        {
+          hub: legacyDCAHub.address,
+          tokens: [],
+          pairsToSwap: [],
+          allowanceTargets: [],
+          swappers: [],
+          executions: [],
+          leftoverRecipient: recipient.address,
+          deadline: 0,
+        },
+      ],
+    });
+    when('executing a swap with dexes', () => {
+      given(async () => {
+        await DCAHubSwapper.connect(swapExecutioner).legacySwapWithDexesForMean({
+          hub: legacyDCAHub.address,
+          tokens: tokens,
+          pairsToSwap: INDEXES,
+          allowanceTargets: [{ token: tokenA.address, allowanceTarget: DEX, minAllowance: 2000 }],
+          swappers: [DEX],
+          executions: [{ swapData: BYTES, swapperIndex: 0 }],
+          leftoverRecipient: recipient.address,
+          deadline: constants.MAX_UINT_256,
+        });
+      });
+      then('allowance was called correctly', async () => {
+        const calls = await DCAHubSwapper.maxApproveSpenderCalls();
+        expect(calls).to.have.lengthOf(1);
+        expect(calls[0].token).to.equal(tokenA.address);
+        expect(calls[0].spender).to.equal(DEX);
+        expect(calls[0].minAllowance).to.equal(2000);
+        expect(calls[0].alreadyValidatedSpender).to.be.false;
+      });
+      thenLegacyHubIsCalledWith({
+        rewardRecipient: () => DCAHubSwapper,
+        callbackData: () =>
+          encode({
+            plan: 'dexes',
+            bytes: {
+              swappers: [DEX],
+              executions: [{ data: BYTES, index: 0 }],
+              sendToProvideLeftoverToHub: true,
+              leftoverRecipient: recipient,
+            },
+          }),
+      });
+    });
+    behaviours.shouldBeExecutableOnlyByRole({
+      contract: () => DCAHubSwapper,
+      funcAndSignature: 'legacySwapWithDexesForMean',
+      params: () => [
+        {
+          hub: legacyDCAHub.address,
+          tokens: tokens,
+          pairsToSwap: INDEXES,
           allowanceTargets: [{ token: tokenA.address, allowanceTarget: DEX, minAllowance: 2000 }],
           swappers: [DEX],
           executions: [{ swapData: BYTES, swapperIndex: 0 }],
