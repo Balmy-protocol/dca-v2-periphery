@@ -33,98 +33,204 @@ contract('SecondsUntilNextSwap', () => {
 
     when('seconds are calculated', () => {
       given(async () => {
-        await secondsUntilNextSwap['secondsUntilNextSwap(address,address,address)'](DCAHub.address, TOKEN_B, TOKEN_A);
+        await secondsUntilNextSwap['secondsUntilNextSwap(address,address,address,bool)'](DCAHub.address, TOKEN_B, TOKEN_A, true);
       });
       then('the correct token order is sent to the hub', () => {
         expect(DCAHub.activeSwapIntervals).to.have.been.calledWith(TOKEN_A, TOKEN_B);
       });
     });
 
-    secondsUntilNextSwapTest({
-      when: 'there are no active intervals',
-      intervals: [],
-      expected: constants.MAX_UINT_256, // then there is nothing to wait for
+    describe('privileged', () => {
+      secondsUntilNextSwapTest({
+        when: 'there are no active intervals',
+        intervals: [],
+        privileged: true,
+        expected: constants.MAX_UINT_256, // then there is nothing to wait for
+      });
+
+      secondsUntilNextSwapTest({
+        when: 'there are active intervals, they cannot be swapped yet and there is nothing to swap',
+        intervals: [{ interval: SwapInterval.ONE_HOUR, relativeLastSwappedAt: -1 }],
+        privileged: true,
+        expected: constants.MAX_UINT_256, // then there is nothing to wait for
+      });
+
+      secondsUntilNextSwapTest({
+        when: 'there are active intervals, they can be swapped, but there is nothing to swap',
+        intervals: [{ interval: SwapInterval.ONE_HOUR, relativeLastSwappedAt: -SwapInterval.ONE_HOUR.seconds }],
+        privileged: true,
+        expected: constants.MAX_UINT_256, // then there is nothing to wait for
+      });
+
+      secondsUntilNextSwapTest({
+        when: 'there are active intervals, they cannot be swapped yet, but there is something to swap',
+        intervals: [{ interval: SwapInterval.ONE_HOUR, relativeLastSwappedAt: -21, amountToSwapAToB: 1 }],
+        privileged: true,
+        expected: nextAvailableAt(-21, SwapInterval.ONE_HOUR).sub(CURRENT_TIMESTAMP), // then wait until it can be swapped
+      });
+
+      secondsUntilNextSwapTest({
+        when: 'there are active intervals, they can be swapped, and there is something to swap',
+        intervals: [{ interval: SwapInterval.ONE_HOUR, relativeLastSwappedAt: -SwapInterval.ONE_HOUR.seconds, amountToSwapAToB: 1 }],
+        privileged: true,
+        expected: 0, // then it can be swapped right now
+      });
+
+      secondsUntilNextSwapTest({
+        when: 'a smaller interval can be swapped, but there is nothing to swap',
+        intervals: [
+          { interval: SwapInterval.ONE_MINUTE, relativeLastSwappedAt: -SwapInterval.ONE_MINUTE.seconds },
+          { interval: SwapInterval.ONE_HOUR, relativeLastSwappedAt: -50, amountToSwapAToB: 1 },
+        ],
+        privileged: true,
+        expected: nextAvailableAt(-21, SwapInterval.ONE_HOUR).sub(CURRENT_TIMESTAMP), // then wait for bigger interval
+      });
+
+      secondsUntilNextSwapTest({
+        when: 'all intervals can be swapped, and one has something to swap',
+        intervals: [
+          { interval: SwapInterval.ONE_MINUTE, relativeLastSwappedAt: -SwapInterval.ONE_MINUTE.seconds },
+          { interval: SwapInterval.ONE_HOUR, relativeLastSwappedAt: -SwapInterval.ONE_HOUR.seconds, amountToSwapAToB: 1 },
+        ],
+        privileged: true,
+        expected: 0, // then it can be swapped right now
+      });
+
+      secondsUntilNextSwapTest({
+        when: 'a smaller interval cannot be swapped, but a bigger can',
+        intervals: [
+          { interval: SwapInterval.ONE_MINUTE, relativeLastSwappedAt: -10 },
+          { interval: SwapInterval.ONE_HOUR, relativeLastSwappedAt: -SwapInterval.ONE_HOUR.seconds, amountToSwapAToB: 1 },
+        ],
+        privileged: true,
+        expected: nextAvailableAt(-10, SwapInterval.ONE_MINUTE).sub(CURRENT_TIMESTAMP), // then wait for smaller interval
+      });
+
+      secondsUntilNextSwapTest({
+        when: 'both intervals cannot be swapped, and the bigger one has something to swap',
+        intervals: [
+          { interval: SwapInterval.ONE_MINUTE, relativeLastSwappedAt: -10 },
+          { interval: SwapInterval.ONE_HOUR, relativeLastSwappedAt: -20, amountToSwapAToB: 1 },
+        ],
+        privileged: true,
+        expected: nextAvailableAt(-20, SwapInterval.ONE_HOUR).sub(CURRENT_TIMESTAMP), // then wait for bigger interval
+      });
+
+      secondsUntilNextSwapTest({
+        when: 'both intervals have nothing to swap',
+        intervals: [
+          { interval: SwapInterval.ONE_MINUTE, relativeLastSwappedAt: -SwapInterval.ONE_MINUTE.seconds },
+          { interval: SwapInterval.ONE_HOUR, relativeLastSwappedAt: -SwapInterval.ONE_HOUR.seconds },
+        ],
+        privileged: true,
+        expected: constants.MAX_UINT_256, // then there is nothing to wait for
+      });
     });
 
-    secondsUntilNextSwapTest({
-      when: 'there are active intervals, they cannot be swapped yet and there is nothing to swap',
-      intervals: [{ interval: SwapInterval.ONE_HOUR, relativeLastSwappedAt: -1 }],
-      expected: constants.MAX_UINT_256, // then there is nothing to wait for
-    });
+    describe('unprivileged', () => {
+      secondsUntilNextSwapTest({
+        when: 'there are no active intervals',
+        intervals: [],
+        privileged: false,
+        expected: constants.MAX_UINT_256, // then there is nothing to wait for
+      });
 
-    secondsUntilNextSwapTest({
-      when: 'there are active intervals, they can be swapped, but there is nothing to swap',
-      intervals: [{ interval: SwapInterval.ONE_HOUR, relativeLastSwappedAt: -SwapInterval.ONE_HOUR.seconds }],
-      expected: constants.MAX_UINT_256, // then there is nothing to wait for
-    });
+      secondsUntilNextSwapTest({
+        when: 'there are active intervals, they cannot be swapped yet and there is nothing to swap',
+        intervals: [{ interval: SwapInterval.ONE_HOUR, relativeLastSwappedAt: -1 }],
+        privileged: false,
+        expected: constants.MAX_UINT_256, // then there is nothing to wait for
+      });
 
-    secondsUntilNextSwapTest({
-      when: 'there are active intervals, they cannot be swapped yet, but there is something to swap',
-      intervals: [{ interval: SwapInterval.ONE_HOUR, relativeLastSwappedAt: -21, amountToSwapAToB: 1 }],
-      expected: nextAvailableAt(-21, SwapInterval.ONE_HOUR).sub(CURRENT_TIMESTAMP), // then wait until it can be swapped
-    });
+      secondsUntilNextSwapTest({
+        when: 'there are active intervals, they can be swapped, but there is nothing to swap',
+        intervals: [{ interval: SwapInterval.ONE_HOUR, relativeLastSwappedAt: -SwapInterval.ONE_HOUR.seconds }],
+        privileged: false,
+        expected: constants.MAX_UINT_256, // then there is nothing to wait for
+      });
 
-    secondsUntilNextSwapTest({
-      when: 'there are active intervals, they can be swapped, and there is something to swap',
-      intervals: [{ interval: SwapInterval.ONE_HOUR, relativeLastSwappedAt: -SwapInterval.ONE_HOUR.seconds, amountToSwapAToB: 1 }],
-      expected: 0, // then it can be swapped right now
-    });
+      secondsUntilNextSwapTest({
+        when: 'there are active intervals, they cannot be swapped yet, but there is something to swap',
+        intervals: [{ interval: SwapInterval.ONE_HOUR, relativeLastSwappedAt: -21, amountToSwapAToB: 1 }],
+        privileged: false,
+        expected: unprivilegedNextAvailableAt(-21, SwapInterval.ONE_HOUR).sub(CURRENT_TIMESTAMP), // then wait until it can be swapped
+      });
 
-    secondsUntilNextSwapTest({
-      when: 'a smaller interval can be swapped, but there is nothing to swap',
-      intervals: [
-        { interval: SwapInterval.ONE_MINUTE, relativeLastSwappedAt: -SwapInterval.ONE_MINUTE.seconds },
-        { interval: SwapInterval.ONE_HOUR, relativeLastSwappedAt: -50, amountToSwapAToB: 1 },
-      ],
-      expected: nextAvailableAt(-21, SwapInterval.ONE_HOUR).sub(CURRENT_TIMESTAMP), // then wait for bigger interval
-    });
+      secondsUntilNextSwapTest({
+        when: 'there are active intervals, they can be swapped, and there is something to swap',
+        intervals: [{ interval: SwapInterval.ONE_HOUR, relativeLastSwappedAt: -SwapInterval.ONE_HOUR.seconds, amountToSwapAToB: 1 }],
+        privileged: false,
+        expected: 0, // then it can be swapped right now
+      });
 
-    secondsUntilNextSwapTest({
-      when: 'all intervals can be swapped, and one has something to swap',
-      intervals: [
-        { interval: SwapInterval.ONE_MINUTE, relativeLastSwappedAt: -SwapInterval.ONE_MINUTE.seconds },
-        { interval: SwapInterval.ONE_HOUR, relativeLastSwappedAt: -SwapInterval.ONE_HOUR.seconds, amountToSwapAToB: 1 },
-      ],
-      expected: 0, // then it can be swapped right now
-    });
+      secondsUntilNextSwapTest({
+        when: 'a smaller interval can be swapped, but there is nothing to swap',
+        intervals: [
+          { interval: SwapInterval.ONE_MINUTE, relativeLastSwappedAt: -SwapInterval.ONE_MINUTE.seconds },
+          { interval: SwapInterval.ONE_HOUR, relativeLastSwappedAt: -50, amountToSwapAToB: 1 },
+        ],
+        privileged: false,
+        expected: unprivilegedNextAvailableAt(-21, SwapInterval.ONE_HOUR).sub(CURRENT_TIMESTAMP), // then wait for bigger interval
+      });
 
-    secondsUntilNextSwapTest({
-      when: 'a smaller interval cannot be swapped, but a bigger can',
-      intervals: [
-        { interval: SwapInterval.ONE_MINUTE, relativeLastSwappedAt: -10 },
-        { interval: SwapInterval.ONE_HOUR, relativeLastSwappedAt: -SwapInterval.ONE_HOUR.seconds, amountToSwapAToB: 1 },
-      ],
-      expected: nextAvailableAt(-10, SwapInterval.ONE_MINUTE).sub(CURRENT_TIMESTAMP), // then wait for smaller interval
-    });
+      secondsUntilNextSwapTest({
+        when: 'all intervals can be swapped, and one has something to swap',
+        intervals: [
+          { interval: SwapInterval.ONE_MINUTE, relativeLastSwappedAt: -SwapInterval.ONE_MINUTE.seconds },
+          { interval: SwapInterval.ONE_HOUR, relativeLastSwappedAt: -SwapInterval.ONE_HOUR.seconds, amountToSwapAToB: 1 },
+        ],
+        privileged: false,
+        expected: 0, // then it can be swapped right now
+      });
 
-    secondsUntilNextSwapTest({
-      when: 'both intervals cannot be swapped, and the bigger one has something to swap',
-      intervals: [
-        { interval: SwapInterval.ONE_MINUTE, relativeLastSwappedAt: -10 },
-        { interval: SwapInterval.ONE_HOUR, relativeLastSwappedAt: -20, amountToSwapAToB: 1 },
-      ],
-      expected: nextAvailableAt(-20, SwapInterval.ONE_HOUR).sub(CURRENT_TIMESTAMP), // then wait for bigger interval
-    });
+      secondsUntilNextSwapTest({
+        when: 'a smaller interval cannot be swapped, but a bigger can',
+        intervals: [
+          { interval: SwapInterval.ONE_MINUTE, relativeLastSwappedAt: -10 },
+          { interval: SwapInterval.ONE_HOUR, relativeLastSwappedAt: -SwapInterval.ONE_HOUR.seconds, amountToSwapAToB: 1 },
+        ],
+        privileged: false,
+        expected: unprivilegedNextAvailableAt(-10, SwapInterval.ONE_MINUTE).sub(CURRENT_TIMESTAMP), // then wait for smaller interval
+      });
 
-    secondsUntilNextSwapTest({
-      when: 'both intervals have nothing to swap',
-      intervals: [
-        { interval: SwapInterval.ONE_MINUTE, relativeLastSwappedAt: -SwapInterval.ONE_MINUTE.seconds },
-        { interval: SwapInterval.ONE_HOUR, relativeLastSwappedAt: -SwapInterval.ONE_HOUR.seconds },
-      ],
-      expected: constants.MAX_UINT_256, // then there is nothing to wait for
+      secondsUntilNextSwapTest({
+        when: 'both intervals cannot be swapped, and the bigger one has something to swap',
+        intervals: [
+          { interval: SwapInterval.ONE_MINUTE, relativeLastSwappedAt: -10 },
+          { interval: SwapInterval.ONE_HOUR, relativeLastSwappedAt: -20, amountToSwapAToB: 1 },
+        ],
+        privileged: false,
+        expected: unprivilegedNextAvailableAt(-20, SwapInterval.ONE_HOUR).sub(CURRENT_TIMESTAMP), // then wait for bigger interval
+      });
+
+      secondsUntilNextSwapTest({
+        when: 'both intervals have nothing to swap',
+        intervals: [
+          { interval: SwapInterval.ONE_MINUTE, relativeLastSwappedAt: -SwapInterval.ONE_MINUTE.seconds },
+          { interval: SwapInterval.ONE_HOUR, relativeLastSwappedAt: -SwapInterval.ONE_HOUR.seconds },
+        ],
+        privileged: false,
+        expected: constants.MAX_UINT_256, // then there is nothing to wait for
+      });
     });
 
     function nextAvailableAt(relativeLastSwappedAt: number, swapInterval: SwapInterval) {
       return BigNumber.from(CURRENT_TIMESTAMP).add(relativeLastSwappedAt).div(swapInterval.seconds).add(1).mul(swapInterval.seconds);
     }
 
+    function unprivilegedNextAvailableAt(relativeLastSwappedAt: number, swapInterval: SwapInterval) {
+      const extra = BigNumber.from(swapInterval.seconds).div(3);
+      return nextAvailableAt(relativeLastSwappedAt, swapInterval).add(extra);
+    }
+
     async function secondsUntilNextSwapTest({
       when: title,
+      privileged,
       intervals,
       expected,
     }: {
       when: string;
+      privileged: boolean;
       intervals: { interval: SwapInterval; relativeLastSwappedAt: number; amountToSwapAToB?: number; amountToSwapBToA?: number }[];
       expected: BigNumberish;
     }) {
@@ -143,7 +249,12 @@ contract('SecondsUntilNextSwap', () => {
               interval.amountToSwapAToB ?? 0, // nextAmountToSwapBToA
             ];
           });
-          result = await secondsUntilNextSwap['secondsUntilNextSwap(address,address,address)'](DCAHub.address, TOKEN_A, TOKEN_B);
+          result = await secondsUntilNextSwap['secondsUntilNextSwap(address,address,address,bool)'](
+            DCAHub.address,
+            TOKEN_A,
+            TOKEN_B,
+            privileged
+          );
         });
         then('result is as expected', async () => {
           expect(result).to.equal(expected);
