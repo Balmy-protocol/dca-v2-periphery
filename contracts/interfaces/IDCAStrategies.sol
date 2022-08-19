@@ -22,7 +22,7 @@ interface IDCAStrategiesBase {
 
   struct ShareOfToken {
     address token;
-    uint80 share; // 0 < share <= 100%
+    uint80 share; // 0 < share < 100%
   }
 
   struct PermissionSet {
