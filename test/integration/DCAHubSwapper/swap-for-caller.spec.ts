@@ -1,5 +1,5 @@
 import { expect } from 'chai';
-import { deployments, ethers, getNamedAccounts } from 'hardhat';
+import { ethers } from 'hardhat';
 import { JsonRpcSigner, TransactionResponse } from '@ethersproject/providers';
 import { constants, wallet } from '@test-utils';
 import { contract, given, then, when } from '@test-utils/bdd';
@@ -12,7 +12,7 @@ import { BigNumber, utils } from 'ethers';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers';
 import { SwapInterval } from '@test-utils/interval-utils';
 import forkBlockNumber from '@integration/fork-block-numbers';
-import { DeterministicFactory, DeterministicFactory__factory } from '@mean-finance/deterministic-factory/typechained';
+import { deploy } from '@integration/utils';
 
 const WETH_ADDRESS = '0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2';
 const USDC_ADDRESS = '0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48';
@@ -33,29 +33,12 @@ contract('Swap for caller', () => {
 
   before(async () => {
     await evm.reset({
-      network: 'mainnet',
+      network: 'ethereum',
       blockNumber: forkBlockNumber['swap-for-caller'],
-      skipHardhatDeployFork: true,
     });
     [cindy, swapper, recipient] = await ethers.getSigners();
 
-    const namedAccounts = await getNamedAccounts();
-    const governorAddress = namedAccounts.governor;
-    governor = await wallet.impersonate(governorAddress);
-    await ethers.provider.send('hardhat_setBalance', [governorAddress, '0xffffffffffffffff']);
-
-    const deterministicFactory = await ethers.getContractAt<DeterministicFactory>(
-      DeterministicFactory__factory.abi,
-      '0xbb681d77506df5CA21D2214ab3923b4C056aa3e2'
-    );
-
-    await deterministicFactory.connect(governor).grantRole(await deterministicFactory.DEPLOYER_ROLE(), namedAccounts.deployer);
-
-    await deployments.run(['DCAHub', 'SwapperRegistry', 'DCAHubSwapper'], {
-      resetMemory: true,
-      deletePreviousDeployments: false,
-      writeDeploymentsToFiles: false,
-    });
+    ({ msig: governor } = await deploy());
 
     DCAHub = await ethers.getContract('DCAHub');
     DCAHubSwapper = await ethers.getContract('DCAHubSwapper');
@@ -103,15 +86,16 @@ contract('Swap for caller', () => {
         initialSwapperUSDCBalance = await USDC.balanceOf(swapper.address);
         initialHubWETHBalance = await WETH.balanceOf(DCAHub.address);
         initialHubUSDCBalance = await USDC.balanceOf(DCAHub.address);
-        const swapTx = await DCAHubSwapper.connect(swapper).swapForCaller(
-          DCAHub.address,
-          [USDC_ADDRESS, WETH_ADDRESS],
-          [{ indexTokenA: 0, indexTokenB: 1 }],
-          [0, 0],
-          [constants.MAX_UINT_256, constants.MAX_UINT_256],
-          recipient.address,
-          constants.MAX_UINT_256
-        );
+        const swapTx = await DCAHubSwapper.connect(swapper).swapForCaller({
+          hub: DCAHub.address,
+          tokens: [USDC_ADDRESS, WETH_ADDRESS],
+          pairsToSwap: [{ indexTokenA: 0, indexTokenB: 1 }],
+          oracleData: [],
+          minimumOutput: [0, 0],
+          maximumInput: [constants.MAX_UINT_256, constants.MAX_UINT_256],
+          recipient: recipient.address,
+          deadline: constants.MAX_UINT_256,
+        });
         ({ rewardWETH, toProvideUSDC } = await getTransfers(swapTx));
       });
       then('swap is executed', async () => {

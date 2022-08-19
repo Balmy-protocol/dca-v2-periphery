@@ -54,9 +54,9 @@ const networks: NetworksUserConfig = process.env.TEST
         accounts: accounts('goerli'),
         tags: ['staging'],
       },
-      mainnet: {
-        url: getNodeUrl('mainnet'),
-        accounts: accounts('mainnet'),
+      ethereum: {
+        url: getNodeUrl('ethereum'),
+        accounts: accounts('ethereum'),
         tags: ['production'],
       },
       'optimism-kovan': {
@@ -92,10 +92,11 @@ const config: HardhatUserConfig = {
     timeout: process.env.MOCHA_TIMEOUT || 300000,
   },
   namedAccounts: {
-    deployer: 4,
-    governor: {
-      // Gnosis multisigs
-      hardhat: '0x1a00e1E311009E56e3b0B9Ed6F86f5Ce128a1C01',
+    deployer: {
+      default: 4,
+    },
+    eoaAdmin: '0x1a00e1E311009E56e3b0B9Ed6F86f5Ce128a1C01',
+    msig: {
       ethereum: '0xEC864BE26084ba3bbF3cAAcF8F6961A9263319C4',
       optimism: '0x308810881807189cAe91950888b2cB73A1CC5920',
       polygon: '0xCe9F6991b48970d6c9Ef99Fffb112359584488e3',
@@ -163,16 +164,29 @@ const config: HardhatUserConfig = {
 if (process.env.TEST) {
   config.external!.contracts = [
     {
+      artifacts: 'node_modules/@mean-finance/nft-descriptors/artifacts',
+      deploy: 'node_modules/@mean-finance/nft-descriptors/deploy',
+    },
+    {
+      artifacts: 'node_modules/@mean-finance/transformers/artifacts',
+      deploy: 'node_modules/@mean-finance/transformers/deploy',
+    },
+
+    {
+      artifacts: 'node_modules/@mean-finance/chainlink-registry/artifacts',
+      deploy: 'node_modules/@mean-finance/chainlink-registry/deploy',
+    },
+    {
+      artifacts: 'node_modules/@mean-finance/oracles/artifacts',
+      deploy: 'node_modules/@mean-finance/oracles/deploy',
+    },
+    {
       artifacts: 'node_modules/@mean-finance/dca-v2-core/artifacts',
       deploy: 'node_modules/@mean-finance/dca-v2-core/deploy',
     },
     {
       artifacts: 'node_modules/@mean-finance/swappers/artifacts',
       deploy: 'node_modules/@mean-finance/swappers/deploy',
-    },
-    {
-      artifacts: 'node_modules/@mean-finance/transformers/artifacts',
-      deploy: 'node_modules/@mean-finance/transformers/deploy',
     },
   ];
   const solidity = config.solidity as MultiSolcUserConfig;

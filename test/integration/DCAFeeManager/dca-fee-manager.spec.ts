@@ -1,5 +1,5 @@
 import { expect } from 'chai';
-import { deployments, ethers, getNamedAccounts } from 'hardhat';
+import { ethers } from 'hardhat';
 import { JsonRpcSigner } from '@ethersproject/providers';
 import { constants, wallet } from '@test-utils';
 import { contract } from '@test-utils/bdd';
@@ -11,9 +11,10 @@ import { BigNumber, utils } from 'ethers';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers';
 import { SwapInterval } from '@test-utils/interval-utils';
 import forkBlockNumber from '@integration/fork-block-numbers';
-import { DeterministicFactory, DeterministicFactory__factory } from '@mean-finance/deterministic-factory/typechained';
 import { TransformerRegistry } from '@mean-finance/transformers/typechained';
+import { TransformerOracle } from '@mean-finance/oracles/typechained';
 import { buildSwapInput } from '@test-utils/swap-utils';
+import { deploy } from '@integration/utils';
 
 const WETH_ADDRESS = '0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2';
 const USDC_ADDRESS = '0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48';
@@ -34,39 +35,20 @@ contract('DCAFeeManager', () => {
   let swapperRegistry: ISwapperRegistry;
 
   before(async () => {
-    await evm.reset({
-      network: 'mainnet',
-      blockNumber: forkBlockNumber['swap-for-caller'],
-      skipHardhatDeployFork: true,
-    });
     [cindy, allowed, swapper] = await ethers.getSigners();
+    await evm.reset({
+      network: 'ethereum',
+      blockNumber: forkBlockNumber['dca-fee-manager'],
+    });
 
-    const namedAccounts = await getNamedAccounts();
-    const governorAddress = namedAccounts.governor;
-    superAdmin = await wallet.impersonate(governorAddress);
-    await ethers.provider.send('hardhat_setBalance', [governorAddress, '0xffffffffffffffff']);
-
-    const deterministicFactory = await ethers.getContractAt<DeterministicFactory>(
-      DeterministicFactory__factory.abi,
-      '0xbb681d77506df5CA21D2214ab3923b4C056aa3e2'
-    );
-
-    await deterministicFactory.connect(superAdmin).grantRole(await deterministicFactory.DEPLOYER_ROLE(), namedAccounts.deployer);
-
-    await deployments.run(
-      ['DCAHub', 'ProtocolTokenWrapperTransformer', 'TransformerRegistry', 'SwapperRegistry', 'DCAHubSwapper', 'DCAFeeManager'],
-      {
-        resetMemory: true,
-        deletePreviousDeployments: false,
-        writeDeploymentsToFiles: false,
-      }
-    );
+    ({ msig: superAdmin } = await deploy('DCAFeeManager'));
 
     DCAHub = await ethers.getContract('DCAHub');
     DCAHubSwapper = await ethers.getContract('DCAHubSwapper');
     DCAFeeManager = await ethers.getContract('DCAFeeManager');
     transformerRegistry = await ethers.getContract('TransformerRegistry');
     swapperRegistry = await ethers.getContract('SwapperRegistry');
+    const transformerOracle = await ethers.getContract<TransformerOracle>('TransformerOracle');
     const protocolTokenTransformer = await ethers.getContract('ProtocolTokenWrapperTransformer');
 
     // Set up tokens and permissions
@@ -85,6 +67,7 @@ contract('DCAFeeManager', () => {
     await transformerRegistry
       .connect(superAdmin)
       .registerTransformers([{ transformer: protocolTokenTransformer.address, dependents: [WETH.address] }]);
+    await transformerOracle.connect(superAdmin).avoidMappingToUnderlying([WETH.address]);
 
     // Handle approvals
     await USDC.connect(swapper).approve(DCAHubSwapper.address, constants.MAX_UINT_256);
@@ -214,14 +197,15 @@ contract('DCAFeeManager', () => {
       pairs.map(({ from, to }) => ({ tokenA: from.address, tokenB: to.address })),
       []
     );
-    await DCAHubSwapper.connect(swapper).swapForCaller(
-      DCAHub.address,
+    await DCAHubSwapper.connect(swapper).swapForCaller({
+      hub: DCAHub.address,
       tokens,
-      pairIndexes,
-      tokens.map((_) => 0),
-      tokens.map((_) => constants.MAX_UINT_256),
-      DCAFeeManager.address,
-      constants.MAX_UINT_256
-    );
+      pairsToSwap: pairIndexes,
+      oracleData: [],
+      minimumOutput: tokens.map((_) => 0),
+      maximumInput: tokens.map((_) => constants.MAX_UINT_256),
+      recipient: DCAFeeManager.address,
+      deadline: constants.MAX_UINT_256,
+    });
   }
 });

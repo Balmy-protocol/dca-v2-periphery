@@ -121,7 +121,10 @@ contract('InputBuilding', () => {
             [0, 1],
             [0, 2],
           ]);
-          expect(borrow).to.eql([BORROW_TOKEN_A, BORROW_TOKEN_B, ZERO]);
+          expect(borrow).to.have.lengthOf(3);
+          expect(borrow[0]).to.equal(BORROW_TOKEN_A);
+          expect(borrow[1]).to.equal(BORROW_TOKEN_B);
+          expect(borrow[2]).to.equal(ZERO);
         });
       });
 
@@ -140,7 +143,11 @@ contract('InputBuilding', () => {
             [0, 1],
             [0, 2],
           ]);
-          expect(borrow).to.eql([ZERO, ZERO, ZERO, BORROW_TOKEN_D]);
+          expect(borrow).to.have.lengthOf(4);
+          expect(borrow[0]).to.equal(ZERO);
+          expect(borrow[1]).to.equal(ZERO);
+          expect(borrow[2]).to.equal(ZERO);
+          expect(borrow[3]).to.equal(BORROW_TOKEN_D);
         });
       });
     });

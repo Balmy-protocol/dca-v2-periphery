@@ -1,8 +1,8 @@
 const forkBlockNumber = {
-  'swap-for-caller': 14819334, // Ethereum
-  wtoken: 14819334, // Ethereum
-  multicall: 14819334, // Ethereum
-  'position-migrator': 8359006, // Optimism
+  'dca-fee-manager': 14979723, // Ethereum
+  'swap-for-caller': 14979723, // Ethereum
+  multicall: 14979723, // Ethereum
+  'position-migrator': 19559619, // Optimism
 };
 
 export default forkBlockNumber;

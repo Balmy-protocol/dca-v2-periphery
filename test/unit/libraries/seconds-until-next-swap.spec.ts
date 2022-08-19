@@ -134,14 +134,14 @@ contract('SecondsUntilNextSwap', () => {
           await evm.advanceToTimeAndBlock(CURRENT_TIMESTAMP);
           const byte = SwapInterval.intervalsToByte(...intervals.map(({ interval }) => interval));
           DCAHub.activeSwapIntervals.returns(byte);
-          DCAHub.swapData.returns(({ _swapIntervalMask }: { _swapIntervalMask: string }) => {
-            const interval = intervals.find(({ interval }) => interval.mask === _swapIntervalMask)!;
-            return {
-              performedSwaps: 0,
-              nextAmountToSwapAToB: interval.amountToSwapAToB ?? 0,
-              lastSwappedAt: CURRENT_TIMESTAMP + interval.relativeLastSwappedAt,
-              nextAmountToSwapBToA: interval.amountToSwapAToB ?? 0,
-            };
+          DCAHub.swapData.returns(({ swapIntervalMask }: { swapIntervalMask: string }) => {
+            const interval = intervals.find(({ interval }) => interval.mask === swapIntervalMask)!;
+            return [
+              0, // performedSwaps
+              interval.amountToSwapAToB ?? 0, // nextAmountToSwapAToB
+              CURRENT_TIMESTAMP + interval.relativeLastSwappedAt, // lastSwappedAt
+              interval.amountToSwapAToB ?? 0, // nextAmountToSwapBToA
+            ];
           });
           result = await secondsUntilNextSwap['secondsUntilNextSwap(address,address,address)'](DCAHub.address, TOKEN_A, TOKEN_B);
         });

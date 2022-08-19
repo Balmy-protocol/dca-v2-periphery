@@ -1,5 +1,5 @@
 import { expect } from 'chai';
-import { deployments, ethers, getNamedAccounts } from 'hardhat';
+import { deployments, ethers } from 'hardhat';
 import { JsonRpcSigner, TransactionResponse } from '@ethersproject/providers';
 import { constants, wallet } from '@test-utils';
 import { contract, given, then, when } from '@test-utils/bdd';
@@ -12,7 +12,7 @@ import { BigNumber, utils } from 'ethers';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers';
 import { SwapInterval } from '@test-utils/interval-utils';
 import zrx from '@test-utils/dexes/zrx';
-import { DeterministicFactory, DeterministicFactory__factory } from '@mean-finance/deterministic-factory/typechained';
+import { deploy } from '@integration/utils';
 
 const LINK_ADDRESS = '0x514910771af9ca656af840dff83e8264ecf986ca';
 const USDC_ADDRESS = '0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48';
@@ -36,28 +36,11 @@ contract('Multi pair swap with DEX', () => {
 
   before(async () => {
     await evm.reset({
-      network: 'mainnet',
-      skipHardhatDeployFork: true,
+      network: 'ethereum',
     });
     [cindy, recipient] = await ethers.getSigners();
 
-    const namedAccounts = await getNamedAccounts();
-    const governorAddress = namedAccounts.governor;
-    governor = await wallet.impersonate(governorAddress);
-    await ethers.provider.send('hardhat_setBalance', [governorAddress, '0xffffffffffffffff']);
-
-    const deterministicFactory = await ethers.getContractAt<DeterministicFactory>(
-      DeterministicFactory__factory.abi,
-      '0xbb681d77506df5CA21D2214ab3923b4C056aa3e2'
-    );
-
-    await deterministicFactory.connect(governor).grantRole(await deterministicFactory.DEPLOYER_ROLE(), namedAccounts.deployer);
-
-    await deployments.run(['DCAHub', 'DCAHubCompanion', 'SwapperRegistry', 'DCAHubSwapper'], {
-      resetMemory: true,
-      deletePreviousDeployments: false,
-      writeDeploymentsToFiles: false,
-    });
+    ({ msig: governor } = await deploy('DCAHubCompanion'));
 
     DCAHub = await ethers.getContract('DCAHub');
     DCAHubCompanion = await ethers.getContract('DCAHubCompanion');
@@ -168,6 +151,7 @@ contract('Multi pair swap with DEX', () => {
           hub: DCAHub.address,
           tokens: tokensInSwap,
           pairsToSwap: indexesInSwap,
+          oracleData: [],
           allowanceTargets: [
             { token: dexQuotes[0].sellTokenAddress, allowanceTarget: dexQuotes[0].allowanceTarget, minAllowance: dexQuotes[0].sellAmount },
             { token: dexQuotes[1].sellTokenAddress, allowanceTarget: dexQuotes[1].allowanceTarget, minAllowance: dexQuotes[1].sellAmount },

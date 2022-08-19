@@ -9,7 +9,7 @@ abstract contract DCAHubCompanionLibrariesHandler is IDCAHubCompanionLibrariesHa
   /// @inheritdoc IDCAHubCompanionLibrariesHandler
   function getNextSwapInfo(IDCAHub _hub, Pair[] calldata _pairs) external view returns (IDCAHub.SwapInfo memory) {
     (address[] memory _tokens, IDCAHub.PairIndexes[] memory _indexes) = InputBuilding.buildGetNextSwapInfoInput(_pairs);
-    return _hub.getNextSwapInfo(_tokens, _indexes);
+    return _hub.getNextSwapInfo(_tokens, _indexes, true, '');
   }
 
   /// @inheritdoc IDCAHubCompanionLibrariesHandler

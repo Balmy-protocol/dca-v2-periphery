@@ -26,10 +26,10 @@ library SecondsUntilNextSwap {
     uint256 _smallerIntervalBlocking;
     while (_activeIntervals >= _mask && _mask > 0) {
       if (_activeIntervals & _mask == _mask) {
-        IDCAHub.SwapData memory _swapDataMem = _hub.swapData(_tokenA, _tokenB, _mask);
+        (, uint224 _nextAmountToSwapAToB, uint32 _lastSwappedAt, uint224 _nextAmountToSwapBToA) = _hub.swapData(_tokenA, _tokenB, _mask);
         uint32 _swapInterval = Intervals.maskToInterval(_mask);
-        uint256 _nextAvailable = ((_swapDataMem.lastSwappedAt / _swapInterval) + 1) * _swapInterval;
-        if (_swapDataMem.nextAmountToSwapAToB > 0 || _swapDataMem.nextAmountToSwapBToA > 0) {
+        uint256 _nextAvailable = ((_lastSwappedAt / _swapInterval) + 1) * _swapInterval;
+        if (_nextAmountToSwapAToB > 0 || _nextAmountToSwapBToA > 0) {
           if (_nextAvailable <= block.timestamp) {
             return _smallerIntervalBlocking;
           } else {
