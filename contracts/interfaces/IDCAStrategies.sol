@@ -2,16 +2,8 @@
 pragma solidity >=0.8.7 <0.9.0;
 
 import '@openzeppelin/contracts/token/ERC721/IERC721.sol';
+import '@mean-finance/dca-v2-core/contracts/interfaces/IDCAHub.sol';
 import '@mean-finance/nft-descriptors/solidity/interfaces/IDCAHubPositionDescriptor.sol';
-
-interface IERC721BasicEnumerable {
-  /**
-   * @notice Count NFTs tracked by this contract
-   * @return A count of valid NFTs tracked by this contract, where each one of
-   *         them has an assigned and queryable owner not equal to the zero address
-   */
-  function totalSupply() external view returns (uint256);
-}
 
 interface IDCAStrategiesBase {
   enum Permission {
@@ -23,7 +15,7 @@ interface IDCAStrategiesBase {
   }
 
   struct Position {
-    address hub; // 20 bytes
+    IDCAHub hub; // 20 bytes
     uint80 strategyId; // 10 bytes
     uint16 strategyVersion; // 2 bytes
     uint256[] positions;
