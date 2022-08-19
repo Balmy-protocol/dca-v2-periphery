@@ -11,8 +11,8 @@ abstract contract DCAStrategiesPositionsHandler is IDCAStrategiesPositionsHandle
     uint80 _strategyId,
     address _from,
     uint256 _amount,
-    uint256 _amountOfSwaps,
-    uint256 _swapInterval,
+    uint32 _amountOfSwaps,
+    uint32 _swapInterval,
     address _owner,
     PermissionSet[] memory _permissions
   ) external override returns (uint256) {}
@@ -24,14 +24,14 @@ abstract contract DCAStrategiesPositionsHandler is IDCAStrategiesPositionsHandle
   function increasePosition(
     uint256 _positionId,
     uint256 _amount,
-    uint256 _newSwaps
+    uint32 _newSwaps
   ) external override {}
 
   /// @inheritdoc IDCAStrategiesPositionsHandler
   function reducePosition(
     uint256 _positionId,
     uint256 _amount,
-    uint256 _newSwaps,
+    uint32 _newSwaps,
     address _recipient
   ) external override {}
 
@@ -49,14 +49,14 @@ abstract contract DCAStrategiesPositionsHandler is IDCAStrategiesPositionsHandle
   function increaseAndSyncPositionToLatestStrategyVersion(
     uint256 _positionId,
     uint256 _amount,
-    uint256 _newSwaps
+    uint32 _newSwaps
   ) external override {}
 
   /// @inheritdoc IDCAStrategiesPositionsHandler
   function reduceAndSyncPositionToLatestStrategyVersion(
     uint256 _positionId,
     uint256 _amount,
-    uint256 _newSwaps,
+    uint32 _newSwaps,
     address _recipient
   ) external {}
 }

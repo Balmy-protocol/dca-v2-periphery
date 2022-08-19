@@ -188,8 +188,8 @@ interface IDCAStrategiesPositionsHandler is IDCAStrategiesBase {
     uint80 strategyId,
     address from,
     uint256 amount,
-    uint256 amountOfSwaps,
-    uint256 swapInterval,
+    uint32 amountOfSwaps,
+    uint32 swapInterval,
     address owner,
     PermissionSet[] memory permissions
   ) external returns (uint256);
@@ -199,13 +199,13 @@ interface IDCAStrategiesPositionsHandler is IDCAStrategiesBase {
   function increasePosition(
     uint256 positionId,
     uint256 amount,
-    uint256 newSwaps
+    uint32 newSwaps
   ) external;
 
   function reducePosition(
     uint256 positionId,
     uint256 amount,
-    uint256 newSwaps,
+    uint32 newSwaps,
     address recipient
   ) external;
 
@@ -220,13 +220,13 @@ interface IDCAStrategiesPositionsHandler is IDCAStrategiesBase {
   function increaseAndSyncPositionToLatestStrategyVersion(
     uint256 positionId,
     uint256 amount,
-    uint256 newSwaps
+    uint32 newSwaps
   ) external;
 
   function reduceAndSyncPositionToLatestStrategyVersion(
     uint256 positionId,
     uint256 amount,
-    uint256 newSwaps,
+    uint32 newSwaps,
     address recipient
   ) external;
 }
