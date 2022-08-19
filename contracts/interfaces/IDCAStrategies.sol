@@ -6,7 +6,13 @@ import '@mean-finance/dca-v2-core/contracts/interfaces/IDCAHub.sol';
 import '@mean-finance/nft-descriptors/solidity/interfaces/IDCAHubPositionDescriptor.sol';
 
 interface IDCAStrategiesManagementHandler {
-  function getStrategy(uint80 strategyId) external view returns (IDCAStrategies.Strategy memory);
+  struct Strategy {
+    address owner;
+    string name;
+    IDCAStrategies.ShareOfToken[] tokens;
+  }
+
+  function getStrategy(uint80 strategyId) external view returns (Strategy memory);
 
   function getStrategyIdByName(string memory strategyName) external view returns (uint80 strategyId);
 
@@ -151,7 +157,25 @@ interface IDCAStrategiesPermissionsHandler is IERC721, IERC721BasicEnumerable {
 }
 
 interface IDCAStrategiesPositionsHandler {
-  function deposit(IDCAStrategies.DepositParams calldata parameters) external returns (uint256);
+  struct DepositParams {
+    IDCAHub hub;
+    uint80 strategyId;
+    address from;
+    uint256 amount;
+    uint32 amountOfSwaps;
+    uint32 swapInterval;
+    address owner;
+    IDCAStrategies.PermissionSet[] permissions;
+  }
+
+  struct Position {
+    IDCAHub hub; // 20 bytes
+    uint80 strategyId; // 10 bytes
+    uint16 strategyVersion; // 2 bytes
+    uint256[] positions;
+  }
+
+  function deposit(DepositParams calldata parameters) external returns (uint256);
 
   function withdrawSwapped(uint256 positionId, address recipient) external returns (uint256);
 
@@ -199,24 +223,6 @@ interface IDCAStrategies is IDCAStrategiesManagementHandler, IDCAStrategiesPermi
     SYNC
   }
 
-  struct DepositParams {
-    IDCAHub hub;
-    uint80 strategyId;
-    address from;
-    uint256 amount;
-    uint32 amountOfSwaps;
-    uint32 swapInterval;
-    address owner;
-    PermissionSet[] permissions;
-  }
-
-  struct Position {
-    IDCAHub hub; // 20 bytes
-    uint80 strategyId; // 10 bytes
-    uint16 strategyVersion; // 2 bytes
-    uint256[] positions;
-  }
-
   struct ShareOfToken {
     address token;
     uint80 share; // 0 < share < 100%
@@ -225,11 +231,5 @@ interface IDCAStrategies is IDCAStrategiesManagementHandler, IDCAStrategiesPermi
   struct PermissionSet {
     address operator;
     Permission[] permissions;
-  }
-
-  struct Strategy {
-    address owner;
-    string name;
-    ShareOfToken[] tokens;
   }
 }
