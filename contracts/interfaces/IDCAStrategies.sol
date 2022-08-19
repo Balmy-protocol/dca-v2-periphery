@@ -1,8 +1,17 @@
 // SPDX-License-Identifier: GPL-2.0-or-later
 pragma solidity >=0.8.7 <0.9.0;
 
-import '@openzeppelin/contracts/token/ERC721/extensions/IERC721Enumerable.sol';
+import '@openzeppelin/contracts/token/ERC721/IERC721.sol';
 import '@mean-finance/nft-descriptors/solidity/interfaces/IDCAHubPositionDescriptor.sol';
+
+interface IERC721BasicEnumerable {
+  /**
+   * @notice Count NFTs tracked by this contract
+   * @return A count of valid NFTs tracked by this contract, where each one of
+   *         them has an assigned and queryable owner not equal to the zero address
+   */
+  function totalSupply() external view returns (uint256);
+}
 
 interface IDCAStrategiesBase {
   enum Permission {
@@ -59,7 +68,7 @@ interface IDCAStrategiesManagementHandler is IDCAStrategiesBase {
   function cancelStrategyOwnershipTransfer(uint80 strategyId) external;
 }
 
-interface IDCAStrategiesPermissionsHandler is IDCAStrategiesBase, IERC721Enumerable {
+interface IDCAStrategiesPermissionsHandler is IDCAStrategiesBase, IERC721, IERC721BasicEnumerable {
   /**
    * @notice The permit typehash used in the permit signature
    * @return The typehash for the permit

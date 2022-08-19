@@ -1,10 +1,10 @@
 // SPDX-License-Identifier: GPL-2.0-or-later
 pragma solidity >=0.8.7 <0.9.0;
 
-import '@openzeppelin/contracts/token/ERC721/extensions/ERC721Enumerable.sol';
+import '@openzeppelin/contracts/token/ERC721/ERC721.sol';
 import '../../interfaces/IDCAStrategies.sol';
 
-abstract contract DCAStrategiesPermissionsHandler is IDCAStrategiesPermissionsHandler, ERC721Enumerable {
+abstract contract DCAStrategiesPermissionsHandler is IDCAStrategiesPermissionsHandler, ERC721 {
   // solhint-disable-next-line func-name-mixedcase
   function PERMIT_TYPEHASH() external pure override returns (bytes32) {}
 
@@ -16,6 +16,8 @@ abstract contract DCAStrategiesPermissionsHandler is IDCAStrategiesPermissionsHa
 
   // solhint-disable-next-line func-name-mixedcase
   function DOMAIN_SEPARATOR() external view override returns (bytes32) {}
+
+  function totalSupply() external view override returns (uint256) {}
 
   // TODO: update this after building the new descriptor
   function nftDescriptor() external override returns (IDCAHubPositionDescriptor) {}
