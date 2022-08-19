@@ -54,9 +54,9 @@ contract('Multicall', () => {
     DCAPermissionManager = await ethers.getContract('PermissionsManager');
     transformerRegistry = await ethers.getContract('TransformerRegistry');
 
-    // const swapperRegistry = await ethers.getContract<SwapperRegistry>('SwapperRegistry');
-    // const transformerOracle = await ethers.getContract<TransformerOracle>('TransformerOracle');
-    // const protocolTokenTransformer = await ethers.getContract('ProtocolTokenWrapperTransformer');
+    const swapperRegistry = await ethers.getContract<SwapperRegistry>('SwapperRegistry');
+    const transformerOracle = await ethers.getContract<TransformerOracle>('TransformerOracle');
+    const protocolTokenTransformer = await ethers.getContract('ProtocolTokenWrapperTransformer');
 
     WETH = await ethers.getContractAt(IERC20_ABI, WETH_ADDRESS);
     USDC = await ethers.getContractAt(IERC20_ABI, USDC_ADDRESS);
@@ -69,14 +69,14 @@ contract('Multicall', () => {
     // Send tokens from whales, to our users
     await distributeTokensToUsers();
 
-    // await swapperRegistry.connect(admin).allowSwappers([
-    //   transformerRegistry.address,
-    //   '0xdef1c0ded9bec7f1a1670819833240f027b25eff', // 0x Dex
-    // ]);
-    // await transformerRegistry
-    //   .connect(admin)
-    //   .registerTransformers([{ transformer: protocolTokenTransformer.address, dependents: [WETH.address] }]);
-    // await transformerOracle.connect(admin).avoidMappingToUnderlying([WETH.address]);
+    await swapperRegistry.connect(admin).allowSwappers([
+      transformerRegistry.address,
+      '0xdef1c0ded9bec7f1a1670819833240f027b25eff', // 0x Dex
+    ]);
+    await transformerRegistry
+      .connect(admin)
+      .registerTransformers([{ transformer: protocolTokenTransformer.address, dependents: [WETH.address] }]);
+    await transformerOracle.connect(admin).avoidMappingToUnderlying([WETH.address]);
 
     chainId = BigNumber.from((await ethers.provider.getNetwork()).chainId);
     snapshotId = await snapshot.take();
@@ -86,7 +86,7 @@ contract('Multicall', () => {
     await snapshot.revert(snapshotId);
   });
 
-  describe('execution & swap', () => {
+  describe('swap multi calls', () => {
     describe('swap and deposit', () => {});
 
     describe('swap and increase', () => {});
@@ -429,11 +429,11 @@ contract('Multicall', () => {
   }
 
   async function expectToHaveNoBalance(token: IERC20, hasAddress: HasAddress) {
-    expectBalanceToBe(token, hasAddress, 0);
+    await expectBalanceToBe(token, hasAddress, 0);
   }
 
   async function expectToHaveNoNativeBalance(hasAddress: HasAddress) {
-    expectNativeBalanceToBe(hasAddress, 0);
+    await expectNativeBalanceToBe(hasAddress, 0);
   }
 
   async function expectBalanceToBe(token: IERC20, hasAddress: HasAddress, expectedBalance: BigNumberish) {
