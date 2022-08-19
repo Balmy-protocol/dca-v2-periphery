@@ -35,18 +35,18 @@ abstract contract DCAStrategiesPermissionsHandler is IDCAStrategiesPermissionsHa
   function hasPermission(
     uint256 _id,
     address _account,
-    Permission _permission
+    IDCAStrategies.Permission _permission
   ) external view override returns (bool) {}
 
   /// @inheritdoc IDCAStrategiesPermissionsHandler
   function hasPermissions(
     uint256 _id,
     address _account,
-    Permission[] calldata _permissions
+    IDCAStrategies.Permission[] calldata _permissions
   ) external view override returns (bool[] memory _hasPermissions) {}
 
   /// @inheritdoc IDCAStrategiesPermissionsHandler
-  function modify(uint256 _id, PermissionSet[] calldata _permissions) external override {}
+  function modify(uint256 _id, IDCAStrategies.PermissionSet[] calldata _permissions) external override {}
 
   /// @inheritdoc IDCAStrategiesPermissionsHandler
   function permit(
@@ -60,7 +60,7 @@ abstract contract DCAStrategiesPermissionsHandler is IDCAStrategiesPermissionsHa
 
   /// @inheritdoc IDCAStrategiesPermissionsHandler
   function permissionPermit(
-    PermissionSet[] calldata _permissions,
+    IDCAStrategies.PermissionSet[] calldata _permissions,
     uint256 _tokenId,
     uint256 _deadline,
     uint8 _v,

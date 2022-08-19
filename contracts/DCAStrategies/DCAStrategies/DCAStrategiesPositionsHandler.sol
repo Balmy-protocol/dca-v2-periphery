@@ -7,7 +7,7 @@ abstract contract DCAStrategiesPositionsHandler is IDCAStrategiesPositionsHandle
   // TODO: add function similar to this one https://github.com/Mean-Finance/dca-v2-core/blob/main/contracts/interfaces/IDCAHub.sol#L243
 
   /// @inheritdoc IDCAStrategiesPositionsHandler
-  function deposit(DepositParams calldata parameters) external override returns (uint256) {}
+  function deposit(IDCAStrategies.DepositParams calldata parameters) external override returns (uint256) {}
 
   /// @inheritdoc IDCAStrategiesPositionsHandler
   function withdrawSwapped(uint256 _positionId, address _recipient) external override returns (uint256) {}

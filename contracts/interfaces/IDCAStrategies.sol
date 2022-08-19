@@ -5,62 +5,18 @@ import '@openzeppelin/contracts/token/ERC721/IERC721.sol';
 import '@mean-finance/dca-v2-core/contracts/interfaces/IDCAHub.sol';
 import '@mean-finance/nft-descriptors/solidity/interfaces/IDCAHubPositionDescriptor.sol';
 
-interface IDCAStrategiesBase {
-  enum Permission {
-    INCREASE,
-    REDUCE,
-    WITHDRAW,
-    TERMINATE,
-    SYNC
-  }
-
-  struct DepositParams {
-    IDCAHub hub;
-    uint80 strategyId;
-    address from;
-    uint256 amount;
-    uint32 amountOfSwaps;
-    uint32 swapInterval;
-    address owner;
-    PermissionSet[] permissions;
-  }
-
-  struct Position {
-    IDCAHub hub; // 20 bytes
-    uint80 strategyId; // 10 bytes
-    uint16 strategyVersion; // 2 bytes
-    uint256[] positions;
-  }
-
-  struct ShareOfToken {
-    address token;
-    uint80 share; // 0 < share < 100%
-  }
-
-  struct PermissionSet {
-    address operator;
-    Permission[] permissions;
-  }
-
-  struct Strategy {
-    address owner;
-    string name;
-    ShareOfToken[] tokens;
-  }
-}
-
-interface IDCAStrategiesManagementHandler is IDCAStrategiesBase {
-  function getStrategy(uint80 strategyId) external view returns (Strategy memory);
+interface IDCAStrategiesManagementHandler {
+  function getStrategy(uint80 strategyId) external view returns (IDCAStrategies.Strategy memory);
 
   function getStrategyIdByName(string memory strategyName) external view returns (uint80 strategyId);
 
   function createStrategy(
     string memory strategyName,
-    ShareOfToken[] memory tokens,
+    IDCAStrategies.ShareOfToken[] memory tokens,
     address owner
   ) external returns (uint80 strategyId);
 
-  function updateStrategyTokens(uint80 strategyId, ShareOfToken[] memory tokens) external;
+  function updateStrategyTokens(uint80 strategyId, IDCAStrategies.ShareOfToken[] memory tokens) external;
 
   function updateStrategyName(uint80 strategyId, string memory newStrategyName) external;
 
@@ -71,7 +27,7 @@ interface IDCAStrategiesManagementHandler is IDCAStrategiesBase {
   function cancelStrategyOwnershipTransfer(uint80 strategyId) external;
 }
 
-interface IDCAStrategiesPermissionsHandler is IDCAStrategiesBase, IERC721, IERC721BasicEnumerable {
+interface IDCAStrategiesPermissionsHandler is IERC721, IERC721BasicEnumerable {
   /**
    * @notice The permit typehash used in the permit signature
    * @return The typehash for the permit
@@ -123,7 +79,7 @@ interface IDCAStrategiesPermissionsHandler is IDCAStrategiesBase, IERC721, IERC7
   function hasPermission(
     uint256 id,
     address account,
-    Permission permission
+    IDCAStrategies.Permission permission
   ) external view returns (bool);
 
   /**
@@ -136,7 +92,7 @@ interface IDCAStrategiesPermissionsHandler is IDCAStrategiesBase, IERC721, IERC7
   function hasPermissions(
     uint256 id,
     address account,
-    Permission[] calldata permissions
+    IDCAStrategies.Permission[] calldata permissions
   ) external view returns (bool[] memory hasPermissions);
 
   /**
@@ -147,7 +103,7 @@ interface IDCAStrategiesPermissionsHandler is IDCAStrategiesBase, IERC721, IERC7
    * @param id The token's id
    * @param permissions A list of permission sets
    */
-  function modify(uint256 id, PermissionSet[] calldata permissions) external;
+  function modify(uint256 id, IDCAStrategies.PermissionSet[] calldata permissions) external;
 
   /**
    * @notice Approves spending of a specific token ID by spender via signature
@@ -178,7 +134,7 @@ interface IDCAStrategiesPermissionsHandler is IDCAStrategiesBase, IERC721, IERC7
    * @param s Must produce valid secp256k1 signature from the holder along with `r` and `v`
    */
   function permissionPermit(
-    PermissionSet[] calldata permissions,
+    IDCAStrategies.PermissionSet[] calldata permissions,
     uint256 tokenId,
     uint256 deadline,
     uint8 v,
@@ -194,8 +150,8 @@ interface IDCAStrategiesPermissionsHandler is IDCAStrategiesBase, IERC721, IERC7
   function setNFTDescriptor(IDCAHubPositionDescriptor descriptor) external;
 }
 
-interface IDCAStrategiesPositionsHandler is IDCAStrategiesBase {
-  function deposit(DepositParams calldata parameters) external returns (uint256);
+interface IDCAStrategiesPositionsHandler {
+  function deposit(IDCAStrategies.DepositParams calldata parameters) external returns (uint256);
 
   function withdrawSwapped(uint256 positionId, address recipient) external returns (uint256);
 
@@ -234,4 +190,46 @@ interface IDCAStrategiesPositionsHandler is IDCAStrategiesBase {
   ) external;
 }
 
-interface IDCAStrategies is IDCAStrategiesManagementHandler, IDCAStrategiesPermissionsHandler, IDCAStrategiesPositionsHandler {}
+interface IDCAStrategies is IDCAStrategiesManagementHandler, IDCAStrategiesPermissionsHandler, IDCAStrategiesPositionsHandler {
+  enum Permission {
+    INCREASE,
+    REDUCE,
+    WITHDRAW,
+    TERMINATE,
+    SYNC
+  }
+
+  struct DepositParams {
+    IDCAHub hub;
+    uint80 strategyId;
+    address from;
+    uint256 amount;
+    uint32 amountOfSwaps;
+    uint32 swapInterval;
+    address owner;
+    PermissionSet[] permissions;
+  }
+
+  struct Position {
+    IDCAHub hub; // 20 bytes
+    uint80 strategyId; // 10 bytes
+    uint16 strategyVersion; // 2 bytes
+    uint256[] positions;
+  }
+
+  struct ShareOfToken {
+    address token;
+    uint80 share; // 0 < share < 100%
+  }
+
+  struct PermissionSet {
+    address operator;
+    Permission[] permissions;
+  }
+
+  struct Strategy {
+    address owner;
+    string name;
+    ShareOfToken[] tokens;
+  }
+}

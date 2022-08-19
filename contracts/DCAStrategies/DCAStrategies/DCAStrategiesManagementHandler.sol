@@ -5,7 +5,7 @@ import '../../interfaces/IDCAStrategies.sol';
 
 abstract contract DCAStrategiesManagementHandler is IDCAStrategiesManagementHandler {
   /// @inheritdoc IDCAStrategiesManagementHandler
-  function getStrategy(uint80 _strategyId) external view override returns (Strategy memory) {}
+  function getStrategy(uint80 _strategyId) external view override returns (IDCAStrategies.Strategy memory) {}
 
   /// @inheritdoc IDCAStrategiesManagementHandler
   function getStrategyIdByName(string memory _strategyName) external view override returns (uint80 _strategyId) {}
@@ -13,12 +13,12 @@ abstract contract DCAStrategiesManagementHandler is IDCAStrategiesManagementHand
   /// @inheritdoc IDCAStrategiesManagementHandler
   function createStrategy(
     string memory _strategyName,
-    ShareOfToken[] memory _tokens,
+    IDCAStrategies.ShareOfToken[] memory _tokens,
     address _owner
   ) external override returns (uint80 _strategyId) {}
 
   /// @inheritdoc IDCAStrategiesManagementHandler
-  function updateStrategyTokens(uint80 _strategyId, ShareOfToken[] memory _tokens) external override {}
+  function updateStrategyTokens(uint80 _strategyId, IDCAStrategies.ShareOfToken[] memory _tokens) external override {}
 
   /// @inheritdoc IDCAStrategiesManagementHandler
   function updateStrategyName(uint80 _strategyId, string memory _newStrategyName) external override {}
