@@ -183,6 +183,30 @@ contract DCAHubSwapper is DeadlineValidation, AccessControl, GetBalances, IDCAHu
   }
 
   /// @inheritdoc IDCAHubSwapper
+  function optimizedSwap(OptimizedSwapParams calldata _parameters)
+    external
+    payable
+    checkDeadline(_parameters.deadline)
+    onlyRole(SWAP_EXECUTION_ROLE)
+    returns (IDCAHub.SwapInfo memory)
+  {
+    // Approve whatever is necessary
+    _approveAllowances(_parameters.allowanceTargets);
+
+    // Execute swap
+    return
+      _parameters.hub.swap(
+        _parameters.tokens,
+        _parameters.pairsToSwap,
+        address(this),
+        address(this),
+        new uint256[](_parameters.tokens.length),
+        _parameters.callbackData,
+        _parameters.oracleData
+      );
+  }
+
+  /// @inheritdoc IDCAHubSwapper
   function revokeAllowances(RevokeAction[] calldata _revokeActions) external onlyRole(ADMIN_ROLE) {
     _revokeAllowances(_revokeActions);
   }
@@ -202,13 +226,7 @@ contract DCAHubSwapper is DeadlineValidation, AccessControl, GetBalances, IDCAHu
     returns (IDCAHub.SwapInfo memory)
   {
     // Approve whatever is necessary
-    for (uint256 i = 0; i < _parameters.allowanceTargets.length; ) {
-      Allowance memory _allowance = _parameters.allowanceTargets[i];
-      _maxApproveSpenderIfNeeded(_allowance.token, _allowance.allowanceTarget, false, _allowance.minAllowance);
-      unchecked {
-        i++;
-      }
-    }
+    _approveAllowances(_parameters.allowanceTargets);
 
     // Prepare data for callback
     SwapWithDexesCallbackData memory _callbackData = SwapWithDexesCallbackData({
@@ -237,13 +255,7 @@ contract DCAHubSwapper is DeadlineValidation, AccessControl, GetBalances, IDCAHu
     returns (ILegacyDCAHub.SwapInfo memory)
   {
     // Approve whatever is necessary
-    for (uint256 i = 0; i < _parameters.allowanceTargets.length; ) {
-      Allowance memory _allowance = _parameters.allowanceTargets[i];
-      _maxApproveSpenderIfNeeded(_allowance.token, _allowance.allowanceTarget, false, _allowance.minAllowance);
-      unchecked {
-        i++;
-      }
-    }
+    _approveAllowances(_parameters.allowanceTargets);
 
     // Prepare data for callback
     SwapWithDexesCallbackData memory _callbackData = SwapWithDexesCallbackData({
@@ -340,6 +352,16 @@ contract DCAHubSwapper is DeadlineValidation, AccessControl, GetBalances, IDCAHu
         // We assume that msg.sender is the DCAHub
         IERC20(_token.token).safeTransferFrom(_swapExecutorMem, msg.sender, _token.toProvide);
       }
+      unchecked {
+        i++;
+      }
+    }
+  }
+
+  function _approveAllowances(Allowance[] calldata _allowanceTargets) internal {
+    for (uint256 i = 0; i < _allowanceTargets.length; ) {
+      Allowance memory _allowance = _allowanceTargets[i];
+      _maxApproveSpenderIfNeeded(_allowance.token, _allowance.allowanceTarget, false, _allowance.minAllowance);
       unchecked {
         i++;
       }

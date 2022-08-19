@@ -8,16 +8,34 @@ import '@mean-finance/swappers/solidity/contracts/extensions/Shared.sol';
 import './ILegacyDCAHub.sol';
 
 interface IDCAHubSwapper is IDCAHubSwapCallee {
+  /// @notice Parameters to execute an optimized swap
+  struct OptimizedSwapParams {
+    // The address of the DCAHub
+    IDCAHub hub;
+    // The tokens involved in the swap
+    address[] tokens;
+    // The pairs to swap
+    IDCAHub.PairIndexes[] pairsToSwap;
+    // Bytes to send to the oracle when executing a quote
+    bytes oracleData;
+    // The accounts that should be approved for spending
+    Allowance[] allowanceTargets;
+    // The data for the callback, already encoded
+    bytes callbackData;
+    // Deadline when the swap becomes invalid
+    uint256 deadline;
+  }
+
   /// @notice Parameters to execute a swap with dexes
   struct SwapWithDexesParams {
     // The address of the DCAHub
     IDCAHub hub;
     // The tokens involved in the swap
     address[] tokens;
-    // Bytes to send to the oracle when executing a quote
-    bytes oracleData;
     // The pairs to swap
     IDCAHub.PairIndexes[] pairsToSwap;
+    // Bytes to send to the oracle when executing a quote
+    bytes oracleData;
     // The accounts that should be approved for spending
     Allowance[] allowanceTargets;
     // The different swappers involved in the swap
@@ -158,6 +176,13 @@ interface IDCAHubSwapper is IDCAHubSwapCallee {
    * @return The information about the executed swap
    */
   function legacySwapWithDexesForMean(LegacySwapWithDexesParams calldata parameters) external payable returns (ILegacyDCAHub.SwapInfo memory);
+
+  /**
+   * @notice Executes an optimized swap, by providing parameters already encoded
+   * @dev Can only be called by user with appropriate role
+   * @return The information about the executed swap
+   */
+  function optimizedSwap(OptimizedSwapParams calldata parameters) external payable returns (IDCAHub.SwapInfo memory);
 
   /**
    * @notice Revokes ERC20 allowances for the given spenders
