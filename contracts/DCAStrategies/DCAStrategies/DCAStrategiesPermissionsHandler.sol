@@ -17,6 +17,7 @@ abstract contract DCAStrategiesPermissionsHandler is IDCAStrategiesPermissionsHa
   // solhint-disable-next-line func-name-mixedcase
   function DOMAIN_SEPARATOR() external view override returns (bytes32) {}
 
+  // TODO: update this after building the new descriptor
   function nftDescriptor() external override returns (IDCAHubPositionDescriptor) {}
 
   function hub() external override returns (address) {}
@@ -57,5 +58,6 @@ abstract contract DCAStrategiesPermissionsHandler is IDCAStrategiesPermissionsHa
     bytes32 _s
   ) external override {}
 
+  // TODO: update this after building the new descriptor
   function setNFTDescriptor(IDCAHubPositionDescriptor _descriptor) external override {}
 }

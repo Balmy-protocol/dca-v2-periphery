@@ -4,6 +4,8 @@ pragma solidity >=0.8.7 <0.9.0;
 import '../../interfaces/IDCAStrategies.sol';
 
 abstract contract DCAStrategiesPositionsHandler is IDCAStrategiesPositionsHandler {
+  // TODO: add function similar to this one https://github.com/Mean-Finance/dca-v2-core/blob/main/contracts/interfaces/IDCAHub.sol#L243
+
   function deposit(
     uint80 _strategyId,
     address _from,
