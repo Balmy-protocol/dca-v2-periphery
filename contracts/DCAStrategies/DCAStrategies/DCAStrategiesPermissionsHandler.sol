@@ -8,19 +8,35 @@ import '../../libraries/PermissionMath.sol';
 import '../../utils/Governable.sol';
 
 abstract contract DCAStrategiesPermissionsHandler is IDCAStrategiesPermissionsHandler, ERC721, EIP712 {
+  struct TokenPermission {
+    // The actual permissions
+    uint8 permissions;
+    // The block number when it was last updated
+    uint248 lastUpdated;
+  }
+
+  using PermissionMath for IDCAStrategies.Permission[];
+  using PermissionMath for uint8;
+
+  /// @inheritdoc IDCAStrategiesPermissionsHandler
+  bytes32 public constant PERMIT_TYPEHASH = keccak256('Permit(address spender,uint256 tokenId,uint256 nonce,uint256 deadline)');
+  /// @inheritdoc IDCAStrategiesPermissionsHandler
+  bytes32 public constant PERMISSION_PERMIT_TYPEHASH =
+    keccak256(
+      'PermissionPermit(PermissionSet[] permissions,uint256 tokenId,uint256 nonce,uint256 deadline)PermissionSet(address operator,uint8[] permissions)'
+    );
+  /// @inheritdoc IDCAStrategiesPermissionsHandler
+  bytes32 public constant PERMISSION_SET_TYPEHASH = keccak256('PermissionSet(address operator,uint8[] permissions)');
+  /// @inheritdoc IDCAStrategiesPermissionsHandler
+  // TODO: update this after building the new descriptor
+  IDCAHubPositionDescriptor public nftDescriptor;
+  /// @inheritdoc IDCAStrategiesPermissionsHandler
+  mapping(address => uint256) public nonces;
+  mapping(uint256 => uint256) public lastOwnershipChange;
+  mapping(uint256 => mapping(address => TokenPermission)) public tokenPermissions;
+  uint256 internal _burnCounter;
+
   constructor() EIP712('Mean Finance - DCA Strategy Position', '1') {}
-
-  /// @inheritdoc IDCAStrategiesPermissionsHandler
-  // solhint-disable-next-line func-name-mixedcase
-  function PERMIT_TYPEHASH() external pure override returns (bytes32) {}
-
-  /// @inheritdoc IDCAStrategiesPermissionsHandler
-  // solhint-disable-next-line func-name-mixedcase
-  function PERMISSION_PERMIT_TYPEHASH() external pure override returns (bytes32) {}
-
-  /// @inheritdoc IDCAStrategiesPermissionsHandler
-  // solhint-disable-next-line func-name-mixedcase
-  function PERMISSION_SET_TYPEHASH() external pure override returns (bytes32) {}
 
   /// @inheritdoc IDCAStrategiesPermissionsHandler
   // solhint-disable-next-line func-name-mixedcase
@@ -28,13 +44,6 @@ abstract contract DCAStrategiesPermissionsHandler is IDCAStrategiesPermissionsHa
 
   /// @inheritdoc IERC721BasicEnumerable
   function totalSupply() external view override returns (uint256) {}
-
-  /// @inheritdoc IDCAStrategiesPermissionsHandler
-  // TODO: update this after building the new descriptor
-  function nftDescriptor() external override returns (IDCAHubPositionDescriptor) {}
-
-  /// @inheritdoc IDCAStrategiesPermissionsHandler
-  function nonces(address _user) external override returns (uint256 _nonce) {}
 
   /// @inheritdoc IDCAStrategiesPermissionsHandler
   function hasPermission(
