@@ -85,4 +85,74 @@ abstract contract DCAStrategiesPermissionsHandler is IDCAStrategiesPermissionsHa
   /// @inheritdoc IDCAStrategiesPermissionsHandler
   // TODO: update this after building the new descriptor
   function setNFTDescriptor(IDCAHubPositionDescriptor _descriptor) external override {}
+
+  function _mint(
+    uint256 _id,
+    address _owner,
+    IDCAStrategies.PermissionSet[] calldata _permissions
+  ) internal {
+    _mint(_owner, _id);
+    _setPermissions(_id, _permissions);
+  }
+
+  // not sure about the name of this fn
+  function __burn(uint256 _id) internal {
+    _burn(_id);
+    ++_burnCounter;
+  }
+
+  function _encode(IDCAStrategies.PermissionSet[] calldata _permissions) internal pure returns (bytes memory _result) {
+    for (uint256 i; i < _permissions.length; i++) {
+      _result = bytes.concat(_result, keccak256(_encode(_permissions[i])));
+    }
+  }
+
+  function _encode(IDCAStrategies.PermissionSet calldata _permission) internal pure returns (bytes memory _result) {
+    _result = abi.encode(PERMISSION_SET_TYPEHASH, _permission.operator, keccak256(_encode(_permission.permissions)));
+  }
+
+  function _encode(IDCAStrategies.Permission[] calldata _permissions) internal pure returns (bytes memory _result) {
+    _result = new bytes(_permissions.length * 32);
+    for (uint256 i; i < _permissions.length; i++) {
+      _result[(i + 1) * 32 - 1] = bytes1(uint8(_permissions[i]));
+    }
+  }
+
+  function _modify(uint256 _id, IDCAStrategies.PermissionSet[] calldata _permissions) internal {
+    _setPermissions(_id, _permissions);
+    emit Modified(_id, _permissions);
+  }
+
+  function _setPermissions(uint256 _id, IDCAStrategies.PermissionSet[] calldata _permissions) internal {
+    uint248 _blockNumber = uint248(_getBlockNumber());
+    for (uint256 i; i < _permissions.length; i++) {
+      if (_permissions[i].permissions.length == 0) {
+        delete tokenPermissions[_id][_permissions[i].operator];
+      } else {
+        tokenPermissions[_id][_permissions[i].operator] = TokenPermission({
+          permissions: _permissions[i].permissions.toUInt8(),
+          lastUpdated: _blockNumber
+        });
+      }
+    }
+  }
+
+  function _beforeTokenTransfer(
+    address _from,
+    address _to,
+    uint256 _id
+  ) internal override {
+    if (_to == address(0)) {
+      // When token is being burned, we can delete this entry on the mapping
+      delete lastOwnershipChange[_id];
+    } else if (_from != address(0)) {
+      // If the token is being minted, then no need to write this
+      lastOwnershipChange[_id] = _getBlockNumber();
+    }
+  }
+
+  // Note: virtual so that it can be overriden in tests
+  function _getBlockNumber() internal view virtual returns (uint256) {
+    return block.number;
+  }
 }
