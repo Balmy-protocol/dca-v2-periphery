@@ -4,6 +4,7 @@ pragma solidity >=0.8.7 <0.9.0;
 import '@openzeppelin/contracts/token/ERC721/ERC721.sol';
 import '@openzeppelin/contracts/utils/cryptography/draft-EIP712.sol';
 import '../../interfaces/IDCAStrategies.sol';
+import '../../libraries/PermissionMath.sol';
 import '../../utils/Governable.sol';
 
 abstract contract DCAStrategiesPermissionsHandler is IDCAStrategiesPermissionsHandler, ERC721, EIP712 {
