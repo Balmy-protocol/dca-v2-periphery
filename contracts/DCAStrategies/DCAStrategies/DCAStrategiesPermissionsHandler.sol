@@ -2,10 +2,13 @@
 pragma solidity >=0.8.7 <0.9.0;
 
 import '@openzeppelin/contracts/token/ERC721/ERC721.sol';
+import '@openzeppelin/contracts/utils/cryptography/draft-EIP712.sol';
 import '../../interfaces/IDCAStrategies.sol';
 import '../../utils/Governable.sol';
 
-abstract contract DCAStrategiesPermissionsHandler is IDCAStrategiesPermissionsHandler, ERC721 {
+abstract contract DCAStrategiesPermissionsHandler is IDCAStrategiesPermissionsHandler, ERC721, EIP712 {
+  constructor() EIP712('Mean Finance - DCA Strategy Position', '1') {}
+
   /// @inheritdoc IDCAStrategiesPermissionsHandler
   // solhint-disable-next-line func-name-mixedcase
   function PERMIT_TYPEHASH() external pure override returns (bytes32) {}
