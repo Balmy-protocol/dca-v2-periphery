@@ -198,8 +198,8 @@ contract('Multicall', () => {
           permissions: [Permission.WITHDRAW],
         });
         const withdrawToCompanionData = await withdrawSwappedData({ positionId, recipient: DCAHubCompanion });
-        const sendHalfData = await sendToRecipient({ token: WETH, amount: swappedBalance.div(2), recipient });
-        const sendOtherHalfData = await sendAllInCompanionToRecipient({ token: WETH, recipient: otherRecipient });
+        const sendHalfData = await sendToRecipientData({ token: WETH, amount: swappedBalance.div(2), recipient });
+        const sendOtherHalfData = await sendAllInCompanionToRecipientData({ token: WETH, recipient: otherRecipient });
         await DCAHubCompanion.multicall([permissionData, withdrawToCompanionData, sendHalfData, sendOtherHalfData]);
       });
       then(`hub's WETH balance is reduced`, async () => {
@@ -623,12 +623,12 @@ contract('Multicall', () => {
     return data!;
   }
 
-  async function sendToRecipient({ token, amount, recipient }: { token: IERC20; amount: BigNumberish; recipient: HasAddress }) {
+  async function sendToRecipientData({ token, amount, recipient }: { token: IERC20; amount: BigNumberish; recipient: HasAddress }) {
     const { data } = await DCAHubCompanion.populateTransaction.sendToRecipient(token.address, amount, recipient.address);
     return data!;
   }
 
-  async function sendAllInCompanionToRecipient({ token, recipient }: { token: IERC20; recipient: HasAddress }) {
+  async function sendAllInCompanionToRecipientData({ token, recipient }: { token: IERC20; recipient: HasAddress }) {
     const { data } = await DCAHubCompanion.populateTransaction.sendBalanceOnContractToRecipient(token.address, recipient.address);
     return data!;
   }
