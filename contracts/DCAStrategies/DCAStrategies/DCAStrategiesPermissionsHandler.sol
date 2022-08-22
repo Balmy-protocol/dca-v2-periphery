@@ -89,9 +89,8 @@ abstract contract DCAStrategiesPermissionsHandler is IDCAStrategiesPermissionsHa
     _setPermissions(_mintId, _permissions);
   }
 
-  // not sure about the name of this fn
-  function __burn(uint256 _id) internal {
-    _burn(_id);
+  function _burn(uint256 _id) internal override {
+    ERC721._burn(_id);
     ++_burnCounter;
   }
 
