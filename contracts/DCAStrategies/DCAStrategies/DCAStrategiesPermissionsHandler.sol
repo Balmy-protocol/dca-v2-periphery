@@ -14,6 +14,7 @@ abstract contract DCAStrategiesPermissionsHandler is IDCAStrategiesPermissionsHa
 
   mapping(bytes32 => TokenPermission) public tokenPermissions; // key(id, operator) => TokenPermission
   uint256 internal _burnCounter;
+  uint256 internal _mintCounter;
 
   /// @inheritdoc IDCAStrategiesPermissionsHandler
   // solhint-disable-next-line func-name-mixedcase
@@ -82,13 +83,10 @@ abstract contract DCAStrategiesPermissionsHandler is IDCAStrategiesPermissionsHa
   // TODO: update this after building the new descriptor
   function setNFTDescriptor(IDCAHubPositionDescriptor _descriptor) external override {}
 
-  function _mint(
-    uint256 _id,
-    address _owner,
-    IDCAStrategies.PermissionSet[] calldata _permissions
-  ) internal {
-    _mint(_owner, _id);
-    _setPermissions(_id, _permissions);
+  function _mint(address _owner, IDCAStrategies.PermissionSet[] calldata _permissions) internal returns (uint256 _mintId) {
+    _mintId = ++_mintCounter;
+    _mint(_owner, _mintId);
+    _setPermissions(_mintId, _permissions);
   }
 
   // not sure about the name of this fn
