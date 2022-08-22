@@ -7,7 +7,7 @@ import '../../interfaces/IDCAStrategies.sol';
 import '../../libraries/PermissionMath.sol';
 import '../../utils/Governable.sol';
 
-abstract contract DCAStrategiesPermissionsHandler is IDCAStrategiesPermissionsHandler, ERC721, EIP712 {
+abstract contract DCAStrategiesPermissionsHandler is IDCAStrategiesPermissionsHandler, ERC721, EIP712, Governable {
   struct TokenPermission {
     // The actual permissions
     uint8 permissions;
@@ -36,31 +36,71 @@ abstract contract DCAStrategiesPermissionsHandler is IDCAStrategiesPermissionsHa
   mapping(uint256 => mapping(address => TokenPermission)) public tokenPermissions;
   uint256 internal _burnCounter;
 
-  constructor() EIP712('Mean Finance - DCA Strategy Position', '1') {}
+  constructor(address _governor, IDCAHubPositionDescriptor _descriptor)
+    ERC721('Mean Finance - DCA Strategy Position', 'MF-DCA-STRAT-P')
+    EIP712('Mean Finance - DCA Strategy Position', '1')
+    Governable(_governor)
+  {
+    if (address(_descriptor) == address(0)) revert ZeroAddress();
+    nftDescriptor = _descriptor;
+  }
 
   /// @inheritdoc IDCAStrategiesPermissionsHandler
   // solhint-disable-next-line func-name-mixedcase
-  function DOMAIN_SEPARATOR() external view override returns (bytes32) {}
+  function DOMAIN_SEPARATOR() external view override returns (bytes32) {
+    return _domainSeparatorV4();
+  }
 
+  // how can I manage this? because there is no hub here
   /// @inheritdoc IERC721BasicEnumerable
-  function totalSupply() external view override returns (uint256) {}
+  function totalSupply() external view override returns (uint256) {
+    // return IDCAHubPositionHandler(hub).totalCreatedPositions() - _burnCounter;
+  }
 
   /// @inheritdoc IDCAStrategiesPermissionsHandler
   function hasPermission(
     uint256 _id,
     address _account,
     IDCAStrategies.Permission _permission
-  ) external view override returns (bool) {}
+  ) external view override returns (bool) {
+    if (ownerOf(_id) == _account) {
+      return true;
+    }
+    TokenPermission memory _tokenPermission = tokenPermissions[_id][_account];
+    // If there was an ownership change after the permission was last updated, then the address doesn't have the permission
+    return _tokenPermission.permissions.hasPermission(_permission) && lastOwnershipChange[_id] < _tokenPermission.lastUpdated;
+  }
 
   /// @inheritdoc IDCAStrategiesPermissionsHandler
   function hasPermissions(
     uint256 _id,
     address _account,
     IDCAStrategies.Permission[] calldata _permissions
-  ) external view override returns (bool[] memory _hasPermissions) {}
+  ) external view override returns (bool[] memory _hasPermissions) {
+    _hasPermissions = new bool[](_permissions.length);
+    if (ownerOf(_id) == _account) {
+      // If the address is the owner, then they have all permissions
+      for (uint256 i; i < _permissions.length; i++) {
+        _hasPermissions[i] = true;
+      }
+    } else {
+      // If it's not the owner, then check one by one
+      TokenPermission memory _tokenPermission = tokenPermissions[_id][_account];
+      if (lastOwnershipChange[_id] < _tokenPermission.lastUpdated) {
+        for (uint256 i; i < _permissions.length; i++) {
+          if (_tokenPermission.permissions.hasPermission(_permissions[i])) {
+            _hasPermissions[i] = true;
+          }
+        }
+      }
+    }
+  }
 
   /// @inheritdoc IDCAStrategiesPermissionsHandler
-  function modify(uint256 _id, IDCAStrategies.PermissionSet[] calldata _permissions) external override {}
+  function modify(uint256 _id, IDCAStrategies.PermissionSet[] calldata _permissions) external override {
+    if (msg.sender != ownerOf(_id)) revert NotOwner();
+    _modify(_id, _permissions);
+  }
 
   /// @inheritdoc IDCAStrategiesPermissionsHandler
   function permit(
@@ -70,7 +110,18 @@ abstract contract DCAStrategiesPermissionsHandler is IDCAStrategiesPermissionsHa
     uint8 _v,
     bytes32 _r,
     bytes32 _s
-  ) external override {}
+  ) external override {
+    if (block.timestamp > _deadline) revert ExpiredDeadline();
+
+    address _owner = ownerOf(_tokenId);
+    bytes32 _structHash = keccak256(abi.encode(PERMIT_TYPEHASH, _spender, _tokenId, nonces[_owner]++, _deadline));
+    bytes32 _hash = _hashTypedDataV4(_structHash);
+
+    address _signer = ECDSA.recover(_hash, _v, _r, _s);
+    if (_signer != _owner) revert InvalidSignature();
+
+    _approve(_spender, _tokenId);
+  }
 
   /// @inheritdoc IDCAStrategiesPermissionsHandler
   function permissionPermit(
@@ -80,11 +131,34 @@ abstract contract DCAStrategiesPermissionsHandler is IDCAStrategiesPermissionsHa
     uint8 _v,
     bytes32 _r,
     bytes32 _s
-  ) external override {}
+  ) external override {
+    if (block.timestamp > _deadline) revert ExpiredDeadline();
+
+    address _owner = ownerOf(_tokenId);
+    bytes32 _structHash = keccak256(
+      abi.encode(PERMISSION_PERMIT_TYPEHASH, keccak256(_encode(_permissions)), _tokenId, nonces[_owner]++, _deadline)
+    );
+    bytes32 _hash = _hashTypedDataV4(_structHash);
+
+    address _signer = ECDSA.recover(_hash, _v, _r, _s);
+    if (_signer != _owner) revert InvalidSignature();
+
+    _modify(_tokenId, _permissions);
+  }
 
   /// @inheritdoc IDCAStrategiesPermissionsHandler
   // TODO: update this after building the new descriptor
-  function setNFTDescriptor(IDCAHubPositionDescriptor _descriptor) external override {}
+  function setNFTDescriptor(IDCAHubPositionDescriptor _descriptor) external override {
+    if (address(_descriptor) == address(0)) revert ZeroAddress();
+    nftDescriptor = _descriptor;
+    emit NFTDescriptorSet(_descriptor);
+  }
+
+  // how can I manage this? because there is no hub here
+  /// @inheritdoc ERC721
+  function tokenURI(uint256 _tokenId) public view override returns (string memory) {
+    // return nftDescriptor.tokenURI(hub, _tokenId);
+  }
 
   function _mint(
     uint256 _id,

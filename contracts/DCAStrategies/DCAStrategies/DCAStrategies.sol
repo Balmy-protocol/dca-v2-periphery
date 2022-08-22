@@ -7,5 +7,5 @@ import './DCAStrategiesPositionsHandler.sol';
 import '../../interfaces/IDCAStrategies.sol';
 
 contract DCAStrategies is DCAStrategiesManagementHandler, DCAStrategiesPermissionsHandler, DCAStrategiesPositionsHandler, IDCAStrategies {
-  constructor() ERC721('Mean Finance - DCA Strategy Position', 'MF-DCA-STRAT-P') {}
+  constructor(address _governor, IDCAHubPositionDescriptor _descriptor) DCAStrategiesPermissionsHandler(_governor, _descriptor) {}
 }
