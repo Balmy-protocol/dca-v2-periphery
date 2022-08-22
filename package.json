@@ -1,6 +1,6 @@
 {
   "name": "@mean-finance/dca-v2-periphery",
-  "version": "2.2.0",
+  "version": "3.0.0-rc2",
   "description": "💱 Periphery smart contracts of DCA V2 by mean.finance",
   "keywords": [
     "ethereum",
@@ -22,11 +22,12 @@
     "contracts/libraries",
     "contracts/interfaces",
     "artifacts/contracts/**/*.json",
-    "!artifacts/contracts/mocks",
+    "!artifacts/contracts/mocks/**/*",
     "!artifacts/contracts/**/**/*.dbg.json",
     "typechained",
     "!typechained/**/*Mock*",
     "deployments",
+    "deploy",
     "!deployments/localhost",
     "!.env",
     "!**/.DS_Store"
@@ -45,7 +46,7 @@
     "postpublish": "pinst --enable",
     "release": "standard-version",
     "sizer": "TEST=true hardhat compile && TEST=true npx hardhat size-contracts",
-    "test": "TEST=true npx hardhat compile && TEST=true npx hardhat test",
+    "test": "TEST=true npx hardhat compile && TS_NODE_SKIP_IGNORE=true TEST=true npx hardhat test",
     "test:all": "yarn test ./test/e2e/**/*.spec.ts test/integration/**/*.spec.ts test/unit/**/*.spec.ts",
     "test:all:parallel": "yarn test:parallel './test/e2e/**/*.spec.ts' 'test/unit/**/*.spec.ts'",
     "test:e2e": "yarn test ./test/e2e/**/*.spec.ts",
@@ -60,7 +61,7 @@
   },
   "dependencies": {
     "@0xged/hardhat-deploy": "0.11.5",
-    "@mean-finance/dca-v2-core": "2.2.0-rc4",
+    "@mean-finance/dca-v2-core": "3.0.0-rc1",
     "@mean-finance/deterministic-factory": "1.3.1",
     "@mean-finance/swappers": "1.0.0-rc8",
     "@openzeppelin/contracts": "4.7.3"
