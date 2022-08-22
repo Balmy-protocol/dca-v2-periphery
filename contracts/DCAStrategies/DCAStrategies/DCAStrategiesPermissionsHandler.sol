@@ -12,7 +12,7 @@ abstract contract DCAStrategiesPermissionsHandler is IDCAStrategiesPermissionsHa
     uint248 lastUpdated;
   }
 
-  mapping(bytes32 => TokenPermission) public tokenPermissions; // key(id, operator) => TokenPermission
+  // mapping(bytes32 => TokenPermission) public tokenPermissions; // key(id, operator) => TokenPermission
   uint256 internal _burnCounter;
   uint256 internal _mintCounter;
 
@@ -95,18 +95,18 @@ abstract contract DCAStrategiesPermissionsHandler is IDCAStrategiesPermissionsHa
   }
 
   function _setPermissions(uint256 _id, IDCAStrategies.PermissionSet[] calldata _permissions) internal {
-    uint248 _blockNumber = uint248(_getBlockNumber());
-    for (uint256 i; i < _permissions.length; i++) {
-      if (_permissions[i].permissions.length == 0) {
-        delete tokenPermissions[keccak256(abi.encodePacked(_id, _permissions[i].operator))];
-      } else {
-        // TODO: remove this comment when adding permission math library
-        // tokenPermissions[keccak256(abi.encodePacked(_id, _permissions[i].operator))] = TokenPermission({
-        //   permissions: _permissions[i].permissions.toUInt8(),
-        //   lastUpdated: _blockNumber
-        // });
-      }
-    }
+    // uint248 _blockNumber = uint248(_getBlockNumber());
+    // for (uint256 i; i < _permissions.length; i++) {
+    //   if (_permissions[i].permissions.length == 0) {
+    //     delete tokenPermissions[keccak256(abi.encodePacked(_id, _permissions[i].operator))];
+    //   } else {
+    //     // TODO: remove this comment when adding permission math library
+    //     tokenPermissions[keccak256(abi.encodePacked(_id, _permissions[i].operator))] = TokenPermission({
+    //       permissions: _permissions[i].permissions.toUInt8(),
+    //       lastUpdated: _blockNumber
+    //     });
+    //   }
+    // }
   }
 
   // Note: virtual so that it can be overriden in tests
