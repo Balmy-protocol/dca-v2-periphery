@@ -1,10 +1,8 @@
 import { expect } from 'chai';
 import { ethers } from 'hardhat';
 import { DCAPermissionsManagerMock__factory, DCAPermissionsManagerMock } from '@typechained';
-// import { IDCAPermissionManager } from '@typechained/artifacts/contracts/interfaces/IDCAPermissionManager.sol/IDCAPermissionManager';
 import { constants, wallet, behaviours } from '@test-utils';
 import { given, then, when, contract } from '@test-utils/bdd';
-import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers';
 import { snapshot } from '@test-utils/evm';
 import { Permission } from 'utils/types';
 import { TransactionResponse } from '@ethersproject/abstract-provider';
@@ -18,15 +16,12 @@ import { BigNumberish } from 'ethers';
 contract('DCAPermissionsManager', () => {
   const NFT_NAME = 'Mean Finance - DCA Strategy Position';
   const NFT_SYMBOL = 'MF-DCA-P';
-  const NFT_DESCRIPTOR = wallet.generateRandomAddress();
-  let hub: SignerWithAddress, governor: SignerWithAddress;
   let DCAPermissionsManagerFactory: DCAPermissionsManagerMock__factory;
   let DCAPermissionsManager: DCAPermissionsManagerMock;
   let snapshotId: string;
   let chainId: BigNumber;
 
   before('Setup accounts and contracts', async () => {
-    [hub, governor] = await ethers.getSigners();
     DCAPermissionsManagerFactory = await ethers.getContractFactory(
       'contracts/mocks/DCAStrategies/DCAPermissionsManagerMock.sol:DCAPermissionsManagerMock'
     );
@@ -35,15 +30,11 @@ contract('DCAPermissionsManager', () => {
     chainId = BigNumber.from((await ethers.provider.getNetwork()).chainId);
   });
 
-  beforeEach('Deploy and configure', async () => {
+  beforeEach(async () => {
     await snapshot.revert(snapshotId);
   });
 
   describe('constructor', () => {
-    let DCAPermissionsManager: DCAPermissionsManagerMock;
-    given(async () => {
-      DCAPermissionsManager = await DCAPermissionsManagerFactory.deploy(NFT_NAME, NFT_SYMBOL);
-    });
     when('manager is deployed', () => {
       then('name is correct', async () => {
         const name = await DCAPermissionsManager.name();
