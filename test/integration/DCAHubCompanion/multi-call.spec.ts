@@ -256,8 +256,8 @@ contract('Multicall', () => {
             amountIn: swappedBalance,
             swap: ({ amountIn }) => swapIn0x({ from: USDC, to: WBTC, amountIn }),
           });
-          const sendETHData = await sendAllInCompanionToRecipient({ token: await DCAHubCompanion.PROTOCOL_TOKEN(), recipient });
-          const sendWBTCData = await sendAllInCompanionToRecipient({ token: WBTC.address, recipient });
+          const sendETHData = await sendAllInCompanionToRecipientData({ token: await DCAHubCompanion.PROTOCOL_TOKEN(), recipient });
+          const sendWBTCData = await sendAllERC20InCompanionToRecipientData({ token: WBTC, recipient });
           await DCAHubCompanion.multicall([permissionData, terminateData, executionDataETH, sendETHData, executionDataWBTC, sendWBTCData]);
           expectedAmountOutETH = _expectedAmountOutETH;
           expectedAmountOutBTC = _expectedAmountOutBTC;
