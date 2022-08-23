@@ -90,7 +90,7 @@ abstract contract DCAStrategiesPermissionsHandler is IDCAStrategiesPermissionsHa
   }
 
   function _burn(uint256 _id) internal override {
-    ERC721._burn(_id);
+    super._burn(_id);
     ++_burnCounter;
   }
 
