@@ -16,6 +16,10 @@ contract DCAStrategiesPermissionsHandlerMock is DCAStrategiesPermissionsHandler 
     }
   }
 
+  function getBlockNumber() external view returns (uint256) {
+    return _getBlockNumber();
+  }
+
   function setBlockNumber(uint256 __blockNumber) external {
     _blockNumber = __blockNumber;
   }
