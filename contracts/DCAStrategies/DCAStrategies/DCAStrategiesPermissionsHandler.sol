@@ -99,7 +99,8 @@ abstract contract DCAStrategiesPermissionsHandler is IDCAStrategiesPermissionsHa
     ++_burnCounter;
   }
 
-  function _setPermissions(uint256 _id, IDCAStrategies.PermissionSet[] calldata _permissions) internal {
+  // Note: virtual so that it can be overriden in tests
+  function _setPermissions(uint256 _id, IDCAStrategies.PermissionSet[] calldata _permissions) internal virtual {
     uint248 _blockNumber = uint248(_getBlockNumber());
     for (uint256 i; i < _permissions.length; i++) {
       IDCAStrategies.PermissionSet memory _permissionSet = _permissions[i];
@@ -120,8 +121,7 @@ abstract contract DCAStrategiesPermissionsHandler is IDCAStrategiesPermissionsHa
   }
 
   function getTokenPermissions(uint256 _id, address _operator) public view override returns (TokenPermission memory) {
-    TokenPermission memory _tokenPermission = _tokenPermissions[_getPermissionKey(_id, _operator)];
-    return _tokenPermission;
+    return _tokenPermissions[_getPermissionKey(_id, _operator)];
   }
 
   // Note: virtual so that it can be overriden in tests

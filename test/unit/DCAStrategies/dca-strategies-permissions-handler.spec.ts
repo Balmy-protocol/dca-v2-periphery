@@ -67,10 +67,11 @@ contract('DCAStrategiesPermissionsHandler', () => {
       const OPERATOR = constants.NOT_ZERO_ADDRESS;
       let tx: TransactionResponse;
       let initialMintCounter: BigNumber;
+      const PERMISSIONS_TO_SET: number[] = [Permission.WITHDRAW];
 
       given(async () => {
         initialMintCounter = await DCAStrategiesPermissionsHandlerMock.mintCounter();
-        tx = await DCAStrategiesPermissionsHandlerMock.mint(OWNER, [{ operator: OPERATOR, permissions: [Permission.WITHDRAW] }]);
+        tx = await DCAStrategiesPermissionsHandlerMock.mint(OWNER, [{ operator: OPERATOR, permissions: PERMISSIONS_TO_SET }]);
       });
 
       then('mint counter gets increased', async () => {
@@ -78,7 +79,8 @@ contract('DCAStrategiesPermissionsHandler', () => {
       });
 
       then('permissions are assigned properly', async () => {
-        expect(await DCAStrategiesPermissionsHandlerMock.hasPermission(tokenId, OPERATOR, Permission.WITHDRAW)).to.be.true;
+        let permissions: number[] = await DCAStrategiesPermissionsHandlerMock.getSetPermissionsCalls(tokenId);
+        expect(permissions).to.have.all.members(PERMISSIONS_TO_SET);
       });
 
       then('nft is created and assigned to owner', async () => {

@@ -5,6 +5,7 @@ import '../../DCAStrategies/DCAStrategies/DCAStrategiesPermissionsHandler.sol';
 
 contract DCAStrategiesPermissionsHandlerMock is DCAStrategiesPermissionsHandler {
   uint256 private _blockNumber;
+  mapping(uint256 => IDCAStrategies.Permission[]) private _setPermissionsCalls;
 
   constructor(string memory _name, string memory _symbol) ERC721(_name, _symbol) {}
 
@@ -36,7 +37,16 @@ contract DCAStrategiesPermissionsHandlerMock is DCAStrategiesPermissionsHandler 
     _burn(_id);
   }
 
+  function getSetPermissionsCalls(uint256 _id) public view returns (IDCAStrategies.Permission[] memory) {
+    return _setPermissionsCalls[_id];
+  }
+
   function setPermissions(uint256 _id, IDCAStrategies.PermissionSet[] calldata _permissions) external {
-    _setPermissions(_id, _permissions);
+    super._setPermissions(_id, _permissions);
+  }
+
+  function _setPermissions(uint256 _id, IDCAStrategies.PermissionSet[] calldata _permissions) internal override {
+    _setPermissionsCalls[_id] = _permissions[_permissions.length - 1].permissions;
+    super._setPermissions(_id, _permissions);
   }
 }
