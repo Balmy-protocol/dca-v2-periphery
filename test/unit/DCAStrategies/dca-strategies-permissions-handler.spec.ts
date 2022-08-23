@@ -15,16 +15,13 @@ import { BigNumberish } from 'ethers';
 contract('DCAStrategiesPermissionsHandler', () => {
   const NFT_NAME = 'Mean Finance - DCA Strategy Position';
   const NFT_SYMBOL = 'MF-DCA-P';
-  let DCAStrategiesPermissionsHandlerMockFactory: DCAStrategiesPermissionsHandlerMock__factory;
   let DCAStrategiesPermissionsHandlerMock: DCAStrategiesPermissionsHandlerMock;
   let snapshotId: string;
   let chainId: BigNumber;
 
   before('Setup accounts and contracts', async () => {
-    DCAStrategiesPermissionsHandlerMockFactory = await ethers.getContractFactory(
-      'contracts/mocks/DCAStrategies/DCAStrategiesPermissionsHandlerMock.sol:DCAStrategiesPermissionsHandlerMock'
-    );
-    DCAStrategiesPermissionsHandlerMock = await DCAStrategiesPermissionsHandlerMockFactory.deploy(NFT_NAME, NFT_SYMBOL);
+    const factory: DCAStrategiesPermissionsHandlerMock__factory = await ethers.getContractFactory('DCAStrategiesPermissionsHandlerMock');
+    DCAStrategiesPermissionsHandlerMock = await factory.deploy(NFT_NAME, NFT_SYMBOL);
     snapshotId = await snapshot.take();
     chainId = BigNumber.from((await ethers.provider.getNetwork()).chainId);
   });
