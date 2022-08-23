@@ -34,6 +34,13 @@ interface IDCAStrategiesManagementHandler {
 }
 
 interface IDCAStrategiesPermissionsHandler is IERC721, IERC721BasicEnumerable {
+  struct TokenPermission {
+    // The actual permissions
+    uint8 permissions;
+    // The block number when it was last updated
+    uint248 lastUpdated;
+  }
+
   /**
    * @notice The permit typehash used in the permit signature
    * @return The typehash for the permit
@@ -154,6 +161,8 @@ interface IDCAStrategiesPermissionsHandler is IERC721, IERC721BasicEnumerable {
    * @param descriptor The new NFT descriptor contract
    */
   function setNFTDescriptor(IDCAHubPositionDescriptor descriptor) external;
+
+  function getTokenPermissions(uint256 id, address operator) external view returns (TokenPermission memory);
 }
 
 interface IDCAStrategiesPositionsHandler {

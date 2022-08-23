@@ -2,17 +2,15 @@
 pragma solidity >=0.8.7 <0.9.0;
 
 import '@openzeppelin/contracts/token/ERC721/ERC721.sol';
+import '../../libraries/PermissionMath.sol';
 import '../../interfaces/IDCAStrategies.sol';
 
 abstract contract DCAStrategiesPermissionsHandler is IDCAStrategiesPermissionsHandler, ERC721 {
-  struct TokenPermission {
-    // The actual permissions
-    uint8 permissions;
-    // The block number when it was last updated
-    uint248 lastUpdated;
-  }
+  using PermissionMath for IDCAStrategies.Permission[];
+  using PermissionMath for uint8;
 
-  // mapping(bytes32 => TokenPermission) public tokenPermissions; // key(id, operator) => TokenPermission
+  mapping(uint256 => uint256) public lastOwnershipChange;
+  mapping(bytes32 => TokenPermission) internal _tokenPermissions; // key(id, operator) => TokenPermission
   uint256 internal _burnCounter;
   uint256 internal _mintCounter;
 
@@ -47,7 +45,14 @@ abstract contract DCAStrategiesPermissionsHandler is IDCAStrategiesPermissionsHa
     uint256 _id,
     address _account,
     IDCAStrategies.Permission _permission
-  ) external view override returns (bool) {}
+  ) external view override returns (bool) {
+    if (ownerOf(_id) == _account) {
+      return true;
+    }
+    TokenPermission memory _tokenPermission = getTokenPermissions(_id, _account);
+    // If there was an ownership change after the permission was last updated, then the address doesn't have the permission
+    return _tokenPermission.permissions.hasPermission(_permission) && lastOwnershipChange[_id] < _tokenPermission.lastUpdated;
+  }
 
   /// @inheritdoc IDCAStrategiesPermissionsHandler
   function hasPermissions(
@@ -94,19 +99,29 @@ abstract contract DCAStrategiesPermissionsHandler is IDCAStrategiesPermissionsHa
     ++_burnCounter;
   }
 
-  function _setPermissions(uint256 _id, IDCAStrategies.PermissionSet[] calldata _permissions) internal {
-    // uint248 _blockNumber = uint248(_getBlockNumber());
-    // for (uint256 i; i < _permissions.length; i++) {
-    //   if (_permissions[i].permissions.length == 0) {
-    //     delete tokenPermissions[keccak256(abi.encodePacked(_id, _permissions[i].operator))];
-    //   } else {
-    //     // TODO: remove this comment when adding permission math library
-    //     tokenPermissions[keccak256(abi.encodePacked(_id, _permissions[i].operator))] = TokenPermission({
-    //       permissions: _permissions[i].permissions.toUInt8(),
-    //       lastUpdated: _blockNumber
-    //     });
-    //   }
-    // }
+  // Note: virtual so that it can be overriden in tests
+  function _setPermissions(uint256 _id, IDCAStrategies.PermissionSet[] calldata _permissions) internal virtual {
+    uint248 _blockNumber = uint248(_getBlockNumber());
+    for (uint256 i; i < _permissions.length; i++) {
+      IDCAStrategies.PermissionSet memory _permissionSet = _permissions[i];
+
+      if (_permissionSet.permissions.length == 0) {
+        delete _tokenPermissions[_getPermissionKey(_id, _permissionSet.operator)];
+      } else {
+        _tokenPermissions[_getPermissionKey(_id, _permissionSet.operator)] = TokenPermission({
+          permissions: _permissionSet.permissions.toUInt8(),
+          lastUpdated: _blockNumber
+        });
+      }
+    }
+  }
+
+  function _getPermissionKey(uint256 _id, address _operator) internal pure returns (bytes32) {
+    return keccak256(abi.encodePacked(_id, _operator));
+  }
+
+  function getTokenPermissions(uint256 _id, address _operator) public view override returns (TokenPermission memory) {
+    return _tokenPermissions[_getPermissionKey(_id, _operator)];
   }
 
   // Note: virtual so that it can be overriden in tests

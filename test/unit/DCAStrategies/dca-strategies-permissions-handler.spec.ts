@@ -67,38 +67,71 @@ contract('DCAStrategiesPermissionsHandler', () => {
       const OPERATOR = constants.NOT_ZERO_ADDRESS;
       let tx: TransactionResponse;
       let initialMintCounter: BigNumber;
+      const PERMISSIONS_TO_SET: number[] = [Permission.WITHDRAW];
 
       given(async () => {
         initialMintCounter = await DCAStrategiesPermissionsHandlerMock.mintCounter();
-        tx = await DCAStrategiesPermissionsHandlerMock.mint(OWNER, [{ operator: OPERATOR, permissions: [Permission.WITHDRAW] }]);
+        tx = await DCAStrategiesPermissionsHandlerMock.mint(OWNER, [{ operator: OPERATOR, permissions: PERMISSIONS_TO_SET }]);
       });
 
       then('mint counter gets increased', async () => {
         expect(await DCAStrategiesPermissionsHandlerMock.mintCounter()).to.equal(initialMintCounter.add(1));
       });
 
-      //   then('owner has all permisisons', async () => {
-      //     expect(await DCAStrategiesPermissionsHandlerMock.hasPermission(TOKEN_ID, OWNER, Permission.INCREASE)).to.be.true;
-      //     expect(await DCAStrategiesPermissionsHandlerMock.hasPermission(TOKEN_ID, OWNER, Permission.REDUCE)).to.be.true;
-      //     expect(await DCAStrategiesPermissionsHandlerMock.hasPermission(TOKEN_ID, OWNER, Permission.TERMINATE)).to.be.true;
-      //     expect(await DCAStrategiesPermissionsHandlerMock.hasPermission(TOKEN_ID, OWNER, Permission.WITHDRAW)).to.be.true;
-      //   });
-
-      //   then('permissions are assigned properly', async () => {
-      //     expect(await DCAStrategiesPermissionsHandlerMock.hasPermission(TOKEN_ID, OPERATOR, Permission.WITHDRAW)).to.be.true;
-      //   });
-
-      //   then('no extra permissions are assigned', async () => {
-      //     for (const permission of [Permission.INCREASE, Permission.REDUCE, Permission.TERMINATE]) {
-      //       expect(await DCAStrategiesPermissionsHandlerMock.hasPermission(TOKEN_ID, OPERATOR, permission)).to.be.false;
-      //     }
-      //   });
+      then('permissions are assigned properly', async () => {
+        const calls = await DCAStrategiesPermissionsHandlerMock.getSetPermissionCall();
+        expect(calls).to.have.lengthOf(1);
+        expect(calls[0].tokenId).to.equal(1);
+        expect(calls[0].permissionSets).to.have.lengthOf(1);
+        expect(calls[0].permissionSets[0].operator).to.equal(OPERATOR);
+        expect(calls[0].permissionSets[0].permissions).to.eql(PERMISSIONS_TO_SET);
+      });
 
       then('nft is created and assigned to owner', async () => {
         const tokenOwner = await DCAStrategiesPermissionsHandlerMock.ownerOf(tokenId);
         const balance = await DCAStrategiesPermissionsHandlerMock.balanceOf(OWNER);
         expect(tokenOwner).to.equal(OWNER);
         expect(balance).to.equal(1);
+      });
+    });
+  });
+
+  describe('set permissions', () => {
+    let tokenId: number = 1;
+    const OPERATOR = constants.NOT_ZERO_ADDRESS;
+    let owner: Wallet;
+    const BLOCK_NUMBER: number = 256;
+    given(async () => {
+      owner = await wallet.generateRandom();
+      await DCAStrategiesPermissionsHandlerMock.setBlockNumber(BLOCK_NUMBER);
+      await DCAStrategiesPermissionsHandlerMock.mint(owner.address, [{ operator: OPERATOR, permissions: [] }]);
+      await DCAStrategiesPermissionsHandlerMock.setPermissions(tokenId, [
+        { operator: OPERATOR, permissions: [Permission.INCREASE, Permission.REDUCE] },
+      ]);
+    });
+
+    when('permissions are set', () => {
+      then('new permissions are correct', async () => {
+        expect(await DCAStrategiesPermissionsHandlerMock.hasPermission(tokenId, OPERATOR, Permission.INCREASE)).to.be.true;
+        expect(await DCAStrategiesPermissionsHandlerMock.hasPermission(tokenId, OPERATOR, Permission.REDUCE)).to.be.true;
+        expect(await DCAStrategiesPermissionsHandlerMock.hasPermission(tokenId, OPERATOR, Permission.TERMINATE)).to.be.false;
+        expect(await DCAStrategiesPermissionsHandlerMock.hasPermission(tokenId, OPERATOR, Permission.WITHDRAW)).to.be.false;
+        expect(await DCAStrategiesPermissionsHandlerMock.hasPermission(tokenId, OPERATOR, Permission.SYNC)).to.be.false;
+      });
+      then('lastUpdated is correct', async () => {
+        expect(BLOCK_NUMBER).equal((await DCAStrategiesPermissionsHandlerMock.getTokenPermissions(tokenId, OPERATOR)).lastUpdated);
+      });
+      when('permissions are removed', () => {
+        given(async () => {
+          await DCAStrategiesPermissionsHandlerMock.setPermissions(tokenId, [{ operator: OPERATOR, permissions: [] }]);
+        });
+        then('permissions are correct', async () => {
+          expect(await DCAStrategiesPermissionsHandlerMock.hasPermission(tokenId, OPERATOR, Permission.INCREASE)).to.be.false;
+          expect(await DCAStrategiesPermissionsHandlerMock.hasPermission(tokenId, OPERATOR, Permission.REDUCE)).to.be.false;
+          expect(await DCAStrategiesPermissionsHandlerMock.hasPermission(tokenId, OPERATOR, Permission.TERMINATE)).to.be.false;
+          expect(await DCAStrategiesPermissionsHandlerMock.hasPermission(tokenId, OPERATOR, Permission.WITHDRAW)).to.be.false;
+          expect(await DCAStrategiesPermissionsHandlerMock.hasPermission(tokenId, OPERATOR, Permission.SYNC)).to.be.false;
+        });
       });
     });
   });
@@ -123,13 +156,14 @@ contract('DCAStrategiesPermissionsHandler', () => {
         const newOwner = await DCAStrategiesPermissionsHandlerMock.ownerOf(tokenId);
         expect(newOwner).to.equal(NEW_OWNER);
       });
-      //   then('previous operators lost permissions', async () => {
-      //     const hasPermission = await DCAStrategiesPermissionsHandlerMock.hasPermission(tokenId, OPERATOR, Permission.WITHDRAW);
-      //     expect(hasPermission).to.be.false;
-      //   });
-      //   then('block number is recorded', async () => {
-      //     expect(await DCAStrategiesPermissionsHandlerMock.lastOwnershipChange(TOKEN_ID)).to.equal(BLOCK_NUMBER);
-      //   });
+
+      // then('previous operators lost permissions', async () => {
+      // const hasPermission = await DCAStrategiesPermissionsHandlerMock.hasPermission(tokenId, OPERATOR, Permission.WITHDRAW);
+      // expect(hasPermission).to.be.false;
+      // });
+      // then('block number is recorded', async () => {
+      // expect(await DCAStrategiesPermissionsHandlerMock.lastOwnershipChange(TOKEN_ID)).to.equal(BLOCK_NUMBER);
+      // });
     });
   });
 
@@ -155,17 +189,17 @@ contract('DCAStrategiesPermissionsHandler', () => {
         const balance = await DCAStrategiesPermissionsHandlerMock.balanceOf(OWNER);
         expect(balance).to.equal(0);
       });
-      //   then('clean up is performed', async () => {
-      //     expect(await DCAStrategiesPermissionsHandlerMock.lastOwnershipChange(TOKEN_ID)).to.equal(0);
-      //   });
-      //   then('asking for permission reverts', async () => {
-      //     await behaviours.txShouldRevertWithMessage({
-      //       contract: DCAStrategiesPermissionsHandlerMock,
-      //       func: 'hasPermission',
-      //       args: [tokenId, OPERATOR, Permission.WITHDRAW],
-      //       message: 'ERC721: invalid token ID',
-      //     });
-      //   });
+      then('clean up is performed', async () => {
+        expect(await DCAStrategiesPermissionsHandlerMock.lastOwnershipChange(tokenId)).to.equal(0);
+      });
+      then('asking for permission reverts', async () => {
+        await behaviours.txShouldRevertWithMessage({
+          contract: DCAStrategiesPermissionsHandlerMock,
+          func: 'hasPermission',
+          args: [tokenId, OPERATOR, Permission.WITHDRAW],
+          message: 'ERC721: invalid token ID',
+        });
+      });
     });
   });
 });
