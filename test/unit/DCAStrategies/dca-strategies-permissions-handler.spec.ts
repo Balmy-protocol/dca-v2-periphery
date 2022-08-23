@@ -49,6 +49,85 @@ contract('DCAStrategiesPermissionsHandler', () => {
     });
   });
 
+  describe('hasPermissions', () => {
+    const TOKEN_ID = 1;
+    when('checking permisisons for the owner', () => {
+      const OWNER = constants.NOT_ZERO_ADDRESS;
+      given(async () => {
+        await DCAStrategiesPermissionsHandlerMock.mint(OWNER, []);
+      });
+      then('they have all permissions', async () => {
+        const result = await DCAStrategiesPermissionsHandlerMock.hasPermissions(TOKEN_ID, OWNER, [
+          Permission.INCREASE,
+          Permission.REDUCE,
+          Permission.WITHDRAW,
+          Permission.TERMINATE,
+          Permission.SYNC,
+        ]);
+        expect(result).to.eql(Array(5).fill(true));
+      });
+    });
+
+    hasPermissionsTest({
+      when: 'operator has no permissions',
+      set: [],
+      expected: [
+        { permission: Permission.INCREASE, result: false },
+        { permission: Permission.REDUCE, result: false },
+        { permission: Permission.WITHDRAW, result: false },
+        { permission: Permission.TERMINATE, result: false },
+        { permission: Permission.SYNC, result: false },
+      ],
+    });
+
+    hasPermissionsTest({
+      when: 'operator has some permissions',
+      set: [Permission.REDUCE, Permission.WITHDRAW],
+      expected: [
+        { permission: Permission.INCREASE, result: false },
+        { permission: Permission.REDUCE, result: true },
+        { permission: Permission.WITHDRAW, result: true },
+        { permission: Permission.TERMINATE, result: false },
+        { permission: Permission.SYNC, result: false },
+      ],
+    });
+
+    hasPermissionsTest({
+      when: 'operator has all permissions',
+      set: [Permission.INCREASE, Permission.REDUCE, Permission.WITHDRAW, Permission.TERMINATE, Permission.SYNC],
+      expected: [
+        { permission: Permission.INCREASE, result: true },
+        { permission: Permission.REDUCE, result: true },
+        { permission: Permission.WITHDRAW, result: true },
+        { permission: Permission.TERMINATE, result: true },
+        { permission: Permission.SYNC, result: true },
+      ],
+    });
+
+    function hasPermissionsTest({
+      when: title,
+      set,
+      expected,
+    }: {
+      when: string;
+      set: Permission[];
+      expected: { permission: Permission; result: boolean }[];
+    }) {
+      const OWNER = wallet.generateRandomAddress();
+      const OPERATOR = constants.NOT_ZERO_ADDRESS;
+      when(title, () => {
+        given(async () => {
+          await DCAStrategiesPermissionsHandlerMock.mint(OWNER, [{ operator: OPERATOR, permissions: set }]);
+        });
+        then('result is returned correctly', async () => {
+          const toCheck = expected.map(({ permission }) => permission);
+          const result = await DCAStrategiesPermissionsHandlerMock.hasPermissions(TOKEN_ID, OPERATOR, toCheck);
+          expect(result).to.eql(expected.map(({ result }) => result));
+        });
+      });
+    }
+  });
+
   describe('mint', () => {
     let tokenId: number = 1;
 
