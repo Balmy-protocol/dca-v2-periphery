@@ -6,7 +6,6 @@ import { given, then, when, contract } from '@test-utils/bdd';
 import { snapshot } from '@test-utils/evm';
 import { Permission } from 'utils/types';
 import { TransactionResponse } from '@ethersproject/abstract-provider';
-// import { getInstancesOfEvent, readArgFromEventOrFail } from '@test-utils/event-utils';
 import { Wallet } from '@ethersproject/wallet';
 import { BigNumber } from '@ethersproject/bignumber';
 import { _TypedDataEncoder } from '@ethersproject/hash';
