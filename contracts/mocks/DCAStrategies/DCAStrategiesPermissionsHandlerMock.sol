@@ -3,7 +3,7 @@ pragma solidity >=0.8.7 <0.9.0;
 
 import '../../DCAStrategies/DCAStrategies/DCAStrategiesPermissionsHandler.sol';
 
-contract DCAPermissionsManagerMock is DCAStrategiesPermissionsHandler {
+contract DCAStrategiesPermissionsHandlerMock is DCAStrategiesPermissionsHandler {
   uint256 private _blockNumber;
 
   constructor(string memory _name, string memory _symbol) ERC721(_name, _symbol) {}
