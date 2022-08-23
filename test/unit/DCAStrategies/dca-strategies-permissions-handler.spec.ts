@@ -54,10 +54,8 @@ contract('DCAStrategiesPermissionsHandler', () => {
   });
 
   describe('mint', () => {
-    let tokenId: number;
-    given(async () => {
-      tokenId = (await DCAStrategiesPermissionsHandlerMock.mintCounter()).toNumber() + 1;
-    });
+    let tokenId: number = 1;
+
     when('owner is zero address', () => {
       then('reverts with message', async () => {
         await behaviours.txShouldRevertWithMessage({
@@ -104,7 +102,7 @@ contract('DCAStrategiesPermissionsHandler', () => {
         const tokenOwner = await DCAStrategiesPermissionsHandlerMock.ownerOf(tokenId);
         const balance = await DCAStrategiesPermissionsHandlerMock.balanceOf(OWNER);
         expect(tokenOwner).to.equal(OWNER);
-        expect(balance).to.equal(tokenId);
+        expect(balance).to.equal(1);
       });
     });
   });
@@ -140,12 +138,11 @@ contract('DCAStrategiesPermissionsHandler', () => {
   });
 
   describe('burn', () => {
-    let tokenId: number;
+    let tokenId: number = 1;
     const OPERATOR = constants.NOT_ZERO_ADDRESS;
     const OWNER = wallet.generateRandomAddress();
 
     given(async () => {
-      tokenId = (await DCAStrategiesPermissionsHandlerMock.mintCounter()).toNumber() + 1;
       await DCAStrategiesPermissionsHandlerMock.mint(OWNER, [{ operator: OPERATOR, permissions: [Permission.WITHDRAW] }]);
     });
 
