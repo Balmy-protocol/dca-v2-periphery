@@ -112,7 +112,6 @@ abstract contract DCAStrategiesPermissionsHandler is IDCAStrategiesPermissionsHa
       if (_permissions[i].permissions.length == 0) {
         delete tokenPermissions[keccak256(abi.encodePacked(_id, _permissions[i].operator))];
       } else {
-        // TODO: remove this comment when adding permission math library
         tokenPermissions[keccak256(abi.encodePacked(_id, _permissions[i].operator))] = TokenPermission({
           permissions: _permissions[i].permissions.toUInt8(),
           lastUpdated: _blockNumber

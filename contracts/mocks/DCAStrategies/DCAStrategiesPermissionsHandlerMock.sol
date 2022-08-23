@@ -35,4 +35,8 @@ contract DCAStrategiesPermissionsHandlerMock is DCAStrategiesPermissionsHandler 
   function burn(uint256 _id) external {
     _burn(_id);
   }
+
+  function setPermissions(uint256 _id, IDCAStrategies.PermissionSet[] calldata _permissions) external {
+    _setPermissions(_id, _permissions);
+  }
 }
