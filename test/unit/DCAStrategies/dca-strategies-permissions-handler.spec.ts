@@ -79,8 +79,12 @@ contract('DCAStrategiesPermissionsHandler', () => {
       });
 
       then('permissions are assigned properly', async () => {
-        let permissions: number[] = await DCAStrategiesPermissionsHandlerMock.getSetPermissionsCalls(tokenId);
-        expect(permissions).to.have.all.members(PERMISSIONS_TO_SET);
+        const calls = await DCAStrategiesPermissionsHandlerMock.getSetPermissionCall();
+        expect(calls).to.have.lengthOf(1);
+        expect(calls[0].tokenId).to.equal(1);
+        expect(calls[0].permissionSets).to.have.lengthOf(1);
+        expect(calls[0].permissionSets[0].operator).to.equal(OPERATOR);
+        expect(calls[0].permissionSets[0].permissions).to.eql(PERMISSIONS_TO_SET);
       });
 
       then('nft is created and assigned to owner', async () => {

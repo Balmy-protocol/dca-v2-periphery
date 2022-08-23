@@ -4,10 +4,19 @@ pragma solidity >=0.8.7 <0.9.0;
 import '../../DCAStrategies/DCAStrategies/DCAStrategiesPermissionsHandler.sol';
 
 contract DCAStrategiesPermissionsHandlerMock is DCAStrategiesPermissionsHandler {
+  struct SetPermissionCall {
+    uint256 tokenId;
+    IDCAStrategies.PermissionSet[] permissionSets;
+  }
+
   uint256 private _blockNumber;
-  mapping(uint256 => IDCAStrategies.Permission[]) private _setPermissionsCalls;
+  SetPermissionCall[] private _setPermissionsCalls;
 
   constructor(string memory _name, string memory _symbol) ERC721(_name, _symbol) {}
+
+  function getSetPermissionCall() external view returns (SetPermissionCall[] memory) {
+    return _setPermissionsCalls;
+  }
 
   function _getBlockNumber() internal view override returns (uint256) {
     if (_blockNumber > 0) {
@@ -37,16 +46,16 @@ contract DCAStrategiesPermissionsHandlerMock is DCAStrategiesPermissionsHandler 
     _burn(_id);
   }
 
-  function getSetPermissionsCalls(uint256 _id) public view returns (IDCAStrategies.Permission[] memory) {
-    return _setPermissionsCalls[_id];
-  }
-
   function setPermissions(uint256 _id, IDCAStrategies.PermissionSet[] calldata _permissions) external {
     super._setPermissions(_id, _permissions);
   }
 
   function _setPermissions(uint256 _id, IDCAStrategies.PermissionSet[] calldata _permissions) internal override {
-    _setPermissionsCalls[_id] = _permissions[_permissions.length - 1].permissions;
+    _setPermissionsCalls.push();
+    _setPermissionsCalls[_setPermissionsCalls.length - 1].tokenId = _id;
+    for (uint256 i = 0; i < _permissions.length; i++) {
+      _setPermissionsCalls[_setPermissionsCalls.length - 1].permissionSets.push(_permissions[i]);
+    }
     super._setPermissions(_id, _permissions);
   }
 }
