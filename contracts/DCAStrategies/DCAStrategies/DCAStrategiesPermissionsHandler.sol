@@ -6,18 +6,11 @@ import '../../libraries/PermissionMath.sol';
 import '../../interfaces/IDCAStrategies.sol';
 
 abstract contract DCAStrategiesPermissionsHandler is IDCAStrategiesPermissionsHandler, ERC721 {
-  struct TokenPermission {
-    // The actual permissions
-    uint8 permissions;
-    // The block number when it was last updated
-    uint248 lastUpdated;
-  }
-
   using PermissionMath for IDCAStrategies.Permission[];
   using PermissionMath for uint8;
 
   mapping(uint256 => uint256) public lastOwnershipChange;
-  mapping(bytes32 => TokenPermission) public tokenPermissions; // key(id, operator) => TokenPermission
+  mapping(bytes32 => TokenPermission) internal _tokenPermissions; // key(id, operator) => TokenPermission
   uint256 internal _burnCounter;
   uint256 internal _mintCounter;
 
@@ -56,7 +49,7 @@ abstract contract DCAStrategiesPermissionsHandler is IDCAStrategiesPermissionsHa
     if (ownerOf(_id) == _account) {
       return true;
     }
-    TokenPermission memory _tokenPermission = tokenPermissions[keccak256(abi.encodePacked(_id, _account))];
+    TokenPermission memory _tokenPermission = getTokenPermissions(_id, _account);
     // If there was an ownership change after the permission was last updated, then the address doesn't have the permission
     return _tokenPermission.permissions.hasPermission(_permission) && lastOwnershipChange[_id] < _tokenPermission.lastUpdated;
   }
@@ -109,15 +102,26 @@ abstract contract DCAStrategiesPermissionsHandler is IDCAStrategiesPermissionsHa
   function _setPermissions(uint256 _id, IDCAStrategies.PermissionSet[] calldata _permissions) internal {
     uint248 _blockNumber = uint248(_getBlockNumber());
     for (uint256 i; i < _permissions.length; i++) {
-      if (_permissions[i].permissions.length == 0) {
-        delete tokenPermissions[keccak256(abi.encodePacked(_id, _permissions[i].operator))];
+      IDCAStrategies.PermissionSet memory _permissionSet = _permissions[i];
+
+      if (_permissionSet.permissions.length == 0) {
+        delete _tokenPermissions[_getPermissionKey(_id, _permissionSet.operator)];
       } else {
-        tokenPermissions[keccak256(abi.encodePacked(_id, _permissions[i].operator))] = TokenPermission({
-          permissions: _permissions[i].permissions.toUInt8(),
+        _tokenPermissions[_getPermissionKey(_id, _permissionSet.operator)] = TokenPermission({
+          permissions: _permissionSet.permissions.toUInt8(),
           lastUpdated: _blockNumber
         });
       }
     }
+  }
+
+  function _getPermissionKey(uint256 _id, address _operator) internal pure returns (bytes32) {
+    return keccak256(abi.encodePacked(_id, _operator));
+  }
+
+  function getTokenPermissions(uint256 _id, address _operator) public view override returns (TokenPermission memory) {
+    TokenPermission memory _tokenPermission = _tokenPermissions[_getPermissionKey(_id, _operator)];
+    return _tokenPermission;
   }
 
   // Note: virtual so that it can be overriden in tests

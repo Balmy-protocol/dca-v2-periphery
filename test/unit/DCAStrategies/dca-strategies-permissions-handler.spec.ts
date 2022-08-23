@@ -77,22 +77,8 @@ contract('DCAStrategiesPermissionsHandler', () => {
         expect(await DCAStrategiesPermissionsHandlerMock.mintCounter()).to.equal(initialMintCounter.add(1));
       });
 
-      then('owner has all permisisons', async () => {
-        expect(await DCAStrategiesPermissionsHandlerMock.hasPermission(tokenId, OWNER, Permission.INCREASE)).to.be.true;
-        expect(await DCAStrategiesPermissionsHandlerMock.hasPermission(tokenId, OWNER, Permission.REDUCE)).to.be.true;
-        expect(await DCAStrategiesPermissionsHandlerMock.hasPermission(tokenId, OWNER, Permission.TERMINATE)).to.be.true;
-        expect(await DCAStrategiesPermissionsHandlerMock.hasPermission(tokenId, OWNER, Permission.WITHDRAW)).to.be.true;
-        expect(await DCAStrategiesPermissionsHandlerMock.hasPermission(tokenId, OWNER, Permission.SYNC)).to.be.true;
-      });
-
       then('permissions are assigned properly', async () => {
         expect(await DCAStrategiesPermissionsHandlerMock.hasPermission(tokenId, OPERATOR, Permission.WITHDRAW)).to.be.true;
-      });
-
-      then('no extra permissions are assigned', async () => {
-        for (const permission of [Permission.INCREASE, Permission.REDUCE, Permission.TERMINATE, Permission.SYNC]) {
-          expect(await DCAStrategiesPermissionsHandlerMock.hasPermission(tokenId, OPERATOR, permission)).to.be.false;
-        }
       });
 
       then('nft is created and assigned to owner', async () => {
@@ -108,14 +94,14 @@ contract('DCAStrategiesPermissionsHandler', () => {
     let tokenId: number = 1;
     const OPERATOR = constants.NOT_ZERO_ADDRESS;
     let owner: Wallet;
-    let blockNumber: BigNumber;
+    const BLOCK_NUMBER: number = 256;
     given(async () => {
       owner = await wallet.generateRandom();
+      await DCAStrategiesPermissionsHandlerMock.setBlockNumber(BLOCK_NUMBER);
       await DCAStrategiesPermissionsHandlerMock.mint(owner.address, [{ operator: OPERATOR, permissions: [] }]);
       await DCAStrategiesPermissionsHandlerMock.setPermissions(tokenId, [
         { operator: OPERATOR, permissions: [Permission.INCREASE, Permission.REDUCE] },
       ]);
-      blockNumber = await DCAStrategiesPermissionsHandlerMock.getBlockNumber();
     });
 
     when('permissions are set', () => {
@@ -127,13 +113,7 @@ contract('DCAStrategiesPermissionsHandler', () => {
         expect(await DCAStrategiesPermissionsHandlerMock.hasPermission(tokenId, OPERATOR, Permission.SYNC)).to.be.false;
       });
       then('lastUpdated is correct', async () => {
-        expect(blockNumber).equal(
-          (
-            await DCAStrategiesPermissionsHandlerMock.tokenPermissions(
-              ethers.utils.solidityKeccak256(['uint256', 'address'], [tokenId, OPERATOR])
-            )
-          ).lastUpdated
-        );
+        expect(BLOCK_NUMBER).equal((await DCAStrategiesPermissionsHandlerMock.getTokenPermissions(tokenId, OPERATOR)).lastUpdated);
       });
       when('permissions are removed', () => {
         given(async () => {
