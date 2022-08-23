@@ -53,20 +53,6 @@ contract('DCAStrategiesPermissionsHandler', () => {
     });
   });
 
-  describe('block number', () => {
-    const BLOCK_NUMBER = 555888222;
-
-    given(async () => {
-      await DCAStrategiesPermissionsHandlerMock.setBlockNumber(BLOCK_NUMBER);
-    });
-
-    when('getting block number', () => {
-      then('block number is correct', async () => {
-        expect(await DCAStrategiesPermissionsHandlerMock.getBlockNumber()).to.equal(BLOCK_NUMBER);
-      });
-    });
-  });
-
   describe('mint', () => {
     let tokenId: number;
     given(async () => {

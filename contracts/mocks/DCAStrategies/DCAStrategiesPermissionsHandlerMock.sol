@@ -35,8 +35,4 @@ contract DCAStrategiesPermissionsHandlerMock is DCAStrategiesPermissionsHandler 
   function burn(uint256 _id) external {
     _burn(_id);
   }
-
-  function getBlockNumber() external view returns (uint256) {
-    return _getBlockNumber();
-  }
 }
