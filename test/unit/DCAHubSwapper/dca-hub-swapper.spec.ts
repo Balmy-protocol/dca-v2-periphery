@@ -31,10 +31,6 @@ contract('DCAHubSwapper', () => {
   let tokens: string[];
 
   before('Setup accounts and contracts', async () => {
-    await network.provider.request({
-      method: 'hardhat_reset',
-      params: [],
-    });
     [, swapExecutioner, admin, recipient, superAdmin] = await ethers.getSigners();
     DCAHubSwapperFactory = await ethers.getContractFactory('contracts/mocks/DCAHubSwapper/DCAHubSwapper.sol:DCAHubSwapperMock');
     DCAHub = await smock.fake('IDCAHub');
