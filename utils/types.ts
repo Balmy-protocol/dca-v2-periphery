@@ -3,4 +3,5 @@ export enum Permission {
   REDUCE,
   WITHDRAW,
   TERMINATE,
+  SYNC,
 }
