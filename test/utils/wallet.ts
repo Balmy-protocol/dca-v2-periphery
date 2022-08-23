@@ -1,4 +1,4 @@
-import { BigNumber, Wallet } from 'ethers';
+import { BigNumber, constants, Wallet } from 'ethers';
 import { getAddress } from 'ethers/lib/utils';
 import { ethers, network } from 'hardhat';
 import { randomHex } from 'web3-utils';
@@ -13,7 +13,7 @@ const impersonate = async (address: string): Promise<any> => {
 };
 const generateRandom = async () => {
   const wallet = Wallet.createRandom().connect(ethers.provider);
-  await ethers.provider.send('hardhat_setBalance', [wallet.address, '0xffffffffffffffff']);
+  await ethers.provider.send('hardhat_setBalance', [wallet.address, constants.MaxUint256.toHexString().replace('0x0', '0x')]);
   return wallet;
 };
 

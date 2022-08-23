@@ -1,5 +1,5 @@
 import chai, { expect } from 'chai';
-import { ethers } from 'hardhat';
+import { ethers, network } from 'hardhat';
 import { behaviours, constants, wallet } from '@test-utils';
 import { contract, given, then, when } from '@test-utils/bdd';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers';
@@ -31,6 +31,10 @@ contract('DCAHubSwapper', () => {
   let tokens: string[];
 
   before('Setup accounts and contracts', async () => {
+    await network.provider.request({
+      method: 'hardhat_reset',
+      params: [],
+    });
     [, swapExecutioner, admin, recipient, superAdmin] = await ethers.getSigners();
     DCAHubSwapperFactory = await ethers.getContractFactory('contracts/mocks/DCAHubSwapper/DCAHubSwapper.sol:DCAHubSwapperMock');
     DCAHub = await smock.fake('IDCAHub');
