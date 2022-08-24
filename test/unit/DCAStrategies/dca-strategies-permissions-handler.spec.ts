@@ -7,6 +7,7 @@ import {
 } from '@typechained';
 import { constants, wallet, behaviours } from '@test-utils';
 import { given, then, when, contract } from '@test-utils/bdd';
+import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers';
 import { snapshot } from '@test-utils/evm';
 import { Permission } from 'utils/types';
 import { TransactionResponse } from '@ethersproject/abstract-provider';
@@ -20,13 +21,16 @@ import { BigNumberish } from 'ethers';
 contract('DCAStrategiesPermissionsHandler', () => {
   const NFT_NAME = 'Mean Finance - DCA Strategy Position';
   const NFT_SYMBOL = 'MF-DCA-P';
+  const NFT_DESCRIPTOR = wallet.generateRandomAddress();
+  let governor: SignerWithAddress;
   let DCAStrategiesPermissionsHandlerMock: DCAStrategiesPermissionsHandlerMock;
   let snapshotId: string;
   let chainId: BigNumber;
 
   before('Setup accounts and contracts', async () => {
+    [governor] = await ethers.getSigners();
     const factory: DCAStrategiesPermissionsHandlerMock__factory = await ethers.getContractFactory('DCAStrategiesPermissionsHandlerMock');
-    DCAStrategiesPermissionsHandlerMock = await factory.deploy(NFT_NAME, NFT_SYMBOL);
+    DCAStrategiesPermissionsHandlerMock = await factory.deploy(NFT_NAME, NFT_SYMBOL, governor.address, NFT_DESCRIPTOR);
     snapshotId = await snapshot.take();
     chainId = BigNumber.from((await ethers.provider.getNetwork()).chainId);
   });
@@ -58,6 +62,9 @@ contract('DCAStrategiesPermissionsHandler', () => {
         expect(await DCAStrategiesPermissionsHandlerMock.DOMAIN_SEPARATOR()).to.equal(
           await domainSeparator(NFT_NAME, '1', chainId, DCAStrategiesPermissionsHandlerMock.address)
         );
+      });
+      then('NFT descriptor is set', async () => {
+        expect(await DCAStrategiesPermissionsHandlerMock.nftDescriptor()).to.equal(NFT_DESCRIPTOR);
       });
     });
   });
@@ -1012,6 +1019,37 @@ contract('DCAStrategiesPermissionsHandler', () => {
       deadline: BigNumber;
       chainId: BigNumber;
     };
+  });
+
+  describe('setNFTDescriptor', () => {
+    when('address is zero', () => {
+      then('tx is reverted with reason', async () => {
+        await behaviours.txShouldRevertWithMessage({
+          contract: DCAStrategiesPermissionsHandlerMock.connect(governor),
+          func: 'setNFTDescriptor',
+          args: [constants.ZERO_ADDRESS],
+          message: 'ZeroAddress',
+        });
+      });
+    });
+    when('address is not zero', () => {
+      then('sets nftDescriptor and emits event with correct arguments', async () => {
+        await behaviours.txShouldSetVariableAndEmitEvent({
+          contract: DCAStrategiesPermissionsHandlerMock.connect(governor),
+          getterFunc: 'nftDescriptor',
+          setterFunc: 'setNFTDescriptor',
+          variable: constants.NOT_ZERO_ADDRESS,
+          eventEmitted: 'NFTDescriptorSet',
+        });
+      });
+    });
+
+    behaviours.shouldBeExecutableOnlyByGovernor({
+      contract: () => DCAStrategiesPermissionsHandlerMock,
+      funcAndSignature: 'setNFTDescriptor(address)',
+      params: [constants.NOT_ZERO_ADDRESS],
+      governor: () => governor,
+    });
   });
 
   const EIP712Domain = [

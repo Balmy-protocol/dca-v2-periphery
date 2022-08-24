@@ -41,6 +41,15 @@ interface IDCAStrategiesPermissionsHandler is IERC721, IERC721BasicEnumerable {
    */
   event Modified(uint256 tokenId, IDCAStrategies.PermissionSet[] permissions);
 
+  /**
+   * @notice Emitted when the address for a new descritor is set
+   * @param descriptor The new descriptor contract
+   */
+  event NFTDescriptorSet(IDCAHubPositionDescriptor descriptor);
+
+  /// @notice Thrown when a user provides a zero address when they shouldn't
+  error ZeroAddress();
+
   /// @notice Thrown when a user tries to execute a permit with an expired deadline
   error ExpiredDeadline();
 

@@ -5,8 +5,9 @@ import '@openzeppelin/contracts/token/ERC721/ERC721.sol';
 import '@openzeppelin/contracts/utils/cryptography/draft-EIP712.sol';
 import '../../libraries/PermissionMath.sol';
 import '../../interfaces/IDCAStrategies.sol';
+import '../../utils/Governable.sol';
 
-abstract contract DCAStrategiesPermissionsHandler is IDCAStrategiesPermissionsHandler, ERC721, EIP712 {
+abstract contract DCAStrategiesPermissionsHandler is IDCAStrategiesPermissionsHandler, ERC721, EIP712, Governable {
   using PermissionMath for IDCAStrategies.Permission[];
   using PermissionMath for uint8;
 
@@ -34,6 +35,11 @@ abstract contract DCAStrategiesPermissionsHandler is IDCAStrategiesPermissionsHa
   bytes32 public constant POSITION_PERMISSIONS_TYPEHASH =
     keccak256('PositionPermissions(uint256 tokenId,PermissionSet[] permissionSets)PermissionSet(address operator,uint8[] permissions)');
 
+  constructor(IDCAHubPositionDescriptor _descriptor) {
+    if (address(_descriptor) == address(0)) revert ZeroAddress();
+    nftDescriptor = _descriptor;
+  }
+
   /// @inheritdoc IDCAStrategiesPermissionsHandler
   // solhint-disable-next-line func-name-mixedcase
   function DOMAIN_SEPARATOR() external view override returns (bytes32) {
@@ -46,8 +52,7 @@ abstract contract DCAStrategiesPermissionsHandler is IDCAStrategiesPermissionsHa
   }
 
   /// @inheritdoc IDCAStrategiesPermissionsHandler
-  // TODO: update this after building the new descriptor
-  function nftDescriptor() external override returns (IDCAHubPositionDescriptor) {}
+  IDCAHubPositionDescriptor public nftDescriptor;
 
   /// @inheritdoc IDCAStrategiesPermissionsHandler
   function hasPermission(
@@ -180,7 +185,17 @@ abstract contract DCAStrategiesPermissionsHandler is IDCAStrategiesPermissionsHa
 
   /// @inheritdoc IDCAStrategiesPermissionsHandler
   // TODO: update this after building the new descriptor
-  function setNFTDescriptor(IDCAHubPositionDescriptor _descriptor) external override {}
+  function setNFTDescriptor(IDCAHubPositionDescriptor _descriptor) external onlyGovernor {
+    if (address(_descriptor) == address(0)) revert ZeroAddress();
+    nftDescriptor = _descriptor;
+    emit NFTDescriptorSet(_descriptor);
+  }
+
+  /// @inheritdoc ERC721
+  // TODO: update this after building the new descriptor
+  function tokenURI(uint256 _tokenId) public view override returns (string memory) {
+    // return nftDescriptor.tokenURI(hub, _tokenId);
+  }
 
   function _mint(address _owner, IDCAStrategies.PermissionSet[] calldata _permissions) internal returns (uint256 _mintId) {
     _mintId = ++_mintCounter;

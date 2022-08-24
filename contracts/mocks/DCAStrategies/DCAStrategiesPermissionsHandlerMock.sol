@@ -18,7 +18,12 @@ contract DCAStrategiesPermissionsHandlerMock is DCAStrategiesPermissionsHandler 
   SetPermissionCall[] private _setPermissionsCalls;
   ModifyCall[] private _modifyCalls;
 
-  constructor(string memory _name, string memory _symbol) ERC721(_name, _symbol) EIP712(_name, '1') {}
+  constructor(
+    string memory _name,
+    string memory _symbol,
+    address _governor,
+    IDCAHubPositionDescriptor _descriptor
+  ) ERC721(_name, _symbol) EIP712(_name, '1') Governable(_governor) DCAStrategiesPermissionsHandler(_descriptor) {}
 
   function getSetPermissionCall() external view returns (SetPermissionCall[] memory) {
     return _setPermissionsCalls;
