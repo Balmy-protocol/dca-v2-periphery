@@ -51,6 +51,9 @@ contract('DCAStrategiesPermissionsHandler', () => {
       then('mint counter starts at 0', async () => {
         expect(await DCAStrategiesPermissionsHandlerMock.mintCounter()).to.equal(0);
       });
+      then('total supply starts at 0', async () => {
+        expect(await DCAStrategiesPermissionsHandlerMock.totalSupply()).to.equal(BigNumber.from(0));
+      });
       then('domain separator is the expected', async () => {
         expect(await DCAStrategiesPermissionsHandlerMock.DOMAIN_SEPARATOR()).to.equal(
           await domainSeparator(NFT_NAME, '1', chainId, DCAStrategiesPermissionsHandlerMock.address)
@@ -60,21 +63,24 @@ contract('DCAStrategiesPermissionsHandler', () => {
   });
 
   describe('totalSupply', () => {
-    when('no tokens have been minted ', () => {
-      then('supply is zero', async () => {
-        expect(await DCAStrategiesPermissionsHandlerMock.totalSupply()).to.equal(BigNumber.from(0));
+    const OWNER = wallet.generateRandomAddress();
+
+    when('one token is minted', () => {
+      given(async () => {
+        await DCAStrategiesPermissionsHandlerMock.mint(OWNER, []);
+      });
+
+      then('supply is correct', async () => {
+        expect(await DCAStrategiesPermissionsHandlerMock.totalSupply()).to.equal(BigNumber.from(1));
       });
     });
 
-    when('some tokens have been minted and burned ', () => {
+    when('one token is minted and, after that, burned', () => {
       given(async () => {
-        const OWNER = wallet.generateRandomAddress();
-        await DCAStrategiesPermissionsHandlerMock.mint(OWNER, []);
-        await DCAStrategiesPermissionsHandlerMock.mint(OWNER, []);
         await DCAStrategiesPermissionsHandlerMock.mint(OWNER, []);
         await DCAStrategiesPermissionsHandlerMock.burn(1);
-        await DCAStrategiesPermissionsHandlerMock.burn(2);
       });
+
       then('supply is correct', async () => {
         let minted = await DCAStrategiesPermissionsHandlerMock.mintCounter();
         let burned = await DCAStrategiesPermissionsHandlerMock.burnCounter();
