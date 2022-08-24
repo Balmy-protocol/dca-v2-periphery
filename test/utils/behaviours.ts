@@ -198,7 +198,7 @@ const shouldBeExecutableOnlyByGovernor = ({
         [funcAndSignature](...realParams!);
     });
     then('tx is reverted with reason', async () => {
-      await expect(onlyGovernorAllowedTx).to.be.revertedWith('Governable: only governor');
+      await expect(onlyGovernorAllowedTx).to.be.revertedWith('OnlyGovernor()');
     });
   });
   when('called from governor', () => {
@@ -209,7 +209,7 @@ const shouldBeExecutableOnlyByGovernor = ({
         [funcAndSignature](...realParams!);
     });
     then('tx is not reverted or not reverted with reason only governor', async () => {
-      await expect(onlyGovernorAllowedTx).to.not.be.revertedWith('Governable: only governor');
+      await expect(onlyGovernorAllowedTx).to.not.be.revertedWith('OnlyGovernor()');
     });
   });
 };
@@ -235,7 +235,7 @@ const shouldBeExecutableOnlyByPendingGovernor = ({
         [funcAndSignature](...params!);
     });
     then('tx is reverted with reason', async () => {
-      await expect(onlyPendingGovernorAllowedTx).to.be.revertedWith('Governable: only pending governor');
+      await expect(onlyPendingGovernorAllowedTx).to.be.revertedWith('OnlyPendingGovernor()');
     });
   });
   when('called from pending governor', () => {
@@ -248,7 +248,7 @@ const shouldBeExecutableOnlyByPendingGovernor = ({
         [funcAndSignature](...params!);
     });
     then('tx is not reverted or not reverted with reason only pending governor', async () => {
-      await expect(onlyPendingGovernorAllowedTx).to.not.be.revertedWith('Governable: only pending governor');
+      await expect(onlyPendingGovernorAllowedTx).to.not.be.revertedWith('OnlyPendingGovernor()');
     });
   });
 };
