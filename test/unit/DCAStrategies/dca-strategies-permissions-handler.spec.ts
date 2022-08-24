@@ -389,4 +389,145 @@ contract('DCAStrategiesPermissionsHandler', () => {
       }
     }
   });
+
+  describe('permit', () => {
+    const TOKEN_ID = 1;
+    const SPENDER = wallet.generateRandomAddress();
+    let owner: Wallet, stranger: Wallet;
+
+    given(async () => {
+      owner = await wallet.generateRandom();
+      stranger = await wallet.generateRandom();
+      await DCAStrategiesPermissionsHandlerMock.mint(owner.address, []);
+    });
+
+    when(`owner tries to execute a permit`, () => {
+      let response: TransactionResponse;
+
+      given(async () => {
+        response = await signAndPermit({ signer: owner, spender: SPENDER });
+      });
+
+      then('spender is registered as approved', async () => {
+        expect(await DCAStrategiesPermissionsHandlerMock.getApproved(TOKEN_ID)).to.be.equal(SPENDER);
+      });
+
+      then('nonces is increased', async () => {
+        expect(await DCAStrategiesPermissionsHandlerMock.nonces(owner.address)).to.be.equal(1);
+      });
+
+      then('event is emitted', async () => {
+        await expect(response).to.emit(DCAStrategiesPermissionsHandlerMock, 'Approval').withArgs(owner.address, SPENDER, TOKEN_ID);
+      });
+    });
+
+    permitFailsTest({
+      when: 'some stranger tries to permit',
+      exec: () => signAndPermit({ signer: stranger }),
+      txFailsWith: 'InvalidSignature',
+    });
+
+    permitFailsTest({
+      when: 'permit is expired',
+      exec: () => signAndPermit({ signer: owner, deadline: BigNumber.from(0) }),
+      txFailsWith: 'ExpiredDeadline',
+    });
+
+    permitFailsTest({
+      when: 'chainId is different',
+      exec: () => signAndPermit({ signer: owner, chainId: BigNumber.from(20) }),
+      txFailsWith: 'InvalidSignature',
+    });
+
+    permitFailsTest({
+      when: 'signer signed something differently',
+      exec: async () => {
+        const data = withDefaults({ signer: owner, deadline: constants.MAX_UINT_256 });
+        const signature = await getSignature(data);
+        return permit({ ...data, deadline: constants.MAX_UINT_256.sub(1) }, signature);
+      },
+      txFailsWith: 'InvalidSignature',
+    });
+
+    permitFailsTest({
+      when: 'signature is reused',
+      exec: async () => {
+        const data = withDefaults({ signer: owner });
+        const signature = await getSignature(data);
+        await permit(data, signature);
+        return permit(data, signature);
+      },
+      txFailsWith: 'InvalidSignature',
+    });
+
+    function permitFailsTest({
+      when: title,
+      exec,
+      txFailsWith: errorMessage,
+    }: {
+      when: string;
+      exec: () => Promise<TransactionResponse>;
+      txFailsWith: string;
+    }) {
+      when(title, () => {
+        let tx: Promise<TransactionResponse>;
+        given(() => {
+          tx = exec();
+        });
+        then('tx reverts with message', async () => {
+          await behaviours.checkTxRevertedWithMessage({ tx, message: errorMessage });
+        });
+      });
+    }
+
+    async function signAndPermit(options: Pick<OperationData, 'signer'> & Partial<OperationData>) {
+      const data = withDefaults(options);
+      const signature = await getSignature(data);
+      return permit(data, signature);
+    }
+
+    async function permit(data: OperationData, { v, r, s }: { v: number; r: Buffer; s: Buffer }) {
+      return DCAStrategiesPermissionsHandlerMock.permit(data.spender, TOKEN_ID, data.deadline, v, r, s);
+    }
+
+    function withDefaults(options: Pick<OperationData, 'signer'> & Partial<OperationData>): OperationData {
+      return {
+        nonce: BigNumber.from(0),
+        deadline: constants.MAX_UINT_256,
+        spender: SPENDER,
+        chainId,
+        ...options,
+      };
+    }
+
+    const Permit = [
+      { name: 'spender', type: 'address' },
+      { name: 'tokenId', type: 'uint256' },
+      { name: 'nonce', type: 'uint256' },
+      { name: 'deadline', type: 'uint256' },
+    ];
+
+    async function getSignature(options: OperationData) {
+      const { domain, types, value } = buildPermitData(options);
+      const signature = await options.signer._signTypedData(domain, types, value);
+      return fromRpcSig(signature);
+    }
+
+    function buildPermitData(options: OperationData) {
+      return {
+        primaryType: 'Permit',
+        types: { Permit },
+        domain: { name: NFT_NAME, version: '1', chainId: options.chainId, verifyingContract: DCAStrategiesPermissionsHandlerMock.address },
+        value: { tokenId: TOKEN_ID, ...options },
+      };
+    }
+
+    type OperationData = {
+      signer: Wallet;
+      spender: string;
+      nonce: BigNumber;
+      deadline: BigNumber;
+      chainId: BigNumber;
+    };
+  });
 });

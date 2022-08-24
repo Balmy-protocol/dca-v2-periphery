@@ -12,7 +12,7 @@ contract DCAStrategiesPermissionsHandlerMock is DCAStrategiesPermissionsHandler 
   uint256 private _blockNumber;
   SetPermissionCall[] private _setPermissionsCalls;
 
-  constructor(string memory _name, string memory _symbol) ERC721(_name, _symbol) {}
+  constructor(string memory _name, string memory _symbol) ERC721(_name, _symbol) EIP712(_name, '1') {}
 
   function getSetPermissionCall() external view returns (SetPermissionCall[] memory) {
     return _setPermissionsCalls;
