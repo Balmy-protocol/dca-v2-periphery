@@ -59,7 +59,25 @@ abstract contract DCAStrategiesPermissionsHandler is IDCAStrategiesPermissionsHa
     uint256 _id,
     address _account,
     IDCAStrategies.Permission[] calldata _permissions
-  ) external view override returns (bool[] memory _hasPermissions) {}
+  ) external view override returns (bool[] memory _hasPermissions) {
+    _hasPermissions = new bool[](_permissions.length);
+    if (ownerOf(_id) == _account) {
+      // If the address is the owner, then they have all permissions
+      for (uint256 i = 0; i < _permissions.length; i++) {
+        _hasPermissions[i] = true;
+      }
+    } else {
+      // If it's not the owner, then check one by one
+      TokenPermission memory _tokenPermission = getTokenPermissions(_id, _account);
+      if (lastOwnershipChange[_id] < _tokenPermission.lastUpdated) {
+        for (uint256 i = 0; i < _permissions.length; i++) {
+          if (_tokenPermission.permissions.hasPermission(_permissions[i])) {
+            _hasPermissions[i] = true;
+          }
+        }
+      }
+    }
+  }
 
   /// @inheritdoc IDCAStrategiesPermissionsHandler
   function modify(uint256 _id, IDCAStrategies.PermissionSet[] calldata _permissions) external override {}
