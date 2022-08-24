@@ -9,13 +9,23 @@ contract DCAStrategiesPermissionsHandlerMock is DCAStrategiesPermissionsHandler 
     IDCAStrategies.PermissionSet[] permissionSets;
   }
 
+  struct ModifyCall {
+    uint256 tokenId;
+    IDCAStrategies.PermissionSet[] permissionSets;
+  }
+
   uint256 private _blockNumber;
   SetPermissionCall[] private _setPermissionsCalls;
+  ModifyCall[] private _modifyCalls;
 
   constructor(string memory _name, string memory _symbol) ERC721(_name, _symbol) EIP712(_name, '1') {}
 
   function getSetPermissionCall() external view returns (SetPermissionCall[] memory) {
     return _setPermissionsCalls;
+  }
+
+  function getModifyCalls() external view returns (ModifyCall[] memory) {
+    return _modifyCalls;
   }
 
   function _getBlockNumber() internal view override returns (uint256) {
@@ -44,6 +54,15 @@ contract DCAStrategiesPermissionsHandlerMock is DCAStrategiesPermissionsHandler 
 
   function burn(uint256 _id) external {
     _burn(_id);
+  }
+
+  function modify(uint256 _id, IDCAStrategies.PermissionSet[] calldata _permissions) public override {
+    _modifyCalls.push();
+    _modifyCalls[_modifyCalls.length - 1].tokenId = _id;
+    for (uint256 i = 0; i < _permissions.length; i++) {
+      _modifyCalls[_modifyCalls.length - 1].permissionSets.push(_permissions[i]);
+    }
+    super.modify(_id, _permissions);
   }
 
   function setPermissions(uint256 _id, IDCAStrategies.PermissionSet[] calldata _permissions) external {

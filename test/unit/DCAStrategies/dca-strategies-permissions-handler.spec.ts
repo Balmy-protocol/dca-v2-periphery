@@ -51,6 +51,39 @@ contract('DCAStrategiesPermissionsHandler', () => {
       then('mint counter starts at 0', async () => {
         expect(await DCAStrategiesPermissionsHandlerMock.mintCounter()).to.equal(0);
       });
+      then('total supply starts at 0', async () => {
+        expect(await DCAStrategiesPermissionsHandlerMock.totalSupply()).to.equal(BigNumber.from(0));
+      });
+      then('domain separator is the expected', async () => {
+        expect(await DCAStrategiesPermissionsHandlerMock.DOMAIN_SEPARATOR()).to.equal(
+          await domainSeparator(NFT_NAME, '1', chainId, DCAStrategiesPermissionsHandlerMock.address)
+        );
+      });
+    });
+  });
+
+  describe('totalSupply', () => {
+    const OWNER = wallet.generateRandomAddress();
+
+    when('one token is minted', () => {
+      given(async () => {
+        await DCAStrategiesPermissionsHandlerMock.mint(OWNER, []);
+      });
+
+      then('supply is correct', async () => {
+        expect(await DCAStrategiesPermissionsHandlerMock.totalSupply()).to.equal(1);
+      });
+    });
+
+    when('one token is minted and, after that, burned', () => {
+      given(async () => {
+        await DCAStrategiesPermissionsHandlerMock.mint(OWNER, []);
+        await DCAStrategiesPermissionsHandlerMock.burn(1);
+      });
+
+      then('supply is correct', async () => {
+        expect(await DCAStrategiesPermissionsHandlerMock.totalSupply()).to.equal(0);
+      });
     });
   });
 
@@ -180,7 +213,7 @@ contract('DCAStrategiesPermissionsHandler', () => {
     });
   });
 
-  describe('set permissions', () => {
+  describe('setPermissions', () => {
     let tokenId: number = 1;
     const OPERATOR = constants.NOT_ZERO_ADDRESS;
     let owner: Wallet;
@@ -392,6 +425,36 @@ contract('DCAStrategiesPermissionsHandler', () => {
         return permissions.reduce((accum, curr) => accum + Math.pow(2, curr), 0);
       }
     }
+  });
+
+  describe('modifyMany', () => {
+    const TOKEN_ID_1 = 1;
+    const TOKEN_ID_2 = 2;
+    const [OPERATOR_1, OPERATOR_2] = ['0x0000000000000000000000000000000000000001', '0x0000000000000000000000000000000000000002'];
+
+    when('executing modifyMany', () => {
+      given(async () => {
+        const owner = await wallet.generateRandom();
+        await DCAStrategiesPermissionsHandlerMock.mint(owner.address, []);
+        await DCAStrategiesPermissionsHandlerMock.mint(owner.address, []);
+        await DCAStrategiesPermissionsHandlerMock.connect(owner).modifyMany([
+          { tokenId: TOKEN_ID_1, permissionSets: [{ operator: OPERATOR_1, permissions: [Permission.TERMINATE, Permission.REDUCE] }] },
+          { tokenId: TOKEN_ID_2, permissionSets: [{ operator: OPERATOR_2, permissions: [Permission.WITHDRAW] }] },
+        ]);
+      });
+      then('modify is called correctly', async () => {
+        const calls = await DCAStrategiesPermissionsHandlerMock.getModifyCalls();
+        expect(calls).to.have.lengthOf(2);
+        expect(calls[0].tokenId).to.equal(TOKEN_ID_1);
+        expect(calls[0].permissionSets).to.have.lengthOf(1);
+        expect(calls[0].permissionSets[0].operator).to.equal(OPERATOR_1);
+        expect(calls[0].permissionSets[0].permissions).to.eql([Permission.TERMINATE, Permission.REDUCE]);
+        expect(calls[1].tokenId).to.equal(TOKEN_ID_2);
+        expect(calls[1].permissionSets).to.have.lengthOf(1);
+        expect(calls[1].permissionSets[0].operator).to.equal(OPERATOR_2);
+        expect(calls[1].permissionSets[0].permissions).to.eql([Permission.WITHDRAW]);
+      });
+    });
   });
 
   describe('permit', () => {
@@ -950,4 +1013,15 @@ contract('DCAStrategiesPermissionsHandler', () => {
       chainId: BigNumber;
     };
   });
+
+  const EIP712Domain = [
+    { name: 'name', type: 'string' },
+    { name: 'version', type: 'string' },
+    { name: 'chainId', type: 'uint256' },
+    { name: 'verifyingContract', type: 'address' },
+  ];
+
+  async function domainSeparator(name: string, version: string, chainId: BigNumber, verifyingContract: string) {
+    return _TypedDataEncoder.hashStruct('EIP712Domain', { EIP712Domain }, { name, version, chainId, verifyingContract });
+  }
 });
