@@ -280,14 +280,13 @@ contract('DCAStrategiesPermissionsHandler', () => {
         const newOwner = await DCAStrategiesPermissionsHandlerMock.ownerOf(tokenId);
         expect(newOwner).to.equal(NEW_OWNER);
       });
-
-      // then('previous operators lost permissions', async () => {
-      // const hasPermission = await DCAStrategiesPermissionsHandlerMock.hasPermission(tokenId, OPERATOR, Permission.WITHDRAW);
-      // expect(hasPermission).to.be.false;
-      // });
-      // then('block number is recorded', async () => {
-      // expect(await DCAStrategiesPermissionsHandlerMock.lastOwnershipChange(TOKEN_ID)).to.equal(BLOCK_NUMBER);
-      // });
+      then('previous operators lost permissions', async () => {
+        const hasPermission = await DCAStrategiesPermissionsHandlerMock.hasPermission(tokenId, OPERATOR, Permission.WITHDRAW);
+        expect(hasPermission).to.be.false;
+      });
+      then('block number is recorded', async () => {
+        expect(await DCAStrategiesPermissionsHandlerMock.lastOwnershipChange(tokenId)).to.equal(BLOCK_NUMBER);
+      });
     });
   });
 
