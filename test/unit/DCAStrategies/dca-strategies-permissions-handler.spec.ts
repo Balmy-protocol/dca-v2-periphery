@@ -71,7 +71,7 @@ contract('DCAStrategiesPermissionsHandler', () => {
       });
 
       then('supply is correct', async () => {
-        expect(await DCAStrategiesPermissionsHandlerMock.totalSupply()).to.equal(BigNumber.from(1));
+        expect(await DCAStrategiesPermissionsHandlerMock.totalSupply()).to.equal(1);
       });
     });
 
@@ -82,9 +82,7 @@ contract('DCAStrategiesPermissionsHandler', () => {
       });
 
       then('supply is correct', async () => {
-        let minted = await DCAStrategiesPermissionsHandlerMock.mintCounter();
-        let burned = await DCAStrategiesPermissionsHandlerMock.burnCounter();
-        expect(await DCAStrategiesPermissionsHandlerMock.totalSupply()).to.equal(minted.sub(burned));
+        expect(await DCAStrategiesPermissionsHandlerMock.totalSupply()).to.equal(0);
       });
     });
   });
