@@ -80,7 +80,10 @@ abstract contract DCAStrategiesPermissionsHandler is IDCAStrategiesPermissionsHa
   }
 
   /// @inheritdoc IDCAStrategiesPermissionsHandler
-  function modify(uint256 _id, IDCAStrategies.PermissionSet[] calldata _permissions) external override {}
+  function modify(uint256 _id, IDCAStrategies.PermissionSet[] calldata _permissions) external override {
+    if (msg.sender != ownerOf(_id)) revert NotOwner();
+    _modify(_id, _permissions);
+  }
 
   /// @inheritdoc IDCAStrategiesPermissionsHandler
   function permit(
@@ -115,6 +118,11 @@ abstract contract DCAStrategiesPermissionsHandler is IDCAStrategiesPermissionsHa
   function _burn(uint256 _id) internal override {
     super._burn(_id);
     ++_burnCounter;
+  }
+
+  function _modify(uint256 _id, IDCAStrategies.PermissionSet[] calldata _permissions) internal {
+    _setPermissions(_id, _permissions);
+    emit Modified(_id, _permissions);
   }
 
   // Note: virtual so that it can be overriden in tests
