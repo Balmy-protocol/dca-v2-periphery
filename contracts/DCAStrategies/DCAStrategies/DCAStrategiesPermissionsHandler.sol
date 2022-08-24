@@ -24,7 +24,15 @@ abstract contract DCAStrategiesPermissionsHandler is IDCAStrategiesPermissionsHa
       'PermissionPermit(PermissionSet[] permissions,uint256 tokenId,uint256 nonce,uint256 deadline)PermissionSet(address operator,uint8[] permissions)'
     );
   /// @inheritdoc IDCAStrategiesPermissionsHandler
+  bytes32 public constant MULTI_PERMISSION_PERMIT_TYPEHASH =
+    keccak256(
+      'MultiPermissionPermit(PositionPermissions[] positions,uint256 nonce,uint256 deadline)PermissionSet(address operator,uint8[] permissions)PositionPermissions(uint256 tokenId,PermissionSet[] permissionSets)'
+    );
+  /// @inheritdoc IDCAStrategiesPermissionsHandler
   bytes32 public constant PERMISSION_SET_TYPEHASH = keccak256('PermissionSet(address operator,uint8[] permissions)');
+  /// @inheritdoc IDCAStrategiesPermissionsHandler
+  bytes32 public constant POSITION_PERMISSIONS_TYPEHASH =
+    keccak256('PositionPermissions(uint256 tokenId,PermissionSet[] permissionSets)PermissionSet(address operator,uint8[] permissions)');
 
   /// @inheritdoc IDCAStrategiesPermissionsHandler
   // solhint-disable-next-line func-name-mixedcase
@@ -126,6 +134,36 @@ abstract contract DCAStrategiesPermissionsHandler is IDCAStrategiesPermissionsHa
     _modify(_tokenId, _permissions);
   }
 
+  // / @inheritdoc IDCAStrategiesPermissionsHandler
+  function multiPermissionPermit(
+    IDCAStrategies.PositionPermissions[] calldata _permissions,
+    uint256 _deadline,
+    uint8 _v,
+    bytes32 _r,
+    bytes32 _s
+  ) external {
+    if (block.timestamp > _deadline) revert ExpiredDeadline();
+
+    address _owner = ownerOf(_permissions[0].tokenId);
+    bytes32 _structHash = keccak256(abi.encode(MULTI_PERMISSION_PERMIT_TYPEHASH, keccak256(_encode(_permissions)), nonces[_owner]++, _deadline));
+    bytes32 _hash = _hashTypedDataV4(_structHash);
+
+    address _signer = ECDSA.recover(_hash, _v, _r, _s);
+    if (_signer != _owner) revert InvalidSignature();
+
+    for (uint256 i = 0; i < _permissions.length; ) {
+      uint256 _tokenId = _permissions[i].tokenId;
+      if (i > 0) {
+        address _positionOwner = ownerOf(_tokenId);
+        if (_signer != _positionOwner) revert NotOwner();
+      }
+      _modify(_tokenId, _permissions[i].permissionSets);
+      unchecked {
+        i++;
+      }
+    }
+  }
+
   /// @inheritdoc IDCAStrategiesPermissionsHandler
   // TODO: update this after building the new descriptor
   function setNFTDescriptor(IDCAHubPositionDescriptor _descriptor) external override {}
@@ -167,6 +205,19 @@ abstract contract DCAStrategiesPermissionsHandler is IDCAStrategiesPermissionsHa
         i++;
       }
     }
+  }
+
+  function _encode(PositionPermissions[] calldata _permissions) internal pure returns (bytes memory _result) {
+    for (uint256 i = 0; i < _permissions.length; ) {
+      _result = bytes.concat(_result, keccak256(_encode(_permissions[i])));
+      unchecked {
+        i++;
+      }
+    }
+  }
+
+  function _encode(PositionPermissions calldata _permission) internal pure returns (bytes memory _result) {
+    _result = abi.encode(POSITION_PERMISSIONS_TYPEHASH, _permission.tokenId, keccak256(_encode(_permission.permissionSets)));
   }
 
   // Note: virtual so that it can be overriden in tests
