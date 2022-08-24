@@ -587,6 +587,11 @@ contract('DCAStrategiesPermissionsHandler', () => {
     });
 
     permitTest({
+      when: `setting four permissions`,
+      permissions: [Permission.REDUCE, Permission.WITHDRAW, Permission.INCREASE, Permission.TERMINATE],
+    });
+
+    permitTest({
       when: `setting all permissions`,
       permissions: [Permission.INCREASE, Permission.REDUCE, Permission.WITHDRAW, Permission.TERMINATE, Permission.SYNC],
     });
