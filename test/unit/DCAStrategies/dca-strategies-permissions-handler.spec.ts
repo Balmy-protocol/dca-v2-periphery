@@ -530,4 +530,179 @@ contract('DCAStrategiesPermissionsHandler', () => {
       chainId: BigNumber;
     };
   });
+
+  describe('permissionPermit', () => {
+    const TOKEN_ID = 1;
+    const OPERATOR = wallet.generateRandomAddress();
+    let owner: Wallet, stranger: Wallet;
+
+    given(async () => {
+      owner = await wallet.generateRandom();
+      stranger = await wallet.generateRandom();
+      await DCAStrategiesPermissionsHandlerMock.mint(owner.address, []);
+    });
+
+    function permitTest({ when: title, permissions }: { when: string; permissions: Permission[] }) {
+      when(title, () => {
+        let tx: TransactionResponse;
+
+        given(async () => {
+          tx = await signAndPermit({ signer: owner, permissions: [{ operator: OPERATOR, permissions }] });
+        });
+
+        then('operator gains permissions', async () => {
+          for (const permission of permissions) {
+            expect(await DCAStrategiesPermissionsHandlerMock.hasPermission(TOKEN_ID, OPERATOR, permission)).to.be.true;
+          }
+        });
+
+        then('nonces is increased', async () => {
+          expect(await DCAStrategiesPermissionsHandlerMock.nonces(owner.address)).to.be.equal(1);
+        });
+
+        then('event is emitted', async () => {
+          const id = await readArgFromEventOrFail(tx, 'Modified', 'tokenId');
+          const emittedPermissions: any = await readArgFromEventOrFail(tx, 'Modified', 'permissions');
+          expect(id).to.equal(TOKEN_ID);
+          expect(emittedPermissions.length).to.equal(1);
+          expect(emittedPermissions[0].operator).to.equal(OPERATOR);
+          expect(emittedPermissions[0].permissions).to.eql(permissions);
+        });
+      });
+    }
+
+    permitTest({
+      when: `setting only one permission`,
+      permissions: [Permission.INCREASE],
+    });
+
+    permitTest({
+      when: `setting two permissions`,
+      permissions: [Permission.REDUCE, Permission.TERMINATE],
+    });
+
+    permitTest({
+      when: `setting three permissions`,
+      permissions: [Permission.REDUCE, Permission.WITHDRAW, Permission.INCREASE],
+    });
+
+    permitTest({
+      when: `setting all permissions`,
+      permissions: [Permission.INCREASE, Permission.REDUCE, Permission.WITHDRAW, Permission.TERMINATE, Permission.SYNC],
+    });
+
+    permitFailsTest({
+      when: 'some stranger tries to permit',
+      exec: () => signAndPermit({ signer: stranger }),
+      txFailsWith: 'InvalidSignature',
+    });
+
+    permitFailsTest({
+      when: 'permit is expired',
+      exec: () => signAndPermit({ signer: owner, deadline: BigNumber.from(0) }),
+      txFailsWith: 'ExpiredDeadline',
+    });
+
+    permitFailsTest({
+      when: 'chainId is different',
+      exec: () => signAndPermit({ signer: owner, chainId: BigNumber.from(20) }),
+      txFailsWith: 'InvalidSignature',
+    });
+
+    permitFailsTest({
+      when: 'signer signed something differently',
+      exec: async () => {
+        const data = withDefaults({ signer: owner, deadline: constants.MAX_UINT_256 });
+        const signature = await getSignature(data);
+        return permissionPermit({ ...data, deadline: constants.MAX_UINT_256.sub(1) }, signature);
+      },
+      txFailsWith: 'InvalidSignature',
+    });
+
+    permitFailsTest({
+      when: 'signature is reused',
+      exec: async () => {
+        const data = withDefaults({ signer: owner });
+        const signature = await getSignature(data);
+        await permissionPermit(data, signature);
+        return permissionPermit(data, signature);
+      },
+      txFailsWith: 'InvalidSignature',
+    });
+
+    function permitFailsTest({
+      when: title,
+      exec,
+      txFailsWith: errorMessage,
+    }: {
+      when: string;
+      exec: () => Promise<TransactionResponse>;
+      txFailsWith: string;
+    }) {
+      when(title, () => {
+        let tx: Promise<TransactionResponse>;
+        given(() => {
+          tx = exec();
+        });
+        then('tx reverts with message', async () => {
+          await behaviours.checkTxRevertedWithMessage({ tx, message: errorMessage });
+        });
+      });
+    }
+
+    async function signAndPermit(options: Pick<OperationData, 'signer'> & Partial<OperationData>) {
+      const data = withDefaults(options);
+      const signature = await getSignature(data);
+      return permissionPermit(data, signature);
+    }
+
+    async function permissionPermit(data: OperationData, { v, r, s }: { v: number; r: Buffer; s: Buffer }) {
+      return DCAStrategiesPermissionsHandlerMock.permissionPermit(data.permissions, TOKEN_ID, data.deadline, v, r, s);
+    }
+
+    function withDefaults(options: Pick<OperationData, 'signer'> & Partial<OperationData>): OperationData {
+      return {
+        nonce: BigNumber.from(0),
+        deadline: constants.MAX_UINT_256,
+        permissions: [],
+        chainId,
+        ...options,
+      };
+    }
+
+    const PermissionSet = [
+      { name: 'operator', type: 'address' },
+      { name: 'permissions', type: 'uint8[]' },
+    ];
+
+    const PermissionPermit = [
+      { name: 'permissions', type: 'PermissionSet[]' },
+      { name: 'tokenId', type: 'uint256' },
+      { name: 'nonce', type: 'uint256' },
+      { name: 'deadline', type: 'uint256' },
+    ];
+
+    async function getSignature(options: OperationData) {
+      const { domain, types, value } = buildPermitData(options);
+      const signature = await options.signer._signTypedData(domain, types, value);
+      return fromRpcSig(signature);
+    }
+
+    function buildPermitData(options: OperationData) {
+      return {
+        primaryType: 'PermissionPermit',
+        types: { PermissionSet, PermissionPermit },
+        domain: { name: NFT_NAME, version: '1', chainId: options.chainId, verifyingContract: DCAStrategiesPermissionsHandlerMock.address },
+        value: { tokenId: TOKEN_ID, ...options },
+      };
+    }
+
+    type OperationData = {
+      signer: Wallet;
+      permissions: { operator: string; permissions: Permission[] }[];
+      nonce: BigNumber;
+      deadline: BigNumber;
+      chainId: BigNumber;
+    };
+  });
 });
