@@ -41,6 +41,12 @@ interface IDCAStrategiesPermissionsHandler is IERC721, IERC721BasicEnumerable {
    */
   event Modified(uint256 tokenId, IDCAStrategies.PermissionSet[] permissions);
 
+  /// @notice Thrown when a user tries to execute a permit with an expired deadline
+  error ExpiredDeadline();
+
+  /// @notice Thrown when a user tries to execute a permit with an invalid signature
+  error InvalidSignature();
+
   /// @notice Thrown when a user tries to modify permissions for a token they do not own
   error NotOwner();
 
