@@ -157,6 +157,13 @@ interface IDCAStrategiesPermissionsHandler is IERC721, IERC721BasicEnumerable {
   function modify(uint256 id, IDCAStrategies.PermissionSet[] calldata permissions) external;
 
   /**
+   * @notice Sets new permissions for the given positions
+   * @dev This is basically the same as executing multiple `modify`
+   * @param permissions A list of position permissions to set
+   */
+  function modifyMany(PositionPermissions[] calldata permissions) external;
+
+  /**
    * @notice Approves spending of a specific token ID by spender via signature
    * @param spender The account that is being approved
    * @param tokenId The ID of the token that is being approved for spending

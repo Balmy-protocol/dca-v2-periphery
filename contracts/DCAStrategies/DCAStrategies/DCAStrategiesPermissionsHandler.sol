@@ -36,10 +36,14 @@ abstract contract DCAStrategiesPermissionsHandler is IDCAStrategiesPermissionsHa
 
   /// @inheritdoc IDCAStrategiesPermissionsHandler
   // solhint-disable-next-line func-name-mixedcase
-  function DOMAIN_SEPARATOR() external view override returns (bytes32) {}
+  function DOMAIN_SEPARATOR() external view override returns (bytes32) {
+    return _domainSeparatorV4();
+  }
 
   /// @inheritdoc IERC721BasicEnumerable
-  function totalSupply() external view override returns (uint256) {}
+  function totalSupply() external view override returns (uint256) {
+    return _mintCounter - _burnCounter;
+  }
 
   /// @inheritdoc IDCAStrategiesPermissionsHandler
   // TODO: update this after building the new descriptor
@@ -85,9 +89,19 @@ abstract contract DCAStrategiesPermissionsHandler is IDCAStrategiesPermissionsHa
   }
 
   /// @inheritdoc IDCAStrategiesPermissionsHandler
-  function modify(uint256 _id, IDCAStrategies.PermissionSet[] calldata _permissions) external override {
+  function modify(uint256 _id, IDCAStrategies.PermissionSet[] calldata _permissions) public virtual override {
     if (msg.sender != ownerOf(_id)) revert NotOwner();
     _modify(_id, _permissions);
+  }
+
+  /// @inheritdoc IDCAStrategiesPermissionsHandler
+  function modifyMany(PositionPermissions[] calldata _permissions) external {
+    for (uint256 i = 0; i < _permissions.length; ) {
+      modify(_permissions[i].tokenId, _permissions[i].permissionSets);
+      unchecked {
+        i++;
+      }
+    }
   }
 
   /// @inheritdoc IDCAStrategiesPermissionsHandler
