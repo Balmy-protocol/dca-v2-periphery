@@ -9,6 +9,7 @@ import { TransactionResponse } from '@ethersproject/abstract-provider';
 import { Wallet } from '@ethersproject/wallet';
 import { BigNumber } from '@ethersproject/bignumber';
 import { _TypedDataEncoder } from '@ethersproject/hash';
+import { readArgFromEventOrFail } from '@test-utils/event-utils';
 import { fromRpcSig } from 'ethereumjs-util';
 import { BigNumberish } from 'ethers';
 
@@ -280,5 +281,112 @@ contract('DCAStrategiesPermissionsHandler', () => {
         });
       });
     });
+  });
+
+  describe('modify', () => {
+    const TOKEN_ID = 1;
+    const [OPERATOR_1, OPERATOR_2] = ['0x0000000000000000000000000000000000000001', '0x0000000000000000000000000000000000000002'];
+
+    when('caller is not the owner', () => {
+      given(async () => {
+        const owner = await wallet.generateRandom();
+        await DCAStrategiesPermissionsHandlerMock.mint(owner.address, []);
+      });
+      then('reverts with message', async () => {
+        await behaviours.txShouldRevertWithMessage({
+          contract: DCAStrategiesPermissionsHandlerMock.connect(await wallet.generateRandom()),
+          func: 'modify',
+          args: [TOKEN_ID, []],
+          message: 'NotOwner',
+        });
+      });
+    });
+
+    modifyTest({
+      when: 'permissions are added for a new operators',
+      initial: [{ operator: OPERATOR_1, permissions: [Permission.TERMINATE] }],
+      modify: [{ operator: OPERATOR_2, permissions: [Permission.REDUCE] }],
+      expected: [
+        { operator: OPERATOR_1, permissions: [Permission.TERMINATE] },
+        { operator: OPERATOR_2, permissions: [Permission.REDUCE] },
+      ],
+    });
+
+    modifyTest({
+      when: 'permissions are modified for existing operators',
+      initial: [{ operator: OPERATOR_1, permissions: [Permission.WITHDRAW] }],
+      modify: [
+        { operator: OPERATOR_1, permissions: [Permission.INCREASE] },
+        { operator: OPERATOR_2, permissions: [Permission.REDUCE] },
+      ],
+      expected: [
+        { operator: OPERATOR_1, permissions: [Permission.INCREASE] },
+        { operator: OPERATOR_2, permissions: [Permission.REDUCE] },
+      ],
+    });
+
+    modifyTest({
+      when: 'permissions are removed for existing operators',
+      initial: [{ operator: OPERATOR_1, permissions: [Permission.WITHDRAW] }],
+      modify: [{ operator: OPERATOR_1, permissions: [] }],
+      expected: [{ operator: OPERATOR_1, permissions: [] }],
+    });
+
+    type Permissions = { operator: string; permissions: Permission[] }[];
+    function modifyTest({
+      when: title,
+      initial,
+      modify,
+      expected,
+    }: {
+      when: string;
+      initial: Permissions;
+      modify: Permissions;
+      expected: Permissions;
+    }) {
+      const BLOCK_NUMBER = 500;
+      when(title, () => {
+        let tx: TransactionResponse;
+        given(async () => {
+          const owner = await wallet.generateRandom();
+          await DCAStrategiesPermissionsHandlerMock.mint(owner.address, initial);
+          await DCAStrategiesPermissionsHandlerMock.setBlockNumber(BLOCK_NUMBER);
+          tx = await DCAStrategiesPermissionsHandlerMock.connect(owner).modify(TOKEN_ID, modify);
+        });
+        then('permissions are updated correctly', async () => {
+          for (const { operator, permissions } of expected) {
+            for (const permission of [Permission.INCREASE, Permission.REDUCE, Permission.TERMINATE, Permission.WITHDRAW, Permission.SYNC]) {
+              expect(await DCAStrategiesPermissionsHandlerMock.hasPermission(TOKEN_ID, operator, permission)).to.equal(
+                permissions.includes(permission)
+              );
+            }
+          }
+        });
+        then('token permission are updated', async () => {
+          for (const { operator, permissions: expectedPermissions } of modify) {
+            const { permissions, lastUpdated } = await DCAStrategiesPermissionsHandlerMock.getTokenPermissions(TOKEN_ID, operator);
+            if (expectedPermissions.length == 0) {
+              expect(lastUpdated).to.equal(0);
+            } else {
+              expect(lastUpdated).to.equal(BLOCK_NUMBER);
+            }
+            expect(permissions).to.equal(toUint8(expectedPermissions));
+          }
+        });
+        then('event is emitted', async () => {
+          const id = await readArgFromEventOrFail(tx, 'Modified', 'tokenId');
+          const permissions: any = await readArgFromEventOrFail(tx, 'Modified', 'permissions');
+          expect(id).to.equal(TOKEN_ID);
+          expect(permissions.length).to.equal(modify.length);
+          for (let i = 0; i < modify.length; i++) {
+            expect(permissions[i].operator).to.equal(modify[i].operator);
+            expect(permissions[i].permissions).to.eql(modify[i].permissions);
+          }
+        });
+      });
+      function toUint8(permissions: Permission[]) {
+        return permissions.reduce((accum, curr) => accum + Math.pow(2, curr), 0);
+      }
+    }
   });
 });

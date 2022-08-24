@@ -34,6 +34,16 @@ interface IDCAStrategiesManagementHandler {
 }
 
 interface IDCAStrategiesPermissionsHandler is IERC721, IERC721BasicEnumerable {
+  /**
+   * @notice Emitted when permissions for a token are modified
+   * @param tokenId The id of the token
+   * @param permissions The set of permissions that were updated
+   */
+  event Modified(uint256 tokenId, IDCAStrategies.PermissionSet[] permissions);
+
+  /// @notice Thrown when a user tries to modify permissions for a token they do not own
+  error NotOwner();
+
   struct TokenPermission {
     // The actual permissions
     uint8 permissions;
