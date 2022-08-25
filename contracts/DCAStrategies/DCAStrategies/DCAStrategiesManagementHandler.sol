@@ -4,26 +4,31 @@ pragma solidity >=0.8.7 <0.9.0;
 import '../../interfaces/IDCAStrategies.sol';
 
 abstract contract DCAStrategiesManagementHandler is IDCAStrategiesManagementHandler {
-  mapping(uint80 => Strategy) internal _strategies;
-  mapping(string => uint80) internal _strategyNames;
+  struct StrategyOwnerAndVersion {
+    address owner;
+    uint96 latestVersion;
+  }
+
+  mapping(uint80 => StrategyOwnerAndVersion) internal _strategies;
+  mapping(string => uint80) public getStrategyIdByName;
+  mapping(uint80 => string) public getStrategyNameById;
   mapping(bytes32 => IDCAStrategies.ShareOfToken) internal _tokenShares;
-  uint80 public strategyCounter; // NOTE: could we use _mintCounter from DCAStrategiesPermissionsHandler?
+  uint80 public strategyCounter;
 
   function _checkTokenSharesSanity(IDCAStrategies.ShareOfToken memory _tokens) internal pure returns (bool) {
     // TODO
     return true;
   }
 
-  function _getTokenSharesKey(uint256 _strategyId, uint80 _version) internal pure returns (bytes32) {
-    // NOTE:
+  function _getStrategyAndVersionKey(uint256 _strategyId, uint80 _version) internal pure returns (bytes32) {
     return keccak256(abi.encodePacked(_strategyId, _version));
   }
 
   /// @inheritdoc IDCAStrategiesManagementHandler
-  function getStrategy(uint80 _strategyId) external view virtual override returns (IDCAStrategies.Strategy memory) {}
-
-  /// @inheritdoc IDCAStrategiesManagementHandler
-  function getStrategyIdByName(string memory _strategyName) external view virtual override returns (uint80 _strategyId) {}
+  function getStrategy(uint80 _strategyId) external view override returns (Strategy memory) {
+    StrategyOwnerAndVersion memory _strategy = _strategies[_strategyId];
+    return Strategy({owner: _strategy.owner, name: getStrategyNameById[_strategyId], currentVersion: _strategy.latestVersion});
+  }
 
   /// @inheritdoc IDCAStrategiesManagementHandler
   function createStrategy(
@@ -31,17 +36,18 @@ abstract contract DCAStrategiesManagementHandler is IDCAStrategiesManagementHand
     IDCAStrategies.ShareOfToken memory _tokens,
     address _owner
   ) external override returns (uint80 _strategyId) {
-    if (_owner == address(0)) revert IDCAStrategies.ZeroAddress(); // NOTE: should users be able to assign ownership to any address? what if they use it for scamming? e.g: give ownership of a strategy to vitalik.eth and use it to trick users into buying shitcoins
-    if (_strategyNames[_strategyName] != 0) revert NameAlreadyExists();
+    if (_owner == address(0)) revert IDCAStrategies.ZeroAddress();
+    if (getStrategyIdByName[_strategyName] != 0) revert NameAlreadyExists();
+    if (bytes(_strategyName).length < 32) revert NameTooLong();
     if (_checkTokenSharesSanity(_tokens) == false) revert BadTokenShares();
 
     _strategyId = ++strategyCounter;
-    Strategy memory _newStrategy = Strategy({owner: _owner, name: _strategyName, version: 1});
+    StrategyOwnerAndVersion memory _newStrategy = StrategyOwnerAndVersion({owner: _owner, latestVersion: 1});
     _strategies[_strategyId] = _newStrategy;
-    _tokenShares[_getTokenSharesKey(_strategyId, 1)] = _tokens;
-    _strategyNames[_strategyName] = _strategyId;
+    _tokenShares[_getStrategyAndVersionKey(_strategyId, 1)] = _tokens;
+    getStrategyIdByName[_strategyName] = _strategyId;
 
-    emit StrategyCreated(_strategyId, _newStrategy, _tokens);
+    // emit StrategyCreated(_strategyId, _newStrategy, _tokens);
   }
 
   /// @inheritdoc IDCAStrategiesManagementHandler
