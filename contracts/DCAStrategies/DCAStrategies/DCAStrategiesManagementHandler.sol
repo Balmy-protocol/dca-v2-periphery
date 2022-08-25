@@ -9,45 +9,56 @@ abstract contract DCAStrategiesManagementHandler is IDCAStrategiesManagementHand
     uint96 latestVersion;
   }
 
-  mapping(uint80 => StrategyOwnerAndVersion) internal _strategies;
-  mapping(string => uint80) public getStrategyIdByName;
-  mapping(uint80 => string) public getStrategyNameById;
-  mapping(bytes32 => IDCAStrategies.ShareOfToken) internal _tokenShares;
+  /// @inheritdoc IDCAStrategiesManagementHandler
+  mapping(string => uint80) public strategyIdByName;
+  /// @inheritdoc IDCAStrategiesManagementHandler
   uint80 public strategyCounter;
+  mapping(uint80 => StrategyOwnerAndVersion) internal _strategies;
+  mapping(uint80 => string) internal _strategyNameById;
+  mapping(bytes32 => IDCAStrategies.ShareOfToken[]) internal _tokenShares;
 
-  function _checkTokenSharesSanity(IDCAStrategies.ShareOfToken memory _tokens) internal pure returns (bool) {
+  function _checkTokenSharesSanity(IDCAStrategies.ShareOfToken[] memory _tokens) internal pure returns (bool) {
     // TODO
     return true;
   }
 
-  function _getStrategyAndVersionKey(uint256 _strategyId, uint80 _version) internal pure returns (bytes32) {
+  function _getStrategyAndVersionKey(uint256 _strategyId, uint96 _version) internal pure returns (bytes32) {
     return keccak256(abi.encodePacked(_strategyId, _version));
   }
 
   /// @inheritdoc IDCAStrategiesManagementHandler
   function getStrategy(uint80 _strategyId) external view override returns (Strategy memory) {
     StrategyOwnerAndVersion memory _strategy = _strategies[_strategyId];
-    return Strategy({owner: _strategy.owner, name: getStrategyNameById[_strategyId], currentVersion: _strategy.latestVersion});
+    IDCAStrategies.ShareOfToken[] memory _tokens = _tokenShares[_getStrategyAndVersionKey(_strategyId, _strategy.latestVersion)];
+    return Strategy({owner: _strategy.owner, name: _strategyNameById[_strategyId], currentVersion: _strategy.latestVersion, tokens: _tokens});
   }
 
   /// @inheritdoc IDCAStrategiesManagementHandler
   function createStrategy(
     string memory _strategyName,
-    IDCAStrategies.ShareOfToken memory _tokens,
+    IDCAStrategies.ShareOfToken[] memory _tokens,
     address _owner
   ) external override returns (uint80 _strategyId) {
     if (_owner == address(0)) revert IDCAStrategies.ZeroAddress();
-    if (getStrategyIdByName[_strategyName] != 0) revert NameAlreadyExists();
-    if (bytes(_strategyName).length < 32) revert NameTooLong();
-    if (_checkTokenSharesSanity(_tokens) == false) revert BadTokenShares();
+    if (strategyIdByName[_strategyName] != 0) revert NameAlreadyExists();
+    if (bytes(_strategyName).length > 32) revert NameTooLong();
+    if (_checkTokenSharesSanity(_tokens) == false) revert InvalidTokenShares();
 
     _strategyId = ++strategyCounter;
+    bytes32 _key = _getStrategyAndVersionKey(_strategyId, 1);
+    for (uint256 i = 0; i < _tokens.length; ) {
+      _tokenShares[_key].push(_tokens[i]);
+      unchecked {
+        i++;
+      }
+    }
+
     StrategyOwnerAndVersion memory _newStrategy = StrategyOwnerAndVersion({owner: _owner, latestVersion: 1});
     _strategies[_strategyId] = _newStrategy;
-    _tokenShares[_getStrategyAndVersionKey(_strategyId, 1)] = _tokens;
-    getStrategyIdByName[_strategyName] = _strategyId;
+    strategyIdByName[_strategyName] = _strategyId;
+    _strategyNameById[_strategyId] = _strategyName;
 
-    // emit StrategyCreated(_strategyId, _newStrategy, _tokens);
+    emit StrategyCreated(_strategyId, _strategyName, _tokens, _owner);
   }
 
   /// @inheritdoc IDCAStrategiesManagementHandler

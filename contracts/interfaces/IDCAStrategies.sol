@@ -9,9 +9,11 @@ interface IDCAStrategiesManagementHandler {
   /**
    * @notice Emitted when a new strategy is created
    * @param strategyId The id of the new strategy
-   * @param strategy The struct with the values of the new strategy
+   * @param strategyName The name of the strategy
+   * @param tokens An array with all tokenShares
+   * @param owner The owner of the strategy
    */
-  event StrategyCreated(uint80 strategyId, Strategy strategy, IDCAStrategies.ShareOfToken tokens);
+  event StrategyCreated(uint80 strategyId, string strategyName, IDCAStrategies.ShareOfToken[] tokens, address owner);
 
   /// @notice Thrown when strategy name is more than 32 bytes
   error NameTooLong();
@@ -23,23 +25,24 @@ interface IDCAStrategiesManagementHandler {
   error NameAlreadyExists();
 
   /// @notice Thrown when a provided array of token shares is misconfigured
-  error BadTokenShares();
+  error InvalidTokenShares();
 
   struct Strategy {
     address owner;
     string name;
     uint96 currentVersion;
+    IDCAStrategies.ShareOfToken[] tokens;
   }
 
   function getStrategy(uint80 strategyId) external view returns (Strategy memory);
 
-  function getStrategyIdByName(string memory strategyName) external view returns (uint80 strategyId);
+  function strategyCounter() external view returns (uint80);
 
-  function getStrategyNameById(uint80 strategyId) external view returns (string memory);
+  function strategyIdByName(string memory strategyName) external view returns (uint80 strategyId);
 
   function createStrategy(
     string memory strategyName,
-    IDCAStrategies.ShareOfToken memory tokens,
+    IDCAStrategies.ShareOfToken[] memory tokens,
     address owner
   ) external returns (uint80 strategyId);
 
@@ -325,8 +328,8 @@ interface IDCAStrategies is IDCAStrategiesManagementHandler, IDCAStrategiesPermi
   }
 
   struct ShareOfToken {
-    address[] tokens;
-    uint96[] shares; // 0 < share < 100%
+    address token;
+    uint96 share; // 0 < share < 100%
   }
 
   struct PermissionSet {
