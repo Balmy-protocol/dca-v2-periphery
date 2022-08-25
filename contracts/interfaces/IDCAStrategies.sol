@@ -6,10 +6,26 @@ import '@mean-finance/dca-v2-core/contracts/interfaces/IDCAHub.sol';
 import '@mean-finance/nft-descriptors/solidity/interfaces/IDCAHubPositionDescriptor.sol';
 
 interface IDCAStrategiesManagementHandler {
+  /**
+   * @notice Emitted when a new strategy is created
+   * @param strategyId The id of the new strategy
+   * @param strategy The struct with the values of the new strategy
+   */
+  event StrategyCreated(uint80 strategyId, Strategy strategy, IDCAStrategies.ShareOfToken tokens);
+
+  /// @notice Thrown when a provided array is empty
+  error LengthZero();
+
+  /// @notice Thrown when a provided strategy name already exist
+  error NameAlreadyExists();
+
+  /// @notice Thrown when a provided array of token shares is misconfigured
+  error BadTokenShares();
+
   struct Strategy {
     address owner;
     string name;
-    IDCAStrategies.ShareOfToken[] tokens;
+    uint80 version;
   }
 
   function getStrategy(uint80 strategyId) external view returns (Strategy memory);
@@ -18,7 +34,7 @@ interface IDCAStrategiesManagementHandler {
 
   function createStrategy(
     string memory strategyName,
-    IDCAStrategies.ShareOfToken[] memory tokens,
+    IDCAStrategies.ShareOfToken memory tokens,
     address owner
   ) external returns (uint80 strategyId);
 
@@ -46,9 +62,6 @@ interface IDCAStrategiesPermissionsHandler is IERC721, IERC721BasicEnumerable {
    * @param descriptor The new descriptor contract
    */
   event NFTDescriptorSet(IDCAHubPositionDescriptor descriptor);
-
-  /// @notice Thrown when a user provides a zero address when they shouldn't
-  error ZeroAddress();
 
   /// @notice Thrown when a user tries to execute a permit with an expired deadline
   error ExpiredDeadline();
@@ -295,6 +308,9 @@ interface IDCAStrategiesPositionsHandler {
 }
 
 interface IDCAStrategies is IDCAStrategiesManagementHandler, IDCAStrategiesPermissionsHandler, IDCAStrategiesPositionsHandler {
+  /// @notice Thrown when a user provides a zero address when they shouldn't
+  error ZeroAddress();
+
   enum Permission {
     INCREASE,
     REDUCE,
@@ -304,8 +320,8 @@ interface IDCAStrategies is IDCAStrategiesManagementHandler, IDCAStrategiesPermi
   }
 
   struct ShareOfToken {
-    address token;
-    uint80 share; // 0 < share < 100%
+    address[] tokens;
+    uint80[] shares; // 0 < share < 100%
   }
 
   struct PermissionSet {
