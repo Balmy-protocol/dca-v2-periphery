@@ -10,7 +10,7 @@ subtask(TASK_COMPILE_SOLIDITY_COMPILE_JOBS, 'Clean mocks from types if needed').
     const finalTypechainIndex = typechainIndexBuffer
       .toString('utf-8')
       .split(/\r?\n/)
-      .filter((line) => !line.includes('Mock') && line.includes('mock'))
+      .filter((line) => !line.includes('Mock') && !line.includes('mock'))
       .join('\n');
     await fs.writeFile('./typechained/index.ts', finalTypechainIndex, 'utf-8');
   }
