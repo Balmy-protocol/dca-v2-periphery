@@ -38,7 +38,7 @@ abstract contract DCAStrategiesPermissionsHandler is IDCAStrategiesPermissionsHa
     keccak256('PositionPermissions(uint256 tokenId,PermissionSet[] permissionSets)PermissionSet(address operator,uint8[] permissions)');
 
   constructor(IDCAHubPositionDescriptor _descriptor) {
-    if (address(_descriptor) == address(0)) revert ZeroAddress();
+    if (address(_descriptor) == address(0)) revert IDCAStrategies.ZeroAddress();
     nftDescriptor = _descriptor;
   }
 
@@ -185,7 +185,7 @@ abstract contract DCAStrategiesPermissionsHandler is IDCAStrategiesPermissionsHa
   /// @inheritdoc IDCAStrategiesPermissionsHandler
   // TODO: update this after building the new descriptor
   function setNFTDescriptor(IDCAHubPositionDescriptor _descriptor) external onlyGovernor {
-    if (address(_descriptor) == address(0)) revert ZeroAddress();
+    if (address(_descriptor) == address(0)) revert IDCAStrategies.ZeroAddress();
     nftDescriptor = _descriptor;
     emit NFTDescriptorSet(_descriptor);
   }

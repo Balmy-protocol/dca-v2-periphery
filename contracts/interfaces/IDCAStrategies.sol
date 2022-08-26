@@ -6,25 +6,46 @@ import '@mean-finance/dca-v2-core/contracts/interfaces/IDCAHub.sol';
 import '@mean-finance/nft-descriptors/solidity/interfaces/IDCAHubPositionDescriptor.sol';
 
 interface IDCAStrategiesManagementHandler {
+  /**
+   * @notice Emitted when a new strategy is created
+   * @param strategyId The id of the new strategy
+   * @param strategyName The name of the strategy
+   * @param tokens An array with all token shares
+   * @param owner The owner of the strategy
+   */
+  event StrategyCreated(uint80 strategyId, bytes32 strategyName, IDCAStrategies.ShareOfToken[] tokens, address owner);
+
+  /// @notice Thrown when a provided array is empty
+  error LengthZero();
+
+  /// @notice Thrown when a provided strategy name already exist
+  error NameAlreadyExists();
+
+  /// @notice Thrown when a provided array of token shares is misconfigured
+  error InvalidTokenShares();
+
   struct Strategy {
     address owner;
-    string name;
+    bytes32 name;
+    uint16 currentVersion;
     IDCAStrategies.ShareOfToken[] tokens;
   }
 
   function getStrategy(uint80 strategyId) external view returns (Strategy memory);
 
-  function getStrategyIdByName(string memory strategyName) external view returns (uint80 strategyId);
+  function strategyCounter() external view returns (uint80);
+
+  function strategyIdByName(bytes32 strategyName) external view returns (uint80 strategyId);
 
   function createStrategy(
-    string memory strategyName,
+    bytes32 strategyName,
     IDCAStrategies.ShareOfToken[] memory tokens,
     address owner
   ) external returns (uint80 strategyId);
 
   function updateStrategyTokens(uint80 strategyId, IDCAStrategies.ShareOfToken[] memory tokens) external;
 
-  function updateStrategyName(uint80 strategyId, string memory newStrategyName) external;
+  function updateStrategyName(uint80 strategyId, bytes32 newStrategyName) external;
 
   function transferStrategyOwnership(uint80 strategyId, address newOwner) external;
 
@@ -46,9 +67,6 @@ interface IDCAStrategiesPermissionsHandler is IERC721, IERC721BasicEnumerable {
    * @param descriptor The new descriptor contract
    */
   event NFTDescriptorSet(IDCAHubPositionDescriptor descriptor);
-
-  /// @notice Thrown when a user provides a zero address when they shouldn't
-  error ZeroAddress();
 
   /// @notice Thrown when a user tries to execute a permit with an expired deadline
   error ExpiredDeadline();
@@ -295,6 +313,9 @@ interface IDCAStrategiesPositionsHandler {
 }
 
 interface IDCAStrategies is IDCAStrategiesManagementHandler, IDCAStrategiesPermissionsHandler, IDCAStrategiesPositionsHandler {
+  /// @notice Thrown when a user provides a zero address when they shouldn't
+  error ZeroAddress();
+
   enum Permission {
     INCREASE,
     REDUCE,
@@ -305,7 +326,7 @@ interface IDCAStrategies is IDCAStrategiesManagementHandler, IDCAStrategiesPermi
 
   struct ShareOfToken {
     address token;
-    uint80 share; // 0 < share < 100%
+    uint16 share; // 0 < share < 100%
   }
 
   struct PermissionSet {
