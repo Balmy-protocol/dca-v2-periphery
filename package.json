@@ -61,7 +61,7 @@
   },
   "dependencies": {
     "@0xged/hardhat-deploy": "0.11.5",
-    "@mean-finance/dca-v2-core": "3.0.0-rc2",
+    "@mean-finance/dca-v2-core": "3.0.0-rc3",
     "@mean-finance/deterministic-factory": "1.3.2",
     "@mean-finance/swappers": "1.0.0-rc10",
     "@openzeppelin/contracts": "4.7.3"
