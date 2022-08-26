@@ -4,6 +4,12 @@ pragma solidity >=0.8.7 <0.9.0;
 import '../../interfaces/IDCAStrategies.sol';
 
 abstract contract DCAStrategiesManagementHandler is IDCAStrategiesManagementHandler {
+  modifier onlyStratOwner(uint80 _strategyId) {
+    address owner = _strategies[_strategyId].owner;
+    if (msg.sender != owner) revert OnlyStratOwner();
+    _;
+  }
+
   struct StrategyOwnerAndVersion {
     address owner;
     uint16 latestVersion;
@@ -51,7 +57,20 @@ abstract contract DCAStrategiesManagementHandler is IDCAStrategiesManagementHand
   }
 
   /// @inheritdoc IDCAStrategiesManagementHandler
-  function updateStrategyTokens(uint80 _strategyId, IDCAStrategies.ShareOfToken[] memory _tokens) external override {}
+  function updateStrategyTokens(uint80 _strategyId, IDCAStrategies.ShareOfToken[] memory _tokens) external override onlyStratOwner(_strategyId) {
+    if (_checkTokenSharesSanity(_tokens) == false) revert InvalidTokenShares();
+
+    uint16 _newVersion = ++_strategies[_strategyId].latestVersion;
+    bytes32 _key = _getStrategyAndVersionKey(_strategyId, _newVersion);
+    for (uint256 i = 0; i < _tokens.length; ) {
+      _tokenShares[_key].push(_tokens[i]);
+      unchecked {
+        i++;
+      }
+    }
+
+    emit StrategyUpdated(_strategyId, _tokens);
+  }
 
   /// @inheritdoc IDCAStrategiesManagementHandler
   function updateStrategyName(uint80 _strategyId, bytes32 _newStrategyName) external override {}

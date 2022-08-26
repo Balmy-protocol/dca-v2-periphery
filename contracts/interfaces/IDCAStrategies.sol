@@ -15,8 +15,18 @@ interface IDCAStrategiesManagementHandler {
    */
   event StrategyCreated(uint80 strategyId, bytes32 strategyName, IDCAStrategies.ShareOfToken[] tokens, address owner);
 
+  /**
+   * @notice Emitted when a new strategy is created
+   * @param strategyId The id of the new strategy
+   * @param tokens An array with all token shares
+   */
+  event StrategyUpdated(uint80 strategyId, IDCAStrategies.ShareOfToken[] tokens);
+
   /// @notice Thrown when a provided array is empty
   error LengthZero();
+
+  /// @notice Thrown when action is performed by other than the strategy owner
+  error OnlyStratOwner();
 
   /// @notice Thrown when a provided strategy name already exist
   error NameAlreadyExists();
