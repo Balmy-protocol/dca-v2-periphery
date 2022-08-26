@@ -56,7 +56,7 @@ abstract contract DCAStrategiesManagementHandler is IDCAStrategiesManagementHand
     if (msg.sender != _strategy.owner) revert OnlyStratOwner();
     if (_checkTokenSharesSanity(_tokens) == false) revert InvalidTokenShares();
 
-    uint16 _newVersion = ++_strategy.latestVersion;
+    uint16 _newVersion = _strategy.latestVersion + 1;
     _strategies[_strategyId].latestVersion = _newVersion;
 
     bytes32 _key = _getStrategyAndVersionKey(_strategyId, _newVersion);
