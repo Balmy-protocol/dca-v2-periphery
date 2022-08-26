@@ -51,7 +51,24 @@ abstract contract DCAStrategiesManagementHandler is IDCAStrategiesManagementHand
   }
 
   /// @inheritdoc IDCAStrategiesManagementHandler
-  function updateStrategyTokens(uint80 _strategyId, IDCAStrategies.ShareOfToken[] memory _tokens) external override {}
+  function updateStrategyTokens(uint80 _strategyId, IDCAStrategies.ShareOfToken[] memory _tokens) external {
+    StrategyOwnerAndVersion memory _strategy = _strategies[_strategyId];
+    if (msg.sender != _strategy.owner) revert OnlyStratOwner();
+    if (_checkTokenSharesSanity(_tokens) == false) revert InvalidTokenShares();
+
+    uint16 _newVersion = _strategy.latestVersion + 1;
+    _strategies[_strategyId].latestVersion = _newVersion;
+
+    bytes32 _key = _getStrategyAndVersionKey(_strategyId, _newVersion);
+    for (uint256 i = 0; i < _tokens.length; ) {
+      _tokenShares[_key].push(_tokens[i]);
+      unchecked {
+        i++;
+      }
+    }
+
+    emit StrategyUpdated(_strategyId, _tokens);
+  }
 
   /// @inheritdoc IDCAStrategiesManagementHandler
   function updateStrategyName(uint80 _strategyId, bytes32 _newStrategyName) external override {}
