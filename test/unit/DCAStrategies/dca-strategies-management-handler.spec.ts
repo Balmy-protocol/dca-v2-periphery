@@ -41,7 +41,7 @@ contract('DCAStrategiesManagementHandler', () => {
 
   describe('createStrategy', () => {
     const OWNER = wallet.generateRandomAddress();
-    const NAME = 'Optimism Ecosystem - v1';
+    const NAME = ethers.utils.formatBytes32String('Optimism Ecosystem - v1');
     const SHARE_TOKEN_A = { token: wallet.generateRandomAddress(), share: BigNumber.from(50) };
     const SHARE_TOKEN_B = { token: wallet.generateRandomAddress(), share: BigNumber.from(50) };
     const SHARES = [SHARE_TOKEN_A, SHARE_TOKEN_B];
@@ -51,12 +51,6 @@ contract('DCAStrategiesManagementHandler', () => {
         await expect(DCAStrategiesManagementHandlerMock.createStrategy(NAME, SHARES, constants.ZERO_ADDRESS)).to.be.revertedWith(
           'ZeroAddress()'
         );
-      });
-    });
-    when('name is too long', () => {
-      const NAME_TOO_LONG = ethers.utils.hexlify(ethers.utils.randomBytes(33));
-      then('tx reverted with message', async () => {
-        await expect(DCAStrategiesManagementHandlerMock.createStrategy(NAME_TOO_LONG, SHARES, OWNER)).to.be.revertedWith('NameTooLong()');
       });
     });
     when('strategy is created', () => {

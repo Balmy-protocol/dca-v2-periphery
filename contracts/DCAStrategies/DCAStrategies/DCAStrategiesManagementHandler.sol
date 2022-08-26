@@ -10,11 +10,11 @@ abstract contract DCAStrategiesManagementHandler is IDCAStrategiesManagementHand
   }
 
   /// @inheritdoc IDCAStrategiesManagementHandler
-  mapping(string => uint80) public strategyIdByName;
+  mapping(bytes32 => uint80) public strategyIdByName;
   /// @inheritdoc IDCAStrategiesManagementHandler
   uint80 public strategyCounter;
   mapping(uint80 => StrategyOwnerAndVersion) internal _strategies;
-  mapping(uint80 => string) internal _strategyNameById;
+  mapping(uint80 => bytes32) internal _strategyNameById;
   mapping(bytes32 => IDCAStrategies.ShareOfToken[]) internal _tokenShares;
 
   /// @inheritdoc IDCAStrategiesManagementHandler
@@ -26,13 +26,12 @@ abstract contract DCAStrategiesManagementHandler is IDCAStrategiesManagementHand
 
   /// @inheritdoc IDCAStrategiesManagementHandler
   function createStrategy(
-    string memory _strategyName,
+    bytes32 _strategyName,
     IDCAStrategies.ShareOfToken[] memory _tokens,
     address _owner
   ) external override returns (uint80 _strategyId) {
     if (_owner == address(0)) revert IDCAStrategies.ZeroAddress();
     if (strategyIdByName[_strategyName] != 0) revert NameAlreadyExists();
-    if (bytes(_strategyName).length > 32) revert NameTooLong();
     if (_checkTokenSharesSanity(_tokens) == false) revert InvalidTokenShares();
 
     _strategyId = ++strategyCounter;
@@ -55,7 +54,7 @@ abstract contract DCAStrategiesManagementHandler is IDCAStrategiesManagementHand
   function updateStrategyTokens(uint80 _strategyId, IDCAStrategies.ShareOfToken[] memory _tokens) external override {}
 
   /// @inheritdoc IDCAStrategiesManagementHandler
-  function updateStrategyName(uint80 _strategyId, string memory _newStrategyName) external override {}
+  function updateStrategyName(uint80 _strategyId, bytes32 _newStrategyName) external override {}
 
   /// @inheritdoc IDCAStrategiesManagementHandler
   function transferStrategyOwnership(uint80 _strategyId, address _newOwner) external override {}
