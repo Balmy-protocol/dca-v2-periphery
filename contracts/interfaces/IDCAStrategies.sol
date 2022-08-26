@@ -10,7 +10,7 @@ interface IDCAStrategiesManagementHandler {
    * @notice Emitted when a new strategy is created
    * @param strategyId The id of the new strategy
    * @param strategyName The name of the strategy
-   * @param tokens An array with all tokenShares
+   * @param tokens An array with all token shares
    * @param owner The owner of the strategy
    */
   event StrategyCreated(uint80 strategyId, string strategyName, IDCAStrategies.ShareOfToken[] tokens, address owner);
@@ -30,7 +30,7 @@ interface IDCAStrategiesManagementHandler {
   struct Strategy {
     address owner;
     string name;
-    uint96 currentVersion;
+    uint16 currentVersion;
     IDCAStrategies.ShareOfToken[] tokens;
   }
 
@@ -329,7 +329,7 @@ interface IDCAStrategies is IDCAStrategiesManagementHandler, IDCAStrategiesPermi
 
   struct ShareOfToken {
     address token;
-    uint96 share; // 0 < share < 100%
+    uint16 share; // 0 < share < 100%
   }
 
   struct PermissionSet {

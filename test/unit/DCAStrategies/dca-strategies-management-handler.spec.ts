@@ -66,7 +66,7 @@ contract('DCAStrategiesManagementHandler', () => {
       given(async () => {
         tx = await DCAStrategiesManagementHandlerMock.createStrategy(NAME, SHARES, OWNER);
         strategy = await DCAStrategiesManagementHandlerMock.getStrategy(1);
-        tokenShares = await DCAStrategiesManagementHandlerMock.getTokenShares(1, 1);
+        tokenShares = strategy.tokens;
       });
       when('name already exists', () => {
         then('tx reverted with message', async () => {

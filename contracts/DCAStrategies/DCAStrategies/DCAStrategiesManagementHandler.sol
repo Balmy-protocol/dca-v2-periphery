@@ -6,7 +6,7 @@ import '../../interfaces/IDCAStrategies.sol';
 abstract contract DCAStrategiesManagementHandler is IDCAStrategiesManagementHandler {
   struct StrategyOwnerAndVersion {
     address owner;
-    uint96 latestVersion;
+    uint16 latestVersion;
   }
 
   /// @inheritdoc IDCAStrategiesManagementHandler
@@ -16,15 +16,6 @@ abstract contract DCAStrategiesManagementHandler is IDCAStrategiesManagementHand
   mapping(uint80 => StrategyOwnerAndVersion) internal _strategies;
   mapping(uint80 => string) internal _strategyNameById;
   mapping(bytes32 => IDCAStrategies.ShareOfToken[]) internal _tokenShares;
-
-  function _checkTokenSharesSanity(IDCAStrategies.ShareOfToken[] memory _tokens) internal pure returns (bool) {
-    // TODO
-    return true;
-  }
-
-  function _getStrategyAndVersionKey(uint256 _strategyId, uint96 _version) internal pure returns (bytes32) {
-    return keccak256(abi.encodePacked(_strategyId, _version));
-  }
 
   /// @inheritdoc IDCAStrategiesManagementHandler
   function getStrategy(uint80 _strategyId) external view override returns (Strategy memory) {
@@ -53,8 +44,7 @@ abstract contract DCAStrategiesManagementHandler is IDCAStrategiesManagementHand
       }
     }
 
-    StrategyOwnerAndVersion memory _newStrategy = StrategyOwnerAndVersion({owner: _owner, latestVersion: 1});
-    _strategies[_strategyId] = _newStrategy;
+    _strategies[_strategyId] = StrategyOwnerAndVersion({owner: _owner, latestVersion: 1});
     strategyIdByName[_strategyName] = _strategyId;
     _strategyNameById[_strategyId] = _strategyName;
 
@@ -75,4 +65,13 @@ abstract contract DCAStrategiesManagementHandler is IDCAStrategiesManagementHand
 
   /// @inheritdoc IDCAStrategiesManagementHandler
   function cancelStrategyOwnershipTransfer(uint80 _strategyId) external override {}
+
+  function _checkTokenSharesSanity(IDCAStrategies.ShareOfToken[] memory _tokens) internal pure returns (bool) {
+    // TODO
+    return true;
+  }
+
+  function _getStrategyAndVersionKey(uint256 _strategyId, uint16 _version) internal pure returns (bytes32) {
+    return keccak256(abi.encodePacked(_strategyId, _version));
+  }
 }
