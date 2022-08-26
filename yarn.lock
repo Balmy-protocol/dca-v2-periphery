@@ -1213,15 +1213,15 @@
     "@uniswap/v3-periphery" "1.2.0"
     base64-sol "1.0.1"
 
-"@mean-finance/dca-v2-core@3.0.0-rc1":
-  version "3.0.0-rc1"
-  resolved "https://registry.yarnpkg.com/@mean-finance/dca-v2-core/-/dca-v2-core-3.0.0-rc1.tgz#f8b28988f603eaea66c52f3ff0532e7a20914aaa"
-  integrity sha512-Iyq75qYXyjpejRsoviRzq20YtEbLG/ATLKlPXHyzr2+NEbfyWT5zJyG3S3U8q2RvFF/rDizmKl0bqQR+vN0Tow==
+"@mean-finance/dca-v2-core@3.0.0-rc2":
+  version "3.0.0-rc2"
+  resolved "https://registry.yarnpkg.com/@mean-finance/dca-v2-core/-/dca-v2-core-3.0.0-rc2.tgz#19498041d05ca974f1b3bdc2eddde284bcb5b12f"
+  integrity sha512-kNDOUb4h7LTc15wKd01S4NpZuopxF5vyOC5wgYodiARiE/7gAQHgIu/eyegzuPBtxlwRfrxbBfSN4eQ8UUjLkQ==
   dependencies:
     "@0xged/hardhat-deploy" "0.11.5"
     "@mean-finance/deterministic-factory" "1.3.1"
     "@mean-finance/nft-descriptors" "1.0.0-rc4"
-    "@mean-finance/oracles" "2.0.0-rc4"
+    "@mean-finance/oracles" "2.0.0-rc5"
     "@openzeppelin/contracts" "4.7.3"
 
 "@mean-finance/deterministic-factory@1.3.1":
@@ -1249,16 +1249,16 @@
     "@mean-finance/deterministic-factory" "1.3.2"
     "@openzeppelin/contracts" "4.7.3"
 
-"@mean-finance/oracles@2.0.0-rc4":
-  version "2.0.0-rc4"
-  resolved "https://registry.yarnpkg.com/@mean-finance/oracles/-/oracles-2.0.0-rc4.tgz#85d979ecec95bfe75be0eb6766c7710e9bc0eab9"
-  integrity sha512-K6pzlqxuEgyInX5q16tpxTCnxRSsks67aZs0DCuf/6IC+FEfjFb1UG7j5NFGj4+yUg1AkcmklzD7JGYV8i8tjw==
+"@mean-finance/oracles@2.0.0-rc5":
+  version "2.0.0-rc5"
+  resolved "https://registry.yarnpkg.com/@mean-finance/oracles/-/oracles-2.0.0-rc5.tgz#97f258fe5e2ed3c2200458e38c3f52464ecc4659"
+  integrity sha512-+3eiv6vIobMyzcR23Z2wVAfWc/HPvQ5Y6EFsyFBgpKSI1BwRL9ivHokdmNd1604SOFwktv/iVfRDEl1ArSDyHg==
   dependencies:
     "@0xged/hardhat-deploy" "0.11.5"
     "@chainlink/contracts" "0.4.2"
     "@mean-finance/chainlink-registry" "2.0.0-rc5"
     "@mean-finance/deterministic-factory" "1.3.1"
-    "@mean-finance/transformers" "1.0.0-rc5"
+    "@mean-finance/transformers" "1.0.0-rc6"
     "@mean-finance/uniswap-v3-oracle" "1.0.0"
     "@openzeppelin/contracts" "4.7.3"
     "@uniswap/v3-core" "1.0.1"
@@ -1272,10 +1272,10 @@
     "@mean-finance/deterministic-factory" "1.3.1"
     "@openzeppelin/contracts" "4.7.3"
 
-"@mean-finance/transformers@1.0.0-rc5":
-  version "1.0.0-rc5"
-  resolved "https://registry.yarnpkg.com/@mean-finance/transformers/-/transformers-1.0.0-rc5.tgz#dfc3064e8c7184a45a53fc2862b1d565a1d75231"
-  integrity sha512-gHV/cZg+D7k//nraOcPZHBkeZ5qku4FQ6QfKce31/ktaYdqnmLBD6/smGAL5QW3I5ZO4k1MNe/zbTUPRHFo+kA==
+"@mean-finance/transformers@1.0.0-rc6":
+  version "1.0.0-rc6"
+  resolved "https://registry.yarnpkg.com/@mean-finance/transformers/-/transformers-1.0.0-rc6.tgz#1d5695b9b764cddec7fb20a28f8e6d04335c3051"
+  integrity sha512-SNtLRJCVQVDPs0ioLgVG1+uenhibUjH1Es7Xgiw0+/3Gjz9i/6rUeuog1e9aT8NLVn/zuLUdUEVQ/TcAF4fTkA==
   dependencies:
     "@0xged/hardhat-deploy" "0.11.5"
     "@mean-finance/deterministic-factory" "1.3.1"
@@ -1515,7 +1515,7 @@
   resolved "https://registry.yarnpkg.com/@openzeppelin/contracts/-/contracts-4.7.3.tgz#939534757a81f8d69cc854c7692805684ff3111e"
   integrity sha512-dGRS0agJzu8ybo44pCIf3xBaPQN/65AIXNgK8+4gzKd5kbvlqyxryUYVLJv7fK98Seyd2hDZzVEHSWAh0Bt1Yw==
 
-"@openzeppelin/test-helpers@^0.5.15":
+"@openzeppelin/test-helpers@0.5.15":
   version "0.5.15"
   resolved "https://registry.yarnpkg.com/@openzeppelin/test-helpers/-/test-helpers-0.5.15.tgz#7727d4bb1535e1fa2372d65d1dcee335ce8d36af"
   integrity sha512-10fS0kyOjc/UObo9iEWPNbC6MCeiQ7z97LDOJBj68g+AAs5pIGEI2h3V6G9TYTIq8VxOdwMQbfjKrx7Y3YZJtA==
@@ -1865,7 +1865,7 @@
   resolved "https://registry.yarnpkg.com/@types/abstract-leveldown/-/abstract-leveldown-7.2.0.tgz#f055979a99f7654e84d6b8e6267419e9c4cfff87"
   integrity sha512-q5veSX6zjUy/DlDhR4Y4cU0k2Ar+DT2LUraP00T19WLmTO6Se1djepCCaqU6nQrwcJ5Hyo/CWqxTzrrFg8eqbQ==
 
-"@types/axios@^0.14.0":
+"@types/axios@0.14.0":
   version "0.14.0"
   resolved "https://registry.yarnpkg.com/@types/axios/-/axios-0.14.0.tgz#ec2300fbe7d7dddd7eb9d3abf87999964cafce46"
   integrity sha512-KqQnQbdYE54D7oa/UmYVMZKq7CO4l8DEENzOKc4aBRwxCXSlJXGz83flFx5L7AWrOQnmuN3kVsRdt+GZPPjiVQ==
@@ -2661,7 +2661,7 @@ axios-retry@3.2.4:
     "@babel/runtime" "^7.15.4"
     is-retry-allowed "^2.2.0"
 
-axios@*, axios@^0.27.2:
+axios@*, axios@0.27.2:
   version "0.27.2"
   resolved "https://registry.yarnpkg.com/axios/-/axios-0.27.2.tgz#207658cc8621606e586c85db4b41a750e756d972"
   integrity sha512-t+yRIyySRTp/wua5xEr+z1q60QmLq8ABsS5O9Me1AsE5dfKqgnCFzwiCZZ/cGNd1lq4/7akDWMxdhVlucjmnOQ==
