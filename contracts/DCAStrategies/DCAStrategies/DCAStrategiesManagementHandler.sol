@@ -94,7 +94,7 @@ abstract contract DCAStrategiesManagementHandler is IDCAStrategiesManagementHand
   function cancelStrategyOwnershipTransfer(uint80 _strategyId) external {}
 
   function _checkTokenSharesSanity(IDCAStrategies.ShareOfToken[] memory _tokens) internal pure {
-    if (_tokens.length <= 1) revert LengthZero(); // need to have more than one item
+    if (_tokens.length <= 1) revert InvalidLength(); // need to have more than one item
 
     uint256 _shares = 0;
     for (uint256 i = 0; i < _tokens.length; i++) {

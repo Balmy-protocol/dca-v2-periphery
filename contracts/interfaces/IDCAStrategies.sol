@@ -29,8 +29,8 @@ interface IDCAStrategiesManagementHandler {
    */
   event StrategyNameUpdated(uint80 strategyId, bytes32 newStrategyName);
 
-  /// @notice Thrown when a provided array is empty
-  error LengthZero();
+  /// @notice Thrown when a provided array is empty or has only one item
+  error InvalidLength();
 
   /// @notice Thrown when a share is 0%
   error ShareIsEmpty();

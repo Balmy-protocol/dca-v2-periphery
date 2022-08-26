@@ -53,7 +53,7 @@ contract('DCAStrategiesManagementHandler', () => {
     });
     when('token shares array length is zero', () => {
       then('tx reverted with message', async () => {
-        await expect(DCAStrategiesManagementHandlerMock.createStrategy(NAME, [], user.address)).to.be.revertedWith('LengthZero()');
+        await expect(DCAStrategiesManagementHandlerMock.createStrategy(NAME, [], user.address)).to.be.revertedWith('InvalidLength()');
       });
     });
     when('token share is 0%', () => {
@@ -136,7 +136,7 @@ contract('DCAStrategiesManagementHandler', () => {
     });
     when('token shares array length is zero', () => {
       then('tx reverted with message', async () => {
-        await expect(DCAStrategiesManagementHandlerMock.connect(user).updateStrategyTokens(1, [])).to.be.revertedWith('LengthZero()');
+        await expect(DCAStrategiesManagementHandlerMock.connect(user).updateStrategyTokens(1, [])).to.be.revertedWith('InvalidLength()');
       });
     });
     when('token share is 0%', () => {
@@ -192,7 +192,7 @@ contract('DCAStrategiesManagementHandler', () => {
     const NEW_NAME = ethers.utils.randomBytes(32);
 
     given(async () => {
-      DCAStrategiesManagementHandlerMock.createStrategy(NAME, SHARES, user.address);
+      await DCAStrategiesManagementHandlerMock.createStrategy(NAME, SHARES, user.address);
     });
     when('sender is not the owner', () => {
       then('tx reverted with message', async () => {
@@ -216,10 +216,7 @@ contract('DCAStrategiesManagementHandler', () => {
         expect(await DCAStrategiesManagementHandlerMock.strategyIdByName(NEW_NAME)).to.be.equal(1);
       });
       then('event is emitted', async () => {
-        let strategyId: BigNumber = await readArgFromEventOrFail(tx, 'StrategyNameUpdated', 'strategyId');
-        let name = await readArgFromEventOrFail(tx, 'StrategyNameUpdated', 'newStrategyName');
-        expect(strategyId).to.be.equal(1);
-        expect(name).to.be.equal(ethers.utils.hexlify(NEW_NAME));
+        await expect(tx).to.emit(DCAStrategiesManagementHandlerMock, 'StrategyNameUpdated').withArgs(1, ethers.utils.hexlify(NEW_NAME));
       });
     });
   });
