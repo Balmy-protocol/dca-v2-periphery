@@ -18,7 +18,7 @@ abstract contract DCAStrategiesManagementHandler is IDCAStrategiesManagementHand
   mapping(bytes32 => IDCAStrategies.ShareOfToken[]) internal _tokenShares;
 
   /// @inheritdoc IDCAStrategiesManagementHandler
-  function getStrategy(uint80 _strategyId) external view override returns (Strategy memory) {
+  function getStrategy(uint80 _strategyId) external view returns (Strategy memory) {
     StrategyOwnerAndVersion memory _strategy = _strategies[_strategyId];
     IDCAStrategies.ShareOfToken[] memory _tokens = _tokenShares[_getStrategyAndVersionKey(_strategyId, _strategy.latestVersion)];
     return Strategy({owner: _strategy.owner, name: _strategyNameById[_strategyId], currentVersion: _strategy.latestVersion, tokens: _tokens});
@@ -29,7 +29,7 @@ abstract contract DCAStrategiesManagementHandler is IDCAStrategiesManagementHand
     bytes32 _strategyName,
     IDCAStrategies.ShareOfToken[] memory _tokens,
     address _owner
-  ) external override returns (uint80 _strategyId) {
+  ) external returns (uint80 _strategyId) {
     if (_owner == address(0)) revert IDCAStrategies.ZeroAddress();
     if (strategyIdByName[_strategyName] != 0) revert NameAlreadyExists();
     if (_checkTokenSharesSanity(_tokens) == false) revert InvalidTokenShares();

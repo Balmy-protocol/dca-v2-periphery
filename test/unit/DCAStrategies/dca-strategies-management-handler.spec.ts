@@ -11,19 +11,16 @@ import { given, then, when, contract } from '@test-utils/bdd';
 import { snapshot } from '@test-utils/evm';
 import { TransactionResponse } from '@ethersproject/abstract-provider';
 import { BigNumber } from '@ethersproject/bignumber';
-import { _TypedDataEncoder } from '@ethersproject/hash';
 import { readArgFromEventOrFail } from '@test-utils/event-utils';
 
 contract('DCAStrategiesManagementHandler', () => {
   let snapshotId: string;
-  let chainId: BigNumber;
   let DCAStrategiesManagementHandlerMock: DCAStrategiesManagementHandlerMock;
 
   before('Setup accounts and contracts', async () => {
     const factory: DCAStrategiesManagementHandlerMock__factory = await ethers.getContractFactory('DCAStrategiesManagementHandlerMock');
     DCAStrategiesManagementHandlerMock = await factory.deploy();
     snapshotId = await snapshot.take();
-    chainId = BigNumber.from((await ethers.provider.getNetwork()).chainId);
   });
 
   beforeEach(async () => {
@@ -56,11 +53,9 @@ contract('DCAStrategiesManagementHandler', () => {
     when('strategy is created', () => {
       let tx: TransactionResponse;
       let strategy: IDCAStrategiesManagementHandler.StrategyStruct;
-      let tokenShares: IDCAStrategies.ShareOfTokenStruct[];
       given(async () => {
         tx = await DCAStrategiesManagementHandlerMock.createStrategy(NAME, SHARES, OWNER);
         strategy = await DCAStrategiesManagementHandlerMock.getStrategy(1);
-        tokenShares = strategy.tokens;
       });
       when('name already exists', () => {
         then('tx reverted with message', async () => {
@@ -83,22 +78,24 @@ contract('DCAStrategiesManagementHandler', () => {
         expect(strategy.currentVersion).to.be.equal(1);
       });
       then('shares are correct', async () => {
+        expect(SHARES.length).to.be.equal(strategy.tokens.length);
         SHARES.forEach((s, i) => {
-          expect(tokenShares[i].share).to.be.equal(s.share);
-          expect(tokenShares[i].token).to.be.equal(s.token);
+          expect(strategy.tokens[i].share).to.be.equal(s.share);
+          expect(strategy.tokens[i].token).to.be.equal(s.token);
         });
       });
       then('event is emitted', async () => {
-        let _strategyId: BigNumber = await readArgFromEventOrFail(tx, 'StrategyCreated', 'strategyId');
-        let _strategyName: string = await readArgFromEventOrFail(tx, 'StrategyCreated', 'strategyName');
-        let _tokens: IDCAStrategies.ShareOfTokenStruct[] = await readArgFromEventOrFail(tx, 'StrategyCreated', 'tokens');
-        let _owner: string = await readArgFromEventOrFail(tx, 'StrategyCreated', 'owner');
-        expect(_strategyId).to.be.equal(1);
-        expect(_strategyName).to.be.equal(strategy.name);
-        expect(_owner).to.be.equal(strategy.owner);
-        _tokens.forEach((s: any, i: any) => {
-          expect(tokenShares[i].share).to.be.equal(s.share);
-          expect(tokenShares[i].token).to.be.equal(s.token);
+        let strategyId: BigNumber = await readArgFromEventOrFail(tx, 'StrategyCreated', 'strategyId');
+        let strategyName: string = await readArgFromEventOrFail(tx, 'StrategyCreated', 'strategyName');
+        let tokens: IDCAStrategies.ShareOfTokenStruct[] = await readArgFromEventOrFail(tx, 'StrategyCreated', 'tokens');
+        let owner: string = await readArgFromEventOrFail(tx, 'StrategyCreated', 'owner');
+        expect(strategyId).to.be.equal(1);
+        expect(strategyName).to.be.equal(strategy.name);
+        expect(owner).to.be.equal(strategy.owner);
+        expect(SHARES.length).to.be.equal(strategy.tokens.length);
+        SHARES.forEach((s: any, i: any) => {
+          expect(tokens[i].share).to.be.equal(s.share);
+          expect(tokens[i].token).to.be.equal(s.token);
         });
       });
     });
