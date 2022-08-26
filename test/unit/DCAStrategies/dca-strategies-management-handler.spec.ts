@@ -17,6 +17,10 @@ import { Wallet } from 'ethers';
 contract('DCAStrategiesManagementHandler', () => {
   let snapshotId: string;
   let DCAStrategiesManagementHandlerMock: DCAStrategiesManagementHandlerMock;
+  const NAME = ethers.utils.formatBytes32String('Optimism Ecosystem - v1');
+  const SHARE_TOKEN_A = { token: wallet.generateRandomAddress(), share: BigNumber.from(50) };
+  const SHARE_TOKEN_B = { token: wallet.generateRandomAddress(), share: BigNumber.from(50) };
+  const SHARES = [SHARE_TOKEN_A, SHARE_TOKEN_B];
 
   before('Setup accounts and contracts', async () => {
     const factory: DCAStrategiesManagementHandlerMock__factory = await ethers.getContractFactory('DCAStrategiesManagementHandlerMock');
@@ -27,18 +31,6 @@ contract('DCAStrategiesManagementHandler', () => {
   beforeEach(async () => {
     await snapshot.revert(snapshotId);
   });
-
-  function generateRandomAddress() {
-    return ethers.utils.getAddress(ethers.utils.hexlify(ethers.utils.randomBytes(20)));
-  }
-
-  function compareTokens(arrayA: IDCAStrategies.ShareOfTokenStruct[], arrayB: IDCAStrategies.ShareOfTokenStruct[]) {
-    expect(arrayA.length).to.be.equal(arrayB.length);
-    arrayA.forEach((s, i) => {
-      expect(s.share).to.be.equal(arrayB[i].share);
-      expect(s.token).to.be.equal(arrayB[i].token);
-    });
-  }
 
   describe('constructor', () => {
     when('handler is deployed', () => {
@@ -51,10 +43,6 @@ contract('DCAStrategiesManagementHandler', () => {
 
   describe('createStrategy', () => {
     const OWNER = wallet.generateRandomAddress();
-    const NAME = ethers.utils.formatBytes32String('Optimism Ecosystem - v1');
-    const SHARE_TOKEN_A = { token: wallet.generateRandomAddress(), share: BigNumber.from(50) };
-    const SHARE_TOKEN_B = { token: wallet.generateRandomAddress(), share: BigNumber.from(50) };
-    const SHARES = [SHARE_TOKEN_A, SHARE_TOKEN_B];
 
     when('owner is zero address', () => {
       then('tx reverted with message', async () => {
@@ -106,13 +94,8 @@ contract('DCAStrategiesManagementHandler', () => {
     });
   });
 
-  describe('createStrategy', () => {
+  describe('updateStrategy', () => {
     let owner: Wallet;
-    const NAME = ethers.utils.formatBytes32String('Optimism Ecosystem - v1');
-
-    const SHARE_TOKEN_A_1 = { token: generateRandomAddress(), share: BigNumber.from(50) };
-    const SHARE_TOKEN_B_1 = { token: generateRandomAddress(), share: BigNumber.from(50) };
-    const SHARES_1 = [SHARE_TOKEN_A_1, SHARE_TOKEN_B_1];
 
     const SHARE_TOKEN_A_2 = { token: constants.NOT_ZERO_ADDRESS, share: BigNumber.from(30) };
     const SHARE_TOKEN_B_2 = { token: constants.NOT_ZERO_ADDRESS, share: BigNumber.from(40) };
@@ -124,7 +107,7 @@ contract('DCAStrategiesManagementHandler', () => {
     });
     when('sender is not the owner', () => {
       given(async () => {
-        await DCAStrategiesManagementHandlerMock.createStrategy(NAME, SHARES_1, owner.address);
+        await DCAStrategiesManagementHandlerMock.createStrategy(NAME, SHARES, owner.address);
       });
       then('tx reverted with message', async () => {
         await expect(DCAStrategiesManagementHandlerMock.updateStrategyTokens(1, SHARES_2)).to.be.revertedWith('OnlyStratOwner()');
@@ -135,9 +118,15 @@ contract('DCAStrategiesManagementHandler', () => {
       let strategy: IDCAStrategiesManagementHandler.StrategyStruct;
 
       given(async () => {
-        await DCAStrategiesManagementHandlerMock.connect(owner).createStrategy(NAME, SHARES_1, owner.address);
+        await DCAStrategiesManagementHandlerMock.connect(owner).createStrategy(NAME, SHARES, owner.address);
         tx = await DCAStrategiesManagementHandlerMock.connect(owner).updateStrategyTokens(1, SHARES_2);
         strategy = await DCAStrategiesManagementHandlerMock.getStrategy(1);
+      });
+      then('owner not changed', async () => {
+        expect(strategy.owner).to.be.equal(owner.address);
+      });
+      then('name not changed', async () => {
+        expect(strategy.name).to.be.equal(NAME);
       });
       then('tokens are updated', async () => {
         compareTokens(SHARES_2, strategy.tokens);
@@ -153,4 +142,16 @@ contract('DCAStrategiesManagementHandler', () => {
       });
     });
   });
+
+  function generateRandomAddress() {
+    return ethers.utils.getAddress(ethers.utils.hexlify(ethers.utils.randomBytes(20)));
+  }
+
+  function compareTokens(arrayA: IDCAStrategies.ShareOfTokenStruct[], arrayB: IDCAStrategies.ShareOfTokenStruct[]) {
+    expect(arrayA.length).to.be.equal(arrayB.length);
+    arrayA.forEach((s, i) => {
+      expect(s.share).to.be.equal(arrayB[i].share);
+      expect(s.token).to.be.equal(arrayB[i].token);
+    });
+  }
 });
