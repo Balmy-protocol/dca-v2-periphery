@@ -49,6 +49,10 @@ contract('DCAStrategiesManagementHandler', () => {
         const strategyCounter = await DCAStrategiesManagementHandlerMock.strategyCounter();
         expect(strategyCounter).to.equal(0);
       });
+      then('max token shares is correct', async () => {
+        const maxTokenShares = await DCAStrategiesManagementHandlerMock.MAX_TOKEN_SHARES();
+        expect(maxTokenShares).to.equal(MAX_TOKEN_SHARES);
+      });
     });
   });
 

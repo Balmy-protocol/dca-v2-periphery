@@ -14,14 +14,16 @@ abstract contract DCAStrategiesManagementHandler is IDCAStrategiesManagementHand
   /// @inheritdoc IDCAStrategiesManagementHandler
   uint80 public strategyCounter;
   uint16 internal constant _TOTAL = 100e2;
-  uint8 internal immutable _maxTokenShares;
+  /// @inheritdoc IDCAStrategiesManagementHandler
+  // solhint-disable-next-line var-name-mixedcase
+  uint8 public immutable MAX_TOKEN_SHARES;
   mapping(uint80 => StrategyOwnerAndVersion) internal _strategies;
   mapping(uint80 => bytes32) internal _strategyNameById;
   mapping(bytes32 => IDCAStrategies.ShareOfToken[]) internal _tokenShares;
 
-  constructor(uint8 __maxTokenShares) {
-    if (__maxTokenShares == 0) revert InvalidMaxTokenShares();
-    _maxTokenShares = __maxTokenShares;
+  constructor(uint8 _maxTokenShares) {
+    if (_maxTokenShares == 0) revert InvalidMaxTokenShares();
+    MAX_TOKEN_SHARES = _maxTokenShares;
   }
 
   /// @inheritdoc IDCAStrategiesManagementHandler
@@ -102,7 +104,7 @@ abstract contract DCAStrategiesManagementHandler is IDCAStrategiesManagementHand
   function _checkTokenSharesSanity(IDCAStrategies.ShareOfToken[] memory _tokens) internal view {
     uint256 _length = _tokens.length;
     if (_length <= 1) revert InvalidLength(); // need to have more than one item
-    if (_length > _maxTokenShares) revert TokenSharesExceedAmount();
+    if (_length > MAX_TOKEN_SHARES) revert TokenSharesExceedAmount();
 
     uint256 _shares = 0;
     for (uint256 i = 0; i < _length; i++) {

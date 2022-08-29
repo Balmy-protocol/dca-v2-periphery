@@ -57,6 +57,13 @@ interface IDCAStrategiesManagementHandler {
     IDCAStrategies.ShareOfToken[] tokens;
   }
 
+  /**
+   * @notice Returns the number of maximum amount of tokens when creating or updating a strategy
+   * @return The number of max token shares
+   */
+  // solhint-disable-next-line func-name-mixedcase
+  function MAX_TOKEN_SHARES() external view returns (uint8);
+
   function getStrategy(uint80 strategyId) external view returns (Strategy memory);
 
   function strategyCounter() external view returns (uint80);
