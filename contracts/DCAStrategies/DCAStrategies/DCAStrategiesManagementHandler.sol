@@ -8,7 +8,8 @@ abstract contract DCAStrategiesManagementHandler is IDCAStrategiesManagementHand
     address owner;
     uint16 latestVersion;
   }
-
+  /// @inheritdoc IDCAStrategiesManagementHandler
+  mapping(uint80 => address) public strategiesPendingOwners;
   /// @inheritdoc IDCAStrategiesManagementHandler
   mapping(bytes32 => uint80) public strategyIdByName;
   /// @inheritdoc IDCAStrategiesManagementHandler
@@ -93,7 +94,14 @@ abstract contract DCAStrategiesManagementHandler is IDCAStrategiesManagementHand
   }
 
   /// @inheritdoc IDCAStrategiesManagementHandler
-  function transferStrategyOwnership(uint80 _strategyId, address _newOwner) external {}
+  function transferStrategyOwnership(uint80 _strategyId, address _newOwner) external {
+    StrategyOwnerAndVersion memory _strategy = _strategies[_strategyId];
+    if (msg.sender != _strategy.owner) revert OnlyStratOwner();
+
+    strategiesPendingOwners[_strategyId] = _newOwner;
+
+    emit TransferOwnershipInitiated(_strategyId, _newOwner);
+  }
 
   /// @inheritdoc IDCAStrategiesManagementHandler
   function acceptStrategyOwnership(uint80 _strategyId) external {}

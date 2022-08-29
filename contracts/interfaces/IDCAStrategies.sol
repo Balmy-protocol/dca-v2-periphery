@@ -29,6 +29,13 @@ interface IDCAStrategiesManagementHandler {
    */
   event StrategyNameUpdated(uint80 strategyId, bytes32 newStrategyName);
 
+  /**
+   * @notice Emitted when the transfer ownership process is initiated
+   * @param strategyId The id of the strategy
+   * @param newOwner The new owner (pending until accepted)
+   */
+  event TransferOwnershipInitiated(uint80 strategyId, address newOwner);
+
   /// @notice Thrown when a provided array is empty or has only one item
   error InvalidLength();
 
@@ -63,6 +70,12 @@ interface IDCAStrategiesManagementHandler {
    */
   // solhint-disable-next-line func-name-mixedcase
   function MAX_TOKEN_SHARES() external view returns (uint8);
+
+  /**
+   * @notice Returns the address of the pending owner, receiving a strategy id as parameter (zero address is no pending owner)
+   * @return The address of the pending owner
+   */
+  function strategiesPendingOwners(uint80) external view returns (address);
 
   function getStrategy(uint80 strategyId) external view returns (Strategy memory);
 
