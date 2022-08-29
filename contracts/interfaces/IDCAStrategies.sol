@@ -32,6 +32,12 @@ interface IDCAStrategiesManagementHandler {
   /// @notice Thrown when a provided array is empty or has only one item
   error InvalidLength();
 
+  /// @notice Thrown when a provided max token shares amount is zero
+  error InvalidMaxTokenShares();
+
+  /// @notice Thrown when a provided array is larger than the allowed amount
+  error TokenSharesExceedAmount();
+
   /// @notice Thrown when a share is 0%
   error ShareIsEmpty();
 
@@ -50,6 +56,13 @@ interface IDCAStrategiesManagementHandler {
     uint16 currentVersion;
     IDCAStrategies.ShareOfToken[] tokens;
   }
+
+  /**
+   * @notice Returns the number of maximum amount of tokens when creating or updating a strategy
+   * @return The number of max token shares
+   */
+  // solhint-disable-next-line func-name-mixedcase
+  function MAX_TOKEN_SHARES() external view returns (uint8);
 
   function getStrategy(uint80 strategyId) external view returns (Strategy memory);
 
