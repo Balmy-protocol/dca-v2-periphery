@@ -82,8 +82,7 @@ abstract contract DCAStrategiesManagementHandler is IDCAStrategiesManagementHand
 
   /// @inheritdoc IDCAStrategiesManagementHandler
   function updateStrategyName(uint80 _strategyId, bytes32 _newStrategyName) external {
-    StrategyOwnerAndVersion memory _strategy = _strategies[_strategyId];
-    if (msg.sender != _strategy.owner) revert OnlyStratOwner();
+    if (msg.sender != _strategies[_strategyId].owner) revert OnlyStratOwner();
     if (strategyIdByName[_newStrategyName] != 0) revert NameAlreadyExists();
 
     delete strategyIdByName[_strategyNameById[_strategyId]];
@@ -95,8 +94,7 @@ abstract contract DCAStrategiesManagementHandler is IDCAStrategiesManagementHand
 
   /// @inheritdoc IDCAStrategiesManagementHandler
   function transferStrategyOwnership(uint80 _strategyId, address _newOwner) external {
-    StrategyOwnerAndVersion memory _strategy = _strategies[_strategyId];
-    if (msg.sender != _strategy.owner) revert OnlyStratOwner();
+    if (msg.sender != _strategies[_strategyId].owner) revert OnlyStratOwner();
 
     strategiesPendingOwners[_strategyId] = _newOwner;
 
@@ -104,10 +102,23 @@ abstract contract DCAStrategiesManagementHandler is IDCAStrategiesManagementHand
   }
 
   /// @inheritdoc IDCAStrategiesManagementHandler
-  function acceptStrategyOwnership(uint80 _strategyId) external {}
+  function acceptStrategyOwnership(uint80 _strategyId) external {
+    if (msg.sender != strategiesPendingOwners[_strategyId]) revert OnlyPendingOwner();
+
+    delete strategiesPendingOwners[_strategyId];
+    _strategies[_strategyId].owner = msg.sender;
+
+    emit TransferOwnershipAccepted(_strategyId, msg.sender);
+  }
 
   /// @inheritdoc IDCAStrategiesManagementHandler
-  function cancelStrategyOwnershipTransfer(uint80 _strategyId) external {}
+  function cancelStrategyOwnershipTransfer(uint80 _strategyId) external {
+    if (msg.sender != _strategies[_strategyId].owner) revert OnlyStratOwner();
+
+    delete strategiesPendingOwners[_strategyId];
+
+    emit TransferOwnershipCancelled(_strategyId);
+  }
 
   function _checkTokenSharesSanity(IDCAStrategies.ShareOfToken[] memory _tokens) internal view {
     uint256 _length = _tokens.length;

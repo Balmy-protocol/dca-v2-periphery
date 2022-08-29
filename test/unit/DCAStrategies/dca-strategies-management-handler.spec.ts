@@ -252,7 +252,7 @@ contract('DCAStrategiesManagementHandler', () => {
         );
       });
     });
-    when('ownership transfer started', () => {
+    when('ownership transfer is started', () => {
       given(async () => {
         tx = await DCAStrategiesManagementHandlerMock.connect(user).transferStrategyOwnership(1, random.address);
       });
@@ -261,6 +261,59 @@ contract('DCAStrategiesManagementHandler', () => {
       });
       then('event is emitted', async () => {
         await expect(tx).to.emit(DCAStrategiesManagementHandlerMock, 'TransferOwnershipInitiated').withArgs(1, random.address);
+      });
+    });
+  });
+
+  describe('acceptStrategyOwnershipTransfer', () => {
+    let tx: TransactionResponse;
+    given(async () => {
+      await DCAStrategiesManagementHandlerMock.createStrategy(NAME, SHARES, user.address);
+      await DCAStrategiesManagementHandlerMock.connect(user).transferStrategyOwnership(1, random.address);
+    });
+    when('sender is not the pending owner', () => {
+      then('tx reverted with message', async () => {
+        await expect(DCAStrategiesManagementHandlerMock.connect(user).acceptStrategyOwnership(1)).to.be.revertedWith('OnlyPendingOwner()');
+      });
+    });
+    when('ownership transfer is accepted', () => {
+      given(async () => {
+        tx = await DCAStrategiesManagementHandlerMock.connect(random).acceptStrategyOwnership(1);
+      });
+      then('new owner is correct', async () => {
+        expect((await DCAStrategiesManagementHandlerMock.getStrategy(1)).owner).to.be.equal(random.address);
+      });
+      then('pending owner is correct', async () => {
+        expect(await DCAStrategiesManagementHandlerMock.strategiesPendingOwners(1)).to.be.equal(constants.ZERO_ADDRESS);
+      });
+      then('event is emitted', async () => {
+        await expect(tx).to.emit(DCAStrategiesManagementHandlerMock, 'TransferOwnershipAccepted').withArgs(1, random.address);
+      });
+    });
+  });
+
+  describe('cancelStrategyOwnership', () => {
+    let tx: TransactionResponse;
+    given(async () => {
+      await DCAStrategiesManagementHandlerMock.createStrategy(NAME, SHARES, user.address);
+      await DCAStrategiesManagementHandlerMock.connect(user).transferStrategyOwnership(1, random.address);
+    });
+    when('sender is not the owner', () => {
+      then('tx reverted with message', async () => {
+        await expect(DCAStrategiesManagementHandlerMock.connect(random).cancelStrategyOwnershipTransfer(1)).to.be.revertedWith(
+          'OnlyStratOwner()'
+        );
+      });
+    });
+    when('ownership transfer is cancelled', () => {
+      given(async () => {
+        tx = await DCAStrategiesManagementHandlerMock.connect(user).cancelStrategyOwnershipTransfer(1);
+      });
+      then('pending owner is correct', async () => {
+        expect(await DCAStrategiesManagementHandlerMock.strategiesPendingOwners(1)).to.be.equal(constants.ZERO_ADDRESS);
+      });
+      then('event is emitted', async () => {
+        await expect(tx).to.emit(DCAStrategiesManagementHandlerMock, 'TransferOwnershipCancelled').withArgs(1);
       });
     });
   });
