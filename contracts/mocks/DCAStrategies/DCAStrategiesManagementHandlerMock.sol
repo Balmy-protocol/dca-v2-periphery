@@ -5,8 +5,4 @@ import '../../DCAStrategies/DCAStrategies/DCAStrategiesManagementHandler.sol';
 
 contract DCAStrategiesManagementHandlerMock is DCAStrategiesManagementHandler {
   constructor(uint8 _maxTokenShares) DCAStrategiesManagementHandler(_maxTokenShares) {}
-
-  function strategiesPendingOwner(uint80 _strategyId) external view returns (address) {
-    return _strategiesPendingOwner[_strategyId];
-  }
 }

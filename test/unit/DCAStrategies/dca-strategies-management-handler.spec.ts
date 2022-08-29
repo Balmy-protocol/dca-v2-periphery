@@ -257,7 +257,7 @@ contract('DCAStrategiesManagementHandler', () => {
         tx = await DCAStrategiesManagementHandlerMock.connect(user).transferStrategyOwnership(1, random.address);
       });
       then('pending owner is correct', async () => {
-        expect(await DCAStrategiesManagementHandlerMock.strategiesPendingOwner(1)).to.be.equal(random.address);
+        expect(await DCAStrategiesManagementHandlerMock.strategiesPendingOwners(1)).to.be.equal(random.address);
       });
       then('event is emitted', async () => {
         await expect(tx).to.emit(DCAStrategiesManagementHandlerMock, 'TransferOwnershipInitiated').withArgs(1, random.address);

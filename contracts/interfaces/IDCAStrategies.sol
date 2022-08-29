@@ -71,6 +71,12 @@ interface IDCAStrategiesManagementHandler {
   // solhint-disable-next-line func-name-mixedcase
   function MAX_TOKEN_SHARES() external view returns (uint8);
 
+  /**
+   * @notice Returns the address of the pending owner, receiving a strategy id as parameter (zero address is no pending owner)
+   * @return The address of the pending owner
+   */
+  function strategiesPendingOwners(uint80) external view returns (address);
+
   function getStrategy(uint80 strategyId) external view returns (Strategy memory);
 
   function strategyCounter() external view returns (uint80);
