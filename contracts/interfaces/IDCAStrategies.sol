@@ -36,6 +36,19 @@ interface IDCAStrategiesManagementHandler {
    */
   event TransferOwnershipInitiated(uint80 strategyId, address newOwner);
 
+  /**
+   * @notice Emitted when the transfer ownership process is accepted
+   * @param strategyId The id of the strategy
+   * @param newOwner The new owner
+   */
+  event TransferOwnershipAccepted(uint80 strategyId, address newOwner);
+
+  /**
+   * @notice Emitted when the transfer ownership process is cancelled by the current owner
+   * @param strategyId The id of the strategy
+   */
+  event TransferOwnershipCancelled(uint80 strategyId);
+
   /// @notice Thrown when a provided array is empty or has only one item
   error InvalidLength();
 
@@ -50,6 +63,9 @@ interface IDCAStrategiesManagementHandler {
 
   /// @notice Thrown when action is performed by other than the strategy owner
   error OnlyStratOwner();
+
+  /// @notice Thrown when action is performed by other than the pending owner
+  error OnlyPendingOwner();
 
   /// @notice Thrown when a provided strategy name already exist
   error NameAlreadyExists();
