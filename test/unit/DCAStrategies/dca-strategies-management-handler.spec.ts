@@ -240,6 +240,31 @@ contract('DCAStrategiesManagementHandler', () => {
     });
   });
 
+  describe('transferStrategyOwnership', () => {
+    let tx: TransactionResponse;
+    given(async () => {
+      await DCAStrategiesManagementHandlerMock.createStrategy(NAME, SHARES, user.address);
+    });
+    when('sender is not the owner', () => {
+      then('tx reverted with message', async () => {
+        await expect(DCAStrategiesManagementHandlerMock.connect(random).transferStrategyOwnership(1, random.address)).to.be.revertedWith(
+          'OnlyStratOwner()'
+        );
+      });
+    });
+    when('ownership transfer started', () => {
+      given(async () => {
+        tx = await DCAStrategiesManagementHandlerMock.connect(user).transferStrategyOwnership(1, random.address);
+      });
+      then('pending owner is correct', async () => {
+        expect(await DCAStrategiesManagementHandlerMock.strategiesPendingOwner(1)).to.be.equal(random.address);
+      });
+      then('event is emitted', async () => {
+        await expect(tx).to.emit(DCAStrategiesManagementHandlerMock, 'TransferOwnershipInitiated').withArgs(1, random.address);
+      });
+    });
+  });
+
   function tokenShareSanityTest({ title, method, params, errorName }: { title: string; method: any; params: () => any[]; errorName: string }) {
     when(title, () => {
       then('tx reverted with message', async () => {

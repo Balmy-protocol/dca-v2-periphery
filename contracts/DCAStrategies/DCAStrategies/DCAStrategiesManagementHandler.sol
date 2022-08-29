@@ -18,6 +18,7 @@ abstract contract DCAStrategiesManagementHandler is IDCAStrategiesManagementHand
   // solhint-disable-next-line var-name-mixedcase
   uint8 public immutable MAX_TOKEN_SHARES;
   mapping(uint80 => StrategyOwnerAndVersion) internal _strategies;
+  mapping(uint80 => address) internal _strategiesPendingOwner;
   mapping(uint80 => bytes32) internal _strategyNameById;
   mapping(bytes32 => IDCAStrategies.ShareOfToken[]) internal _tokenShares;
 
@@ -93,7 +94,14 @@ abstract contract DCAStrategiesManagementHandler is IDCAStrategiesManagementHand
   }
 
   /// @inheritdoc IDCAStrategiesManagementHandler
-  function transferStrategyOwnership(uint80 _strategyId, address _newOwner) external {}
+  function transferStrategyOwnership(uint80 _strategyId, address _newOwner) external {
+    StrategyOwnerAndVersion memory _strategy = _strategies[_strategyId];
+    if (msg.sender != _strategy.owner) revert OnlyStratOwner();
+
+    _strategiesPendingOwner[_strategyId] = _newOwner;
+
+    emit TransferOwnershipInitiated(_strategyId, _newOwner);
+  }
 
   /// @inheritdoc IDCAStrategiesManagementHandler
   function acceptStrategyOwnership(uint80 _strategyId) external {}

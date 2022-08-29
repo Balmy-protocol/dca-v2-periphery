@@ -29,6 +29,13 @@ interface IDCAStrategiesManagementHandler {
    */
   event StrategyNameUpdated(uint80 strategyId, bytes32 newStrategyName);
 
+  /**
+   * @notice Emitted when the transfer ownership process is initiated
+   * @param strategyId The id of the strategy
+   * @param newOwner The new owner (pending until accepted)
+   */
+  event TransferOwnershipInitiated(uint80 strategyId, address newOwner);
+
   /// @notice Thrown when a provided array is empty or has only one item
   error InvalidLength();
 
