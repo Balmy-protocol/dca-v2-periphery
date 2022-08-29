@@ -26,6 +26,10 @@ contract('DCAStrategiesManagementHandler', () => {
   const SHARES = [SHARE_TOKEN_A, SHARE_TOKEN_B];
   const SHARE_EXCEED_AMOUNT = { token: wallet.generateRandomAddress(), share: BigNumber.from(10e2) };
   const SHARES_EXCEED_AMOUNT = Array(10).fill(SHARE_EXCEED_AMOUNT);
+  const EMPTY_SHARE = { token: wallet.generateRandomAddress(), share: BigNumber.from(0) };
+  const EMPTY_SHARES = [SHARE_TOKEN_A, EMPTY_SHARE];
+  const INVALID_SHARE = { token: wallet.generateRandomAddress(), share: BigNumber.from(30e2) };
+  const INVALID_SHARES = [SHARE_TOKEN_A, INVALID_SHARE];
 
   before('Setup accounts and contracts', async () => {
     factory = await ethers.getContractFactory('DCAStrategiesManagementHandlerMock');
@@ -64,35 +68,29 @@ contract('DCAStrategiesManagementHandler', () => {
         );
       });
     });
-    when('token shares array length is zero', () => {
-      then('tx reverted with message', async () => {
-        await expect(DCAStrategiesManagementHandlerMock.createStrategy(NAME, [], user.address)).to.be.revertedWith('InvalidLength()');
-      });
+    tokenShareSanityTest({
+      title: 'token shares array length is zero',
+      method: 'createStrategy',
+      params: () => [NAME, [], user.address],
+      errorName: 'InvalidLength()',
     });
-    when('token share is 0%', () => {
-      let emptyShare = { token: wallet.generateRandomAddress(), share: BigNumber.from(0) };
-      let emptyShares = [SHARE_TOKEN_A, emptyShare];
-
-      then('tx reverted with message', async () => {
-        await expect(DCAStrategiesManagementHandlerMock.createStrategy(NAME, emptyShares, user.address)).to.be.revertedWith('ShareIsEmpty()');
-      });
+    tokenShareSanityTest({
+      title: 'token share is 0%',
+      method: 'createStrategy',
+      params: () => [NAME, EMPTY_SHARES, user.address],
+      errorName: 'ShareIsEmpty()',
     });
-    when('token shares are not equal 100%', () => {
-      let invalidShare = { token: wallet.generateRandomAddress(), share: BigNumber.from(30e2) };
-      let invalidShares = [SHARE_TOKEN_A, invalidShare];
-
-      then('tx reverted with message', async () => {
-        await expect(DCAStrategiesManagementHandlerMock.createStrategy(NAME, invalidShares, user.address)).to.be.revertedWith(
-          'InvalidTokenShares()'
-        );
-      });
+    tokenShareSanityTest({
+      title: 'token shares are not equal 100%',
+      method: 'createStrategy',
+      params: () => [NAME, INVALID_SHARES, user.address],
+      errorName: 'InvalidTokenShares()',
     });
-    when('token shares exceed max amount', () => {
-      then('tx reverted with message', async () => {
-        await expect(DCAStrategiesManagementHandlerMock.createStrategy(NAME, SHARES_EXCEED_AMOUNT, user.address)).to.be.revertedWith(
-          'TokenSharesExceedAmount()'
-        );
-      });
+    tokenShareSanityTest({
+      title: 'token shares exceed max amount',
+      method: 'createStrategy',
+      params: () => [NAME, SHARES_EXCEED_AMOUNT, user.address],
+      errorName: 'TokenSharesExceedAmount()',
     });
     when('strategy is created', () => {
       let tx: TransactionResponse;
@@ -154,35 +152,29 @@ contract('DCAStrategiesManagementHandler', () => {
         );
       });
     });
-    when('token shares array length is zero', () => {
-      then('tx reverted with message', async () => {
-        await expect(DCAStrategiesManagementHandlerMock.connect(user).updateStrategyTokens(1, [])).to.be.revertedWith('InvalidLength()');
-      });
+    tokenShareSanityTest({
+      title: 'token shares array length is zero',
+      method: 'updateStrategyTokens',
+      params: () => [1, []],
+      errorName: 'InvalidLength()',
     });
-    when('token share is 0%', () => {
-      let emptyShare = { token: wallet.generateRandomAddress(), share: BigNumber.from(0) };
-      let emptyShares = [SHARE_TOKEN_A, emptyShare];
-
-      then('tx reverted with message', async () => {
-        await expect(DCAStrategiesManagementHandlerMock.connect(user).updateStrategyTokens(1, emptyShares)).to.be.revertedWith('ShareIsEmpty()');
-      });
+    tokenShareSanityTest({
+      title: 'token share is 0%',
+      method: 'updateStrategyTokens',
+      params: () => [1, EMPTY_SHARES],
+      errorName: 'ShareIsEmpty()',
     });
-    when('token shares are not equal 100%', () => {
-      let invalidShare = { token: wallet.generateRandomAddress(), share: BigNumber.from(30e2) };
-      let invalidShares = [SHARE_TOKEN_A, invalidShare];
-
-      then('tx reverted with message', async () => {
-        await expect(DCAStrategiesManagementHandlerMock.connect(user).updateStrategyTokens(1, invalidShares)).to.be.revertedWith(
-          'InvalidTokenShares()'
-        );
-      });
+    tokenShareSanityTest({
+      title: 'token shares are not equal 100%',
+      method: 'updateStrategyTokens',
+      params: () => [1, INVALID_SHARES],
+      errorName: 'InvalidTokenShares()',
     });
-    when('token shares exceed max amount', () => {
-      then('tx reverted with message', async () => {
-        await expect(DCAStrategiesManagementHandlerMock.connect(user).updateStrategyTokens(1, SHARES_EXCEED_AMOUNT)).to.be.revertedWith(
-          'TokenSharesExceedAmount()'
-        );
-      });
+    tokenShareSanityTest({
+      title: 'token shares exceed max amount',
+      method: 'updateStrategyTokens',
+      params: () => [1, SHARES_EXCEED_AMOUNT],
+      errorName: 'TokenSharesExceedAmount()',
     });
     when('strategy is updated', () => {
       let tx: TransactionResponse;
@@ -247,6 +239,16 @@ contract('DCAStrategiesManagementHandler', () => {
       });
     });
   });
+
+  function tokenShareSanityTest({ title, method, params, errorName }: { title: string; method: any; params: () => any[]; errorName: string }) {
+    when(title, () => {
+      then('tx reverted with message', async () => {
+        const invalidParams = params();
+        // @ts-ignore
+        await expect(DCAStrategiesManagementHandlerMock.connect(user)[method](...invalidParams)).to.be.revertedWith(errorName);
+      });
+    });
+  }
 
   function generateRandomAddress() {
     return ethers.utils.getAddress(ethers.utils.hexlify(ethers.utils.randomBytes(20)));
