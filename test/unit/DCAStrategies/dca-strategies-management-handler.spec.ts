@@ -18,14 +18,18 @@ contract('DCAStrategiesManagementHandler', () => {
   let snapshotId: string;
   let DCAStrategiesManagementHandlerMock: DCAStrategiesManagementHandlerMock;
   let user: SignerWithAddress, random: SignerWithAddress;
+  let factory: DCAStrategiesManagementHandlerMock__factory;
+  const MAX_TOKEN_SHARES: number = 5;
   const NAME = ethers.utils.formatBytes32String('Optimism Ecosystem - v1');
   const SHARE_TOKEN_A = { token: wallet.generateRandomAddress(), share: BigNumber.from(50e2) };
   const SHARE_TOKEN_B = { token: wallet.generateRandomAddress(), share: BigNumber.from(50e2) };
   const SHARES = [SHARE_TOKEN_A, SHARE_TOKEN_B];
+  const SHARE_EXCEED_AMOUNT = { token: wallet.generateRandomAddress(), share: BigNumber.from(10e2) };
+  const SHARES_EXCEED_AMOUNT = Array(10).fill(SHARE_EXCEED_AMOUNT);
 
   before('Setup accounts and contracts', async () => {
-    const factory: DCAStrategiesManagementHandlerMock__factory = await ethers.getContractFactory('DCAStrategiesManagementHandlerMock');
-    DCAStrategiesManagementHandlerMock = await factory.deploy();
+    factory = await ethers.getContractFactory('DCAStrategiesManagementHandlerMock');
+    DCAStrategiesManagementHandlerMock = await factory.deploy(MAX_TOKEN_SHARES);
     snapshotId = await snapshot.take();
     [user, random] = await ethers.getSigners();
   });
@@ -35,6 +39,11 @@ contract('DCAStrategiesManagementHandler', () => {
   });
 
   describe('constructor', () => {
+    when('when max token shares is zero', () => {
+      then('tx reverted with message', async () => {
+        await expect(factory.deploy(0)).to.be.revertedWith('InvalidMaxTokenShares()');
+      });
+    });
     when('handler is deployed', () => {
       then('strategy counter is correct', async () => {
         const strategyCounter = await DCAStrategiesManagementHandlerMock.strategyCounter();
@@ -71,6 +80,13 @@ contract('DCAStrategiesManagementHandler', () => {
       then('tx reverted with message', async () => {
         await expect(DCAStrategiesManagementHandlerMock.createStrategy(NAME, invalidShares, user.address)).to.be.revertedWith(
           'InvalidTokenShares()'
+        );
+      });
+    });
+    when('token shares exceed max amount', () => {
+      then('tx reverted with message', async () => {
+        await expect(DCAStrategiesManagementHandlerMock.createStrategy(NAME, SHARES_EXCEED_AMOUNT, user.address)).to.be.revertedWith(
+          'TokenSharesExceedAmount()'
         );
       });
     });
@@ -154,6 +170,13 @@ contract('DCAStrategiesManagementHandler', () => {
       then('tx reverted with message', async () => {
         await expect(DCAStrategiesManagementHandlerMock.connect(user).updateStrategyTokens(1, invalidShares)).to.be.revertedWith(
           'InvalidTokenShares()'
+        );
+      });
+    });
+    when('token shares exceed max amount', () => {
+      then('tx reverted with message', async () => {
+        await expect(DCAStrategiesManagementHandlerMock.connect(user).updateStrategyTokens(1, SHARES_EXCEED_AMOUNT)).to.be.revertedWith(
+          'TokenSharesExceedAmount()'
         );
       });
     });

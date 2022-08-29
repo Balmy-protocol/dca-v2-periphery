@@ -32,6 +32,12 @@ interface IDCAStrategiesManagementHandler {
   /// @notice Thrown when a provided array is empty or has only one item
   error InvalidLength();
 
+  /// @notice Thrown when a provided max token shares amount is zero
+  error InvalidMaxTokenShares();
+
+  /// @notice Thrown when a provided array is larger than the allowed amount
+  error TokenSharesExceedAmount();
+
   /// @notice Thrown when a share is 0%
   error ShareIsEmpty();
 

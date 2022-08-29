@@ -14,9 +14,15 @@ abstract contract DCAStrategiesManagementHandler is IDCAStrategiesManagementHand
   /// @inheritdoc IDCAStrategiesManagementHandler
   uint80 public strategyCounter;
   uint16 internal constant _TOTAL = 100e2;
+  uint8 internal immutable _maxTokenShares;
   mapping(uint80 => StrategyOwnerAndVersion) internal _strategies;
   mapping(uint80 => bytes32) internal _strategyNameById;
   mapping(bytes32 => IDCAStrategies.ShareOfToken[]) internal _tokenShares;
+
+  constructor(uint8 __maxTokenShares) {
+    if (__maxTokenShares == 0) revert InvalidMaxTokenShares();
+    _maxTokenShares = __maxTokenShares;
+  }
 
   /// @inheritdoc IDCAStrategiesManagementHandler
   function getStrategy(uint80 _strategyId) external view returns (Strategy memory) {
@@ -93,11 +99,13 @@ abstract contract DCAStrategiesManagementHandler is IDCAStrategiesManagementHand
   /// @inheritdoc IDCAStrategiesManagementHandler
   function cancelStrategyOwnershipTransfer(uint80 _strategyId) external {}
 
-  function _checkTokenSharesSanity(IDCAStrategies.ShareOfToken[] memory _tokens) internal pure {
-    if (_tokens.length <= 1) revert InvalidLength(); // need to have more than one item
+  function _checkTokenSharesSanity(IDCAStrategies.ShareOfToken[] memory _tokens) internal view {
+    uint256 _length = _tokens.length;
+    if (_length <= 1) revert InvalidLength(); // need to have more than one item
+    if (_length > _maxTokenShares) revert TokenSharesExceedAmount();
 
     uint256 _shares = 0;
-    for (uint256 i = 0; i < _tokens.length; i++) {
+    for (uint256 i = 0; i < _length; i++) {
       uint16 _share = _tokens[i].share;
       if (_share == 0) revert ShareIsEmpty(); // need to be more than 0%
       _shares += _share;
