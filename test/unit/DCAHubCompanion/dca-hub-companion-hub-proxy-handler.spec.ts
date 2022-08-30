@@ -368,7 +368,9 @@ contract('DCAHubCompanionHubProxyHandler', () => {
     describe(method, () => {
       when('method is executed', () => {
         given(async () => {
-          DCAPermissionManager.hasPermission.returns(({ permission }: { permission: Permission }) => permission === permission);
+          DCAPermissionManager.hasPermission.returns(
+            ({ permission: permissionAsked }: { permission: Permission }) => permissionAsked === permission
+          );
           await (DCAHubCompanionHubProxyHandler[method] as any)(DCAHub.address, ...params);
         });
         then('hub is called', () => {

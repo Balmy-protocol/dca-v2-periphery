@@ -1,6 +1,6 @@
 {
   "name": "@mean-finance/dca-v2-periphery",
-  "version": "3.0.0-rc4",
+  "version": "3.0.0-rc5",
   "description": "💱 Periphery smart contracts of DCA V2 by mean.finance",
   "keywords": [
     "ethereum",
@@ -21,8 +21,8 @@
   "main": "dist",
   "types": "dist",
   "files": [
-    "contracts/libraries",
-    "contracts/interfaces",
+    "contracts",
+    "!contracts/mocks",
     "artifacts/contracts/**/*.json",
     "!artifacts/contracts/mocks/**/*",
     "!artifacts/contracts/**/**/*.dbg.json",
