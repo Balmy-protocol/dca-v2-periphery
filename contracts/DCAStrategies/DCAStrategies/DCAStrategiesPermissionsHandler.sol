@@ -13,9 +13,6 @@ abstract contract DCAStrategiesPermissionsHandler is IDCAStrategiesPermissionsHa
 
   /// @inheritdoc IDCAStrategiesPermissionsHandler
   mapping(uint256 => uint256) public lastOwnershipChange;
-  mapping(bytes32 => TokenPermission) internal _tokenPermissions; // key(id, operator) => TokenPermission
-  uint256 internal _burnCounter;
-  uint256 internal _mintCounter;
   /// @inheritdoc IDCAStrategiesPermissionsHandler
   mapping(address => uint256) public nonces;
   /// @inheritdoc IDCAStrategiesPermissionsHandler
@@ -37,6 +34,9 @@ abstract contract DCAStrategiesPermissionsHandler is IDCAStrategiesPermissionsHa
   /// @inheritdoc IDCAStrategiesPermissionsHandler
   bytes32 public constant POSITION_PERMISSIONS_TYPEHASH =
     keccak256('PositionPermissions(uint256 tokenId,PermissionSet[] permissionSets)PermissionSet(address operator,uint8[] permissions)');
+  mapping(bytes32 => TokenPermission) internal _tokenPermissions; // key(id, operator) => TokenPermission
+  uint256 internal _burnCounter;
+  uint256 internal _mintCounter;
 
   constructor(IDCAHubPositionDescriptor _descriptor) {
     if (address(_descriptor) == address(0)) revert IDCAStrategies.ZeroAddress();
@@ -197,6 +197,11 @@ abstract contract DCAStrategiesPermissionsHandler is IDCAStrategiesPermissionsHa
     // return nftDescriptor.tokenURI(hub, _tokenId);
   }
 
+  /// @inheritdoc IDCAStrategiesPermissionsHandler
+  function getTokenPermissions(uint256 _id, address _operator) public view override returns (TokenPermission memory) {
+    return _tokenPermissions[_getPermissionKey(_id, _operator)];
+  }
+
   function _mint(address _owner, IDCAStrategies.PermissionSet[] calldata _permissions) internal returns (uint256 _mintId) {
     _mintId = ++_mintCounter;
     _mint(_owner, _mintId);
@@ -268,11 +273,6 @@ abstract contract DCAStrategiesPermissionsHandler is IDCAStrategiesPermissionsHa
 
   function _getPermissionKey(uint256 _id, address _operator) internal pure returns (bytes32) {
     return keccak256(abi.encodePacked(_id, _operator));
-  }
-
-  /// @inheritdoc IDCAStrategiesPermissionsHandler
-  function getTokenPermissions(uint256 _id, address _operator) public view override returns (TokenPermission memory) {
-    return _tokenPermissions[_getPermissionKey(_id, _operator)];
   }
 
   function _beforeTokenTransfer(
