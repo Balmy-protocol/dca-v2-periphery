@@ -93,26 +93,70 @@ interface IDCAStrategiesManagementHandler {
    */
   function strategiesPendingOwners(uint80) external view returns (address);
 
+  /**
+   * @notice Returns a complete Strategy struct
+   * @param strategyId The id of the requested strategy
+   * @return Strategy struct
+   */
   function getStrategy(uint80 strategyId) external view returns (Strategy memory);
 
+  /**
+   * @notice Returns the count of all existing strategies
+   * @return Strategy counter
+   */
   function strategyCounter() external view returns (uint80);
 
+  /**
+   * @notice Returns a the id of a strategy based on a given name
+   * @param strategyName name of the requested strategy
+   * @return strategyId of the strategy
+   */
   function strategyIdByName(bytes32 strategyName) external view returns (uint80 strategyId);
 
+  /**
+   * @notice Creates a new strategy based on parameters sent
+   * @param strategyName name of the strategy
+   * @param tokens an array with token shares
+   * @param owner address of the strategy owner
+   * @return strategyId of the strategy just created
+   */
   function createStrategy(
     bytes32 strategyName,
     IDCAStrategies.ShareOfToken[] memory tokens,
     address owner
   ) external returns (uint80 strategyId);
 
+  /**
+   * @notice Updates tokens of a strategy. Will revert if sender is not owner or requirements are not met
+   * @param strategyId id of the strategy to update
+   * @param tokens an array with the new token shares
+   */
   function updateStrategyTokens(uint80 strategyId, IDCAStrategies.ShareOfToken[] memory tokens) external;
 
+  /**
+   * @notice Updates the name of a strategy. Will revert if sender is not owner or name is already in use
+   * @param strategyId id of the strategy to update
+   * @param newStrategyName the new name of the strategy
+   */
   function updateStrategyName(uint80 strategyId, bytes32 newStrategyName) external;
 
+  /**
+   * @notice Initiate the transfer of the ownership of a strategy
+   * @param strategyId id of the strategy
+   * @param newOwner the new owner of the strategy (will be pending until accepted)
+   */
   function transferStrategyOwnership(uint80 strategyId, address newOwner) external;
 
+  /**
+   * @notice Accept the transfer of the ownership of a strategy. Will revert if sender is not the pending owner
+   * @param strategyId id of the strategy
+   */
   function acceptStrategyOwnership(uint80 strategyId) external;
 
+  /**
+   * @notice Cancel the transfer of the ownership of a strategy. Will revert if sender is not the owner
+   * @param strategyId id of the strategy
+   */
   function cancelStrategyOwnershipTransfer(uint80 strategyId) external;
 }
 
@@ -153,6 +197,12 @@ interface IDCAStrategiesPermissionsHandler is IERC721, IERC721BasicEnumerable {
     // The block number when it was last updated
     uint248 lastUpdated;
   }
+
+  /**
+   * @notice Returns the last time a NFT changed ownership
+   * @return Last ownership change timestamp
+   */
+  function lastOwnershipChange(uint256) external view returns (uint256);
 
   /**
    * @notice The permit typehash used in the permit signature
@@ -313,6 +363,12 @@ interface IDCAStrategiesPermissionsHandler is IERC721, IERC721BasicEnumerable {
    */
   function setNFTDescriptor(IDCAHubPositionDescriptor descriptor) external;
 
+  /**
+   * @notice Returns token permissions based on parameters sent
+   * @param id of the NFT token
+   * @param operator the address of the contract who can subtract the token
+   * @return Token permissions
+   */
   function getTokenPermissions(uint256 id, address operator) external view returns (TokenPermission memory);
 }
 

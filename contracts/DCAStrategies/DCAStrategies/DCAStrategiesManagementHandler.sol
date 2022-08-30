@@ -66,7 +66,7 @@ abstract contract DCAStrategiesManagementHandler is IDCAStrategiesManagementHand
     if (msg.sender != _strategy.owner) revert OnlyStratOwner();
     _checkTokenSharesSanity(_tokens);
 
-    uint16 _newVersion = _strategy.latestVersion + 1;
+    uint16 _newVersion = _strategy.latestVersion + 1; // only updates the version number when updating tokens
     _strategies[_strategyId].latestVersion = _newVersion;
 
     bytes32 _key = _getStrategyAndVersionKey(_strategyId, _newVersion);
@@ -123,7 +123,7 @@ abstract contract DCAStrategiesManagementHandler is IDCAStrategiesManagementHand
   function _checkTokenSharesSanity(IDCAStrategies.ShareOfToken[] memory _tokens) internal view {
     uint256 _length = _tokens.length;
     if (_length <= 1) revert InvalidLength(); // need to have more than one item
-    if (_length > MAX_TOKEN_SHARES) revert TokenSharesExceedAmount();
+    if (_length > MAX_TOKEN_SHARES) revert TokenSharesExceedAmount(); // need to have less than the max
 
     uint256 _shares = 0;
     for (uint256 i = 0; i < _length; i++) {
