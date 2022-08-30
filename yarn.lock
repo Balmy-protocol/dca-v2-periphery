@@ -1213,10 +1213,10 @@
     "@uniswap/v3-periphery" "1.2.0"
     base64-sol "1.0.1"
 
-"@mean-finance/dca-v2-core@3.0.0-rc3":
-  version "3.0.0-rc3"
-  resolved "https://registry.yarnpkg.com/@mean-finance/dca-v2-core/-/dca-v2-core-3.0.0-rc3.tgz#ecde910246fd477cf75aa871359591f2e6226269"
-  integrity sha512-+kc50E0Q5vgkWyNTwuyChYUAnqm7XyumlBFBlsg3sSsjNrNBXWLGVghaKLbCiQj5M8SMhz5EZZxbPJSS5/3I1g==
+"@mean-finance/dca-v2-core@3.0.0-rc4":
+  version "3.0.0-rc4"
+  resolved "https://registry.yarnpkg.com/@mean-finance/dca-v2-core/-/dca-v2-core-3.0.0-rc4.tgz#b0b77632b874779c416ea181f662404fa2acfba0"
+  integrity sha512-XDgSTMNPfNu+7qyevNkzEEHv1TdHNUVPV+BExKVE8tqJ0Mm2RqZqyqgiwcqsSkqWyR+K+pRCR/51ac+lxYmXeA==
   dependencies:
     "@0xged/hardhat-deploy" "0.11.5"
     "@mean-finance/deterministic-factory" "1.3.2"
