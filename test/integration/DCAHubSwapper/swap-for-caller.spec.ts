@@ -5,7 +5,7 @@ import { constants, wallet } from '@test-utils';
 import { contract, given, then, when } from '@test-utils/bdd';
 import evm, { snapshot } from '@test-utils/evm';
 import { DCAHubSwapper, IERC20 } from '@typechained';
-import { DCAHub } from '@mean-finance/dca-v2-core/typechained';
+import { DCAHub } from '@mean-finance/dca-v2-core';
 import { abi as DCA_HUB_ABI } from '@mean-finance/dca-v2-core/artifacts/contracts/DCAHub/DCAHub.sol/DCAHub.json';
 import { abi as IERC20_ABI } from '@openzeppelin/contracts/build/contracts/IERC20.json';
 import { BigNumber, utils } from 'ethers';

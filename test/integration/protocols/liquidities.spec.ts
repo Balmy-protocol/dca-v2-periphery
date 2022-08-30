@@ -5,8 +5,8 @@
 // import { given, then, when } from '@test-utils/bdd';
 // import evm, { snapshot } from '@test-utils/evm';
 // import { DCAHubCompanion, IERC20, IERC20Metadata, IERC20Metadata__factory } from '@typechained';
-// import { ChainlinkOracle, ChainlinkOracle__factory, DCAHub, OracleAggregator } from '@mean-finance/dca-v2-core/typechained';
-// import { ChainlinkRegistry, ChainlinkRegistry__factory } from '@mean-finance/chainlink-registry/typechained';
+// import { ChainlinkOracle, ChainlinkOracle__factory, DCAHub, OracleAggregator } from '@mean-finance/dca-v2-core';
+// import { ChainlinkRegistry, ChainlinkRegistry__factory } from '@mean-finance/chainlink-registry';
 // import { abi as DCA_HUB_ABI } from '@mean-finance/dca-v2-core/artifacts/contracts/DCAHub/DCAHub.sol/DCAHub.json';
 // import { abi as IERC20_ABI } from '@openzeppelin/contracts/build/contracts/IERC20.json';
 // import { BigNumber, utils } from 'ethers';

@@ -1,4 +1,4 @@
-import { DeterministicFactory, DeterministicFactory__factory } from '@mean-finance/deterministic-factory/typechained';
+import { DeterministicFactory, DeterministicFactory__factory } from '@mean-finance/deterministic-factory';
 import { wallet } from '@test-utils';
 import { getNamedAccounts, deployments, ethers } from 'hardhat';
 import { JsonRpcSigner } from '@ethersproject/providers';
