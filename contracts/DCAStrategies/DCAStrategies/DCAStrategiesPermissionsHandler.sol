@@ -11,6 +11,7 @@ abstract contract DCAStrategiesPermissionsHandler is IDCAStrategiesPermissionsHa
   using PermissionMath for IDCAStrategies.Permission[];
   using PermissionMath for uint8;
 
+  /// @inheritdoc IDCAStrategiesPermissionsHandler
   mapping(uint256 => uint256) public lastOwnershipChange;
   mapping(bytes32 => TokenPermission) internal _tokenPermissions; // key(id, operator) => TokenPermission
   uint256 internal _burnCounter;
@@ -152,7 +153,7 @@ abstract contract DCAStrategiesPermissionsHandler is IDCAStrategiesPermissionsHa
     _modify(_tokenId, _permissions);
   }
 
-  // / @inheritdoc IDCAStrategiesPermissionsHandler
+  /// @inheritdoc IDCAStrategiesPermissionsHandler
   function multiPermissionPermit(
     IDCAStrategies.PositionPermissions[] calldata _permissions,
     uint256 _deadline,
@@ -269,6 +270,7 @@ abstract contract DCAStrategiesPermissionsHandler is IDCAStrategiesPermissionsHa
     return keccak256(abi.encodePacked(_id, _operator));
   }
 
+  /// @inheritdoc IDCAStrategiesPermissionsHandler
   function getTokenPermissions(uint256 _id, address _operator) public view override returns (TokenPermission memory) {
     return _tokenPermissions[_getPermissionKey(_id, _operator)];
   }
