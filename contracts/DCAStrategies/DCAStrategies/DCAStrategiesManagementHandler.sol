@@ -14,10 +14,10 @@ abstract contract DCAStrategiesManagementHandler is IDCAStrategiesManagementHand
   mapping(bytes32 => uint80) public strategyIdByName;
   /// @inheritdoc IDCAStrategiesManagementHandler
   uint80 public strategyCounter;
-  uint16 internal constant _TOTAL = 100e2;
   /// @inheritdoc IDCAStrategiesManagementHandler
   // solhint-disable-next-line var-name-mixedcase
   uint8 public immutable MAX_TOKEN_SHARES;
+  uint16 internal constant _TOTAL = 100e2;
   mapping(uint80 => StrategyOwnerAndVersion) internal _strategies;
   mapping(uint80 => bytes32) internal _strategyNameById;
   mapping(bytes32 => IDCAStrategies.ShareOfToken[]) internal _tokenShares;
