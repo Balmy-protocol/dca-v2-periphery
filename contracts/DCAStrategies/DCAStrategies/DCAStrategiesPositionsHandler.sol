@@ -2,12 +2,53 @@
 pragma solidity >=0.8.7 <0.9.0;
 
 import '../../interfaces/IDCAStrategies.sol';
+import './DCAStrategiesPermissionsHandler.sol';
+import './DCAStrategiesManagementHandler.sol';
 
-abstract contract DCAStrategiesPositionsHandler is IDCAStrategiesPositionsHandler {
+abstract contract DCAStrategiesPositionsHandler is
+  IDCAStrategiesPositionsHandler,
+  DCAStrategiesPermissionsHandler,
+  DCAStrategiesManagementHandler
+{
   // TODO: add function similar to this one https://github.com/Mean-Finance/dca-v2-core/blob/main/contracts/interfaces/IDCAHub.sol#L243
 
   /// @inheritdoc IDCAStrategiesPositionsHandler
-  function deposit(IDCAStrategies.DepositParams calldata parameters) external override returns (uint256) {}
+  function deposit(IDCAStrategies.DepositParams calldata parameters) external returns (uint256) {
+    StrategyOwnerAndVersion memory _strategy = _strategies[parameters.strategyId];
+    IDCAStrategies.ShareOfToken[] memory _tokens = _tokenShares[_getStrategyAndVersionKey(parameters.strategyId, _strategy.latestVersion)];
+
+    IERC20(parameters.from).transferFrom(msg.sender, address(this), parameters.amount);
+
+    for (uint256 i = 0; i < _tokens.length; i++) {
+      // uint256 _toDeposit = (parameters.amount * _tokens[i].share) / _TOTAL;
+      // _approveHub();
+      // IDCAPermissionManager.PermissionSet[] memory _permissions = new IDCAPermissionManager.PermissionSet[](0);
+      // parameters.hub.deposit(
+      //   parameters.from,
+      //   _tokens[i].token,
+      //   _toDeposit,
+      //   parameters.amountOfSwaps,
+      //   parameters.swapInterval,
+      //   address(this),
+      //   _permissions
+      // );
+    }
+
+    uint256 _positionId = _mint(parameters.owner, parameters.permissions);
+
+    emit Deposited(
+      msg.sender,
+      parameters.owner,
+      _positionId,
+      parameters.from,
+      parameters.strategyId,
+      _strategy.latestVersion,
+      parameters.swapInterval,
+      parameters.permissions
+    );
+
+    return _positionId;
+  }
 
   /// @inheritdoc IDCAStrategiesPositionsHandler
   function withdrawSwapped(uint256 _positionId, address _recipient) external override returns (uint256) {}
@@ -51,4 +92,8 @@ abstract contract DCAStrategiesPositionsHandler is IDCAStrategiesPositionsHandle
     uint32 _newSwaps,
     address _recipient
   ) external {}
+
+  function _approveHub() internal {
+    // here I will approve the ERC20 tokens, if approval is needed
+  }
 }

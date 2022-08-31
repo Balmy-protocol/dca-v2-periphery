@@ -1,9 +1,9 @@
-// SPDX-License-Identifier: GPL-2.0-or-later
+// SPDX-License-Identifier: UNLICENSED
 pragma solidity >=0.8.7 <0.9.0;
 
-import './DCAStrategiesPositionsHandler.sol';
+import '../../DCAStrategies/DCAStrategies/DCAStrategiesPositionsHandler.sol';
 
-contract DCAStrategies is DCAStrategiesPositionsHandler {
+contract DCAStrategiesPositionsHandlerMock is DCAStrategiesPositionsHandler {
   constructor(
     address _governor,
     IDCAHubPositionDescriptor _descriptor,
