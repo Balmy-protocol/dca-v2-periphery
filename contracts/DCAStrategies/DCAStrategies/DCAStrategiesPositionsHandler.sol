@@ -2,20 +2,14 @@
 pragma solidity >=0.8.7 <0.9.0;
 
 import '../../interfaces/IDCAStrategies.sol';
-import './DCAStrategiesPermissionsHandler.sol';
-import './DCAStrategiesManagementHandler.sol';
 
-abstract contract DCAStrategiesPositionsHandler is
-  IDCAStrategiesPositionsHandler,
-  DCAStrategiesPermissionsHandler,
-  DCAStrategiesManagementHandler
-{
+abstract contract DCAStrategiesPositionsHandler is IDCAStrategiesPositionsHandler {
   // TODO: add function similar to this one https://github.com/Mean-Finance/dca-v2-core/blob/main/contracts/interfaces/IDCAHub.sol#L243
 
   /// @inheritdoc IDCAStrategiesPositionsHandler
   function deposit(IDCAStrategies.DepositParams calldata parameters) external returns (uint256) {
-    StrategyOwnerAndVersion memory _strategy = _strategies[parameters.strategyId];
-    IDCAStrategies.ShareOfToken[] memory _tokens = _tokenShares[_getStrategyAndVersionKey(parameters.strategyId, _strategy.latestVersion)];
+    IDCAStrategies.StrategyOwnerAndVersion memory _strategy = _getStrategiesOwnerAndVersion(parameters.strategyId);
+    IDCAStrategies.ShareOfToken[] memory _tokens = _getTokenShares(parameters.strategyId, _strategy.latestVersion);
 
     IERC20(parameters.from).transferFrom(msg.sender, address(this), parameters.amount);
 
@@ -34,7 +28,7 @@ abstract contract DCAStrategiesPositionsHandler is
       // );
     }
 
-    uint256 _positionId = _mint(parameters.owner, parameters.permissions);
+    uint256 _positionId = _create(parameters.owner, parameters.permissions);
 
     emit Deposited(
       msg.sender,
@@ -92,6 +86,12 @@ abstract contract DCAStrategiesPositionsHandler is
     uint32 _newSwaps,
     address _recipient
   ) external {}
+
+  function _getTokenShares(uint80 _strategyId, uint16 _version) internal virtual returns (IDCAStrategies.ShareOfToken[] memory) {}
+
+  function _getStrategiesOwnerAndVersion(uint80 _strategyId) internal virtual returns (IDCAStrategies.StrategyOwnerAndVersion memory) {}
+
+  function _create(address _owner, IDCAStrategies.PermissionSet[] calldata _permissions) internal virtual returns (uint256 _mintId) {}
 
   function _approveHub() internal {
     // here I will approve the ERC20 tokens, if approval is needed

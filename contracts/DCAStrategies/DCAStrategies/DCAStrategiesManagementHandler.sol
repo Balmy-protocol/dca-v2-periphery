@@ -4,10 +4,6 @@ pragma solidity >=0.8.7 <0.9.0;
 import '../../interfaces/IDCAStrategies.sol';
 
 abstract contract DCAStrategiesManagementHandler is IDCAStrategiesManagementHandler {
-  struct StrategyOwnerAndVersion {
-    address owner;
-    uint16 latestVersion;
-  }
   /// @inheritdoc IDCAStrategiesManagementHandler
   mapping(uint80 => address) public strategiesPendingOwners;
   /// @inheritdoc IDCAStrategiesManagementHandler
