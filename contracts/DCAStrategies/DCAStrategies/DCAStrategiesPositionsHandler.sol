@@ -15,13 +15,13 @@ abstract contract DCAStrategiesPositionsHandler is IDCAStrategiesPositionsHandle
     if (_tokens.length == 0) revert InvalidStrategy();
 
     IERC20(_parameters.from).safeTransferFrom(msg.sender, address(this), _parameters.amount);
+    _approveHub(_parameters.from, _parameters.hub, _parameters.amount);
 
     uint256 _amountSpent;
+    uint16 _total = _getTotalShares();
     for (uint256 i = 0; i < _tokens.length; ) {
       IDCAStrategies.ShareOfToken memory _token = _tokens[i];
-      uint256 _toDeposit = i < _tokens.length - 1 ? (_parameters.amount * _token.share) / _getTotalShares() : _parameters.amount - _amountSpent;
-
-      _approveHub(_parameters.from, _parameters.hub, _toDeposit);
+      uint256 _toDeposit = i < _tokens.length - 1 ? (_parameters.amount * _token.share) / _total : _parameters.amount - _amountSpent;
 
       IDCAPermissionManager.PermissionSet[] memory _permissions = new IDCAPermissionManager.PermissionSet[](0);
       _parameters.hub.deposit(
@@ -110,7 +110,7 @@ abstract contract DCAStrategiesPositionsHandler is IDCAStrategiesPositionsHandle
     address _token,
     IDCAHub _hub,
     uint256 _amount
-  ) internal {
+  ) internal virtual {
     uint256 _allowance = IERC20(_token).allowance(address(this), address(_hub));
     if (_allowance < _amount) {
       if (_allowance > 0) {

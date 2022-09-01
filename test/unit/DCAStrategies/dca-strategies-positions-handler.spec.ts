@@ -38,14 +38,16 @@ contract('DCAStrategiesPositionsHandler', () => {
 
   beforeEach(async () => {
     await snapshot.revert(snapshotId);
+    tokenA.transferFrom.reset();
+    tokenA.allowance.reset();
+    tokenA.approve.reset();
+    hub['deposit(address,address,uint256,uint32,uint32,address,(address,uint8[])[])'].reset();
   });
 
   describe('_approveHub', () => {
     let amount: number;
     given(async () => {
       amount = 1000000;
-      tokenA.allowance.reset();
-      tokenA.approve.reset();
     });
     when('current allowance is enough', () => {
       given(async () => {
@@ -115,10 +117,6 @@ contract('DCAStrategiesPositionsHandler', () => {
       given(async () => {
         await DCAStrategiesPositionsHandlerMock.setTokenShares(SHARES);
 
-        hub['deposit(address,address,uint256,uint32,uint32,address,(address,uint8[])[])'].reset();
-        tokenA.transferFrom.reset();
-        tokenA.allowance.reset();
-        tokenA.approve.reset();
         tokenA.transferFrom.returns(true);
         tokenA.allowance.returns(0);
 
@@ -138,7 +136,11 @@ contract('DCAStrategiesPositionsHandler', () => {
         expect(tokenA.transferFrom).to.have.been.calledOnceWith(user.address, DCAStrategiesPositionsHandlerMock.address, toDeposit);
       });
       then('_approveHub() is called correctly', async () => {
-        expect(tokenA.approve.atCall(0)).to.have.been.calledWith(hub.address, constants.MAX_UINT_256);
+        expect(tokenA.approve).to.have.been.calledOnceWith(hub.address, constants.MAX_UINT_256);
+        let approveHubCalls = await DCAStrategiesPositionsHandlerMock.getApproveHubCalls();
+        expect(approveHubCalls[0].token).to.be.equal(tokenA.address);
+        expect(approveHubCalls[0].hub).to.be.equal(hub.address);
+        expect(approveHubCalls[0].amount).to.be.equal(toDeposit);
       });
       then('deposit() in hub is called correctly', async () => {
         expect(hub['deposit(address,address,uint256,uint32,uint32,address,(address,uint8[])[])']).to.have.been.calledTwice;
