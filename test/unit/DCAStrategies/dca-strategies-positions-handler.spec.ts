@@ -40,6 +40,53 @@ contract('DCAStrategiesPositionsHandler', () => {
     await snapshot.revert(snapshotId);
   });
 
+  describe('_approveHub', () => {
+    let amount: number;
+    given(async () => {
+      amount = 1000000;
+      tokenA.allowance.reset();
+      tokenA.approve.reset();
+    });
+    when('current allowance is enough', () => {
+      given(async () => {
+        tokenA.allowance.returns(amount);
+        await DCAStrategiesPositionsHandlerMock.approveHub(tokenA.address, hub.address, amount);
+      });
+      then('allowance is checked correctly', () => {
+        expect(tokenA.allowance).to.have.been.calledOnceWith(DCAStrategiesPositionsHandlerMock.address, hub.address);
+      });
+      then('approve is not called', async () => {
+        expect(tokenA.approve).to.not.have.been.called;
+      });
+    });
+    when('current allowance is not enough but its not zero', () => {
+      given(async () => {
+        tokenA.allowance.returns(amount - 1);
+        await DCAStrategiesPositionsHandlerMock.approveHub(tokenA.address, hub.address, amount);
+      });
+      then('allowance is checked correctly', () => {
+        expect(tokenA.allowance).to.have.been.calledOnceWith(DCAStrategiesPositionsHandlerMock.address, hub.address);
+      });
+      then('approve is called twice', async () => {
+        expect(tokenA.approve).to.have.been.calledTwice;
+        expect(tokenA.approve).to.have.been.calledWith(hub.address, 0);
+        expect(tokenA.approve).to.have.been.calledWith(hub.address, constants.MAX_UINT_256);
+      });
+    });
+    when('current allowance is zero', () => {
+      given(async () => {
+        tokenA.allowance.returns(0);
+        await DCAStrategiesPositionsHandlerMock.approveHub(tokenA.address, hub.address, amount);
+      });
+      then('allowance is checked correctly', () => {
+        expect(tokenA.allowance).to.have.been.calledOnceWith(DCAStrategiesPositionsHandlerMock.address, hub.address);
+      });
+      then('approve is called once', async () => {
+        expect(tokenA.approve).to.have.been.calledOnceWith(hub.address, constants.MAX_UINT_256);
+      });
+    });
+  });
+
   describe('deposit', () => {
     let tx: TransactionResponse;
     let toDeposit = ethers.utils.parseUnits('300');

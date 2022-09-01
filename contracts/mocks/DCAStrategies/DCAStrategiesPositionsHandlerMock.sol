@@ -26,6 +26,14 @@ contract DCAStrategiesPositionsHandlerMock is DCAStrategiesPositionsHandler {
     return _tokenShares;
   }
 
+  function approveHub(
+    address _token,
+    IDCAHub _hub,
+    uint256 _amount
+  ) external {
+    _approveHub(_token, _hub, _amount);
+  }
+
   function _create(address _owner, IDCAStrategies.PermissionSet[] calldata _permissions) internal override returns (uint256 _mintId) {
     _createCalls.push();
     _createCalls[_createCalls.length - 1].owner = _owner;
