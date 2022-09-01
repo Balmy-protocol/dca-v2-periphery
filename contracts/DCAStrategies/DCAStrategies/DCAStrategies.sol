@@ -27,4 +27,8 @@ contract DCAStrategies is DCAStrategiesManagementHandler, DCAStrategiesPermissio
   function _create(address _owner, IDCAStrategies.PermissionSet[] calldata _permissions) internal override returns (uint256 _mintId) {
     _mintId = super._mint(_owner, _permissions);
   }
+
+  function _getTotalShares() internal pure override returns (uint16 _total) {
+    return _TOTAL;
+  }
 }

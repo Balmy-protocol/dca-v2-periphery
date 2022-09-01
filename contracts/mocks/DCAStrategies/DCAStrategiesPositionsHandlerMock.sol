@@ -9,15 +9,25 @@ contract DCAStrategiesPositionsHandlerMock is DCAStrategiesPositionsHandler {
     IDCAStrategies.PermissionSet[] permissionSets;
   }
 
+  struct ApproveHubCalls {
+    address token;
+    IDCAHub hub;
+    uint256 amount;
+  }
+
   CreateCall[] private _createCalls;
   IDCAStrategies.ShareOfToken[] private _tokenShares;
+  ApproveHubCalls[] private _approveHubCalls;
 
   function getCreateCalls() external view returns (CreateCall[] memory) {
     return _createCalls;
   }
 
+  function getApproveHubCalls() external view returns (ApproveHubCalls[] memory) {
+    return _approveHubCalls;
+  }
+
   function setTokenShares(IDCAStrategies.ShareOfToken[] calldata _tokens) external {
-    _tokenShares.push();
     for (uint256 i = 0; i < _tokens.length; i++) {
       _tokenShares.push(_tokens[i]);
     }
@@ -27,6 +37,23 @@ contract DCAStrategiesPositionsHandlerMock is DCAStrategiesPositionsHandler {
     return _tokenShares;
   }
 
+  function approveHub(
+    address _token,
+    IDCAHub _hub,
+    uint256 _amount
+  ) external {
+    _approveHub(_token, _hub, _amount);
+  }
+
+  function _approveHub(
+    address _token,
+    IDCAHub _hub,
+    uint256 _amount
+  ) internal override {
+    _approveHubCalls.push(ApproveHubCalls(_token, _hub, _amount));
+    super._approveHub(_token, _hub, _amount);
+  }
+
   function _create(address _owner, IDCAStrategies.PermissionSet[] calldata _permissions) internal override returns (uint256 _mintId) {
     _createCalls.push();
     _createCalls[_createCalls.length - 1].owner = _owner;
@@ -34,5 +61,9 @@ contract DCAStrategiesPositionsHandlerMock is DCAStrategiesPositionsHandler {
       _createCalls[_createCalls.length - 1].permissionSets.push(_permissions[i]);
     }
     return 1;
+  }
+
+  function _getTotalShares() internal pure override returns (uint16 _total) {
+    return 100e2;
   }
 }
