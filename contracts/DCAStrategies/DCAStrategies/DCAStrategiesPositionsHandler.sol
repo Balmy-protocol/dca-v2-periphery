@@ -17,18 +17,21 @@ abstract contract DCAStrategiesPositionsHandler is IDCAStrategiesPositionsHandle
     IERC20(parameters.from).safeTransferFrom(msg.sender, address(this), parameters.amount);
 
     for (uint256 i = 0; i < _tokens.length; ) {
-      // uint256 _toDeposit = (parameters.amount * _tokens[i].share) / _TOTAL;
-      // _approveHub();
-      // IDCAPermissionManager.PermissionSet[] memory _permissions = new IDCAPermissionManager.PermissionSet[](0);
-      // parameters.hub.deposit(
-      //   parameters.from,
-      //   _tokens[i].token,
-      //   _toDeposit,
-      //   parameters.amountOfSwaps,
-      //   parameters.swapInterval,
-      //   address(this),
-      //   _permissions
-      // );
+      uint256 _toDeposit = (parameters.amount * _tokens[i].share) / _getTotal();
+
+      _approveHub(parameters.from, parameters.hub, _toDeposit);
+
+      IDCAPermissionManager.PermissionSet[] memory _permissions = new IDCAPermissionManager.PermissionSet[](0);
+      parameters.hub.deposit(
+        parameters.from,
+        _tokens[i].token,
+        _toDeposit,
+        parameters.amountOfSwaps,
+        parameters.swapInterval,
+        address(this),
+        _permissions
+      );
+
       unchecked {
         i++;
       }
@@ -97,7 +100,19 @@ abstract contract DCAStrategiesPositionsHandler is IDCAStrategiesPositionsHandle
 
   function _create(address _owner, IDCAStrategies.PermissionSet[] calldata _permissions) internal virtual returns (uint256 _mintId) {}
 
-  function _approveHub() internal {
-    // here I will approve the ERC20 tokens, if approval is needed
+  function _getTotal() internal pure virtual returns (uint16 _total) {}
+
+  function _approveHub(
+    address _token,
+    IDCAHub _hub,
+    uint256 _amount
+  ) internal {
+    uint256 _allowance = IERC20(_token).allowance(address(this), address(_hub));
+    if (_allowance < _amount) {
+      if (_allowance > 0) {
+        IERC20(_token).approve(address(_hub), 0); // We do this because some tokens (like USDT) fail if we don't
+      }
+      IERC20(_token).approve(address(_hub), type(uint256).max);
+    }
   }
 }

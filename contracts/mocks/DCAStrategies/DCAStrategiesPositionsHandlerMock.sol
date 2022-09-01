@@ -17,7 +17,6 @@ contract DCAStrategiesPositionsHandlerMock is DCAStrategiesPositionsHandler {
   }
 
   function setTokenShares(IDCAStrategies.ShareOfToken[] calldata _tokens) external {
-    _tokenShares.push();
     for (uint256 i = 0; i < _tokens.length; i++) {
       _tokenShares.push(_tokens[i]);
     }
@@ -34,5 +33,9 @@ contract DCAStrategiesPositionsHandlerMock is DCAStrategiesPositionsHandler {
       _createCalls[_createCalls.length - 1].permissionSets.push(_permissions[i]);
     }
     return 1;
+  }
+
+  function _getTotal() internal pure override returns (uint16 _total) {
+    return 100e2;
   }
 }
