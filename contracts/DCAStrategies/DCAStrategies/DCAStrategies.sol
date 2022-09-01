@@ -5,6 +5,8 @@ import './DCAStrategiesManagementHandler.sol';
 import './DCAStrategiesPermissionsHandler.sol';
 import './DCAStrategiesPositionsHandler.sol';
 
+// TODO: add -> import '../../interfaces/IDCAStrategies.sol';
+
 contract DCAStrategies is DCAStrategiesManagementHandler, DCAStrategiesPermissionsHandler, DCAStrategiesPositionsHandler {
   constructor(
     address _governor,
@@ -20,10 +22,6 @@ contract DCAStrategies is DCAStrategiesManagementHandler, DCAStrategiesPermissio
 
   function _getTokenShares(uint80 _strategyId, uint16 _version) internal view override returns (IDCAStrategies.ShareOfToken[] memory) {
     return _tokenShares[_getStrategyAndVersionKey(_strategyId, _version)];
-  }
-
-  function _getStrategiesOwnerAndVersion(uint80 _strategyId) internal view override returns (IDCAStrategies.StrategyOwnerAndVersion memory) {
-    return _strategies[_strategyId];
   }
 
   function _create(address _owner, IDCAStrategies.PermissionSet[] calldata _permissions) internal override returns (uint256 _mintId) {

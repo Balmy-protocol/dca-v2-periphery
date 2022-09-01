@@ -18,13 +18,11 @@ contract('DCAStrategiesPositionsHandler', () => {
   let SHARE_TOKEN_A;
   let SHARE_TOKEN_B;
   let SHARES: any[];
-  const NAME = ethers.utils.formatBytes32String('Optimism Ecosystem - v1');
-  const MAX_TOKEN_SHARES: number = 5;
 
   before('Setup accounts and contracts', async () => {
     [user, random, governor] = await ethers.getSigners();
     factory = await ethers.getContractFactory('DCAStrategiesPositionsHandlerMock');
-    DCAStrategiesPositionsHandlerMock = await factory.deploy(governor.address, constants.NOT_ZERO_ADDRESS, MAX_TOKEN_SHARES);
+    DCAStrategiesPositionsHandlerMock = await factory.deploy();
     snapshotId = await snapshot.take();
     tokenA = await smock.fake('IERC20');
     tokenB = await smock.fake('IERC20');
@@ -42,26 +40,48 @@ contract('DCAStrategiesPositionsHandler', () => {
     let toDeposit: BigNumber = ethers.utils.parseUnits('300');
     let amountOfSwaps: number = 5;
     let swapInterval: number = 7 * 24 * 60 * 60; // 1 week
+    let permissions: any[] = [];
 
-    given(async () => {
-      await DCAStrategiesPositionsHandlerMock.createStrategy(NAME, SHARES, random.address);
-
-      tokenA.transferFrom.returns(true);
-
-      tx = await DCAStrategiesPositionsHandlerMock.connect(user).deposit({
-        hub: constants.NOT_ZERO_ADDRESS,
-        strategyId: 1,
-        from: tokenA.address,
-        amount: toDeposit,
-        amountOfSwaps: amountOfSwaps,
-        swapInterval: swapInterval,
-        owner: user.address,
-        permissions: [],
+    when('invalid strategy and version provided', () => {
+      then('tx reverts with message', async () => {
+        await expect(
+          DCAStrategiesPositionsHandlerMock.deposit({
+            hub: constants.NOT_ZERO_ADDRESS,
+            strategyId: 99,
+            version: 99,
+            from: tokenA.address,
+            amount: toDeposit,
+            amountOfSwaps: amountOfSwaps,
+            swapInterval: swapInterval,
+            owner: user.address,
+            permissions: permissions,
+          })
+        ).to.be.revertedWith('InvalidStrategy()');
       });
     });
     when('deposit is called', () => {
-      then('NFT position is minted to the owner', async () => {
-        expect(await DCAStrategiesPositionsHandlerMock.balanceOf(user.address)).to.be.equal(1);
+      given(async () => {
+        await DCAStrategiesPositionsHandlerMock.setTokenShares(SHARES);
+
+        tokenA.transferFrom.returns(true);
+
+        tx = await DCAStrategiesPositionsHandlerMock.connect(user).deposit({
+          hub: constants.NOT_ZERO_ADDRESS,
+          strategyId: 1,
+          version: 1,
+          from: tokenA.address,
+          amount: toDeposit,
+          amountOfSwaps: amountOfSwaps,
+          swapInterval: swapInterval,
+          owner: user.address,
+          permissions: permissions,
+        });
+      });
+      then('_create() is called correctly', async () => {
+        let createCalls = await DCAStrategiesPositionsHandlerMock.getCreateCalls();
+        expect(createCalls[0].owner).to.be.equal(user.address);
+        expect(createCalls[0].permissionSets.length).to.be.equal(permissions.length);
+        expect(createCalls[0].permissionSets).to.have.all.members(permissions);
       });
       then('event is emitted', async () => {
         await expect(tx)

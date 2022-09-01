@@ -73,11 +73,6 @@ interface IDCAStrategiesManagementHandler {
   /// @notice Thrown when a provided array of token shares is misconfigured
   error InvalidTokenShares();
 
-  struct StrategyOwnerAndVersion {
-    address owner;
-    uint16 latestVersion;
-  }
-
   struct Strategy {
     address owner;
     bytes32 name;
@@ -400,9 +395,13 @@ interface IDCAStrategiesPositionsHandler {
     IDCAStrategies.PermissionSet[] permissions
   );
 
+  /// @notice Thrown when a pair of strategy id and version are non-existing
+  error InvalidStrategy();
+
   struct DepositParams {
     IDCAHub hub;
     uint80 strategyId;
+    uint16 version;
     address from;
     uint256 amount;
     uint32 amountOfSwaps;

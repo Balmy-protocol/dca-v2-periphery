@@ -8,12 +8,12 @@ abstract contract DCAStrategiesPositionsHandler is IDCAStrategiesPositionsHandle
 
   /// @inheritdoc IDCAStrategiesPositionsHandler
   function deposit(IDCAStrategies.DepositParams calldata parameters) external returns (uint256) {
-    IDCAStrategies.StrategyOwnerAndVersion memory _strategy = _getStrategiesOwnerAndVersion(parameters.strategyId);
-    IDCAStrategies.ShareOfToken[] memory _tokens = _getTokenShares(parameters.strategyId, _strategy.latestVersion);
+    IDCAStrategies.ShareOfToken[] memory _tokens = _getTokenShares(parameters.strategyId, parameters.version);
+    if (_tokens.length == 0) revert InvalidStrategy();
 
     IERC20(parameters.from).transferFrom(msg.sender, address(this), parameters.amount);
 
-    for (uint256 i = 0; i < _tokens.length; i++) {
+    for (uint256 i = 0; i < _tokens.length; ) {
       // uint256 _toDeposit = (parameters.amount * _tokens[i].share) / _TOTAL;
       // _approveHub();
       // IDCAPermissionManager.PermissionSet[] memory _permissions = new IDCAPermissionManager.PermissionSet[](0);
@@ -26,6 +26,9 @@ abstract contract DCAStrategiesPositionsHandler is IDCAStrategiesPositionsHandle
       //   address(this),
       //   _permissions
       // );
+      unchecked {
+        i++;
+      }
     }
 
     uint256 _positionId = _create(parameters.owner, parameters.permissions);
@@ -36,7 +39,7 @@ abstract contract DCAStrategiesPositionsHandler is IDCAStrategiesPositionsHandle
       _positionId,
       parameters.from,
       parameters.strategyId,
-      _strategy.latestVersion,
+      parameters.version,
       parameters.swapInterval,
       parameters.permissions
     );
@@ -88,8 +91,6 @@ abstract contract DCAStrategiesPositionsHandler is IDCAStrategiesPositionsHandle
   ) external {}
 
   function _getTokenShares(uint80 _strategyId, uint16 _version) internal virtual returns (IDCAStrategies.ShareOfToken[] memory) {}
-
-  function _getStrategiesOwnerAndVersion(uint80 _strategyId) internal virtual returns (IDCAStrategies.StrategyOwnerAndVersion memory) {}
 
   function _create(address _owner, IDCAStrategies.PermissionSet[] calldata _permissions) internal virtual returns (uint256 _mintId) {}
 
