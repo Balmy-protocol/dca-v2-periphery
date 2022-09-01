@@ -68,6 +68,10 @@ contract('DCAStrategiesPositionsHandler', () => {
       given(async () => {
         await DCAStrategiesPositionsHandlerMock.setTokenShares(SHARES);
 
+        hub['deposit(address,address,uint256,uint32,uint32,address,(address,uint8[])[])'].reset();
+        tokenA.transferFrom.reset();
+        tokenA.allowance.reset();
+        tokenA.approve.reset();
         tokenA.transferFrom.returns(true);
         tokenA.allowance.returns(0);
 
@@ -90,6 +94,7 @@ contract('DCAStrategiesPositionsHandler', () => {
         expect(tokenA.approve.atCall(0)).to.have.been.calledWith(hub.address, constants.MAX_UINT_256);
       });
       then('deposit() in hub is called correctly', async () => {
+        expect(hub['deposit(address,address,uint256,uint32,uint32,address,(address,uint8[])[])']).to.have.been.calledTwice;
         expect(hub['deposit(address,address,uint256,uint32,uint32,address,(address,uint8[])[])'].atCall(0)).to.have.been.calledWith(
           tokenA.address,
           tokenB.address,

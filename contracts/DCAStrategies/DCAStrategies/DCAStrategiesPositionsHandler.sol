@@ -10,44 +10,48 @@ abstract contract DCAStrategiesPositionsHandler is IDCAStrategiesPositionsHandle
   // TODO: add function similar to this one https://github.com/Mean-Finance/dca-v2-core/blob/main/contracts/interfaces/IDCAHub.sol#L243
 
   /// @inheritdoc IDCAStrategiesPositionsHandler
-  function deposit(IDCAStrategies.DepositParams calldata parameters) external returns (uint256) {
-    IDCAStrategies.ShareOfToken[] memory _tokens = _getTokenShares(parameters.strategyId, parameters.version);
+  function deposit(IDCAStrategies.DepositParams calldata _parameters) external returns (uint256) {
+    IDCAStrategies.ShareOfToken[] memory _tokens = _getTokenShares(_parameters.strategyId, _parameters.version);
     if (_tokens.length == 0) revert InvalidStrategy();
 
-    IERC20(parameters.from).safeTransferFrom(msg.sender, address(this), parameters.amount);
+    IERC20(_parameters.from).safeTransferFrom(msg.sender, address(this), _parameters.amount);
 
+    uint256 _amountSpent;
     for (uint256 i = 0; i < _tokens.length; ) {
-      uint256 _toDeposit = (parameters.amount * _tokens[i].share) / _getTotal();
+      IDCAStrategies.ShareOfToken memory _token = _tokens[i];
+      uint256 _toDeposit = i < _tokens.length - 1 ? (_parameters.amount * _token.share) / _getTotalShares() : _parameters.amount - _amountSpent;
 
-      _approveHub(parameters.from, parameters.hub, _toDeposit);
+      _approveHub(_parameters.from, _parameters.hub, _toDeposit);
 
       IDCAPermissionManager.PermissionSet[] memory _permissions = new IDCAPermissionManager.PermissionSet[](0);
-      parameters.hub.deposit(
-        parameters.from,
-        _tokens[i].token,
+      _parameters.hub.deposit(
+        _parameters.from,
+        _token.token,
         _toDeposit,
-        parameters.amountOfSwaps,
-        parameters.swapInterval,
+        _parameters.amountOfSwaps,
+        _parameters.swapInterval,
         address(this),
         _permissions
       );
+
+      _amountSpent += _toDeposit;
 
       unchecked {
         i++;
       }
     }
 
-    uint256 _positionId = _create(parameters.owner, parameters.permissions);
+    uint256 _positionId = _create(_parameters.owner, _parameters.permissions);
 
     emit Deposited(
       msg.sender,
-      parameters.owner,
+      _parameters.owner,
       _positionId,
-      parameters.from,
-      parameters.strategyId,
-      parameters.version,
-      parameters.swapInterval,
-      parameters.permissions
+      _parameters.from,
+      _parameters.strategyId,
+      _parameters.version,
+      _parameters.swapInterval,
+      _parameters.permissions
     );
 
     return _positionId;
@@ -100,7 +104,7 @@ abstract contract DCAStrategiesPositionsHandler is IDCAStrategiesPositionsHandle
 
   function _create(address _owner, IDCAStrategies.PermissionSet[] calldata _permissions) internal virtual returns (uint256 _mintId) {}
 
-  function _getTotal() internal pure virtual returns (uint16 _total) {}
+  function _getTotalShares() internal pure virtual returns (uint16 _total) {}
 
   function _approveHub(
     address _token,

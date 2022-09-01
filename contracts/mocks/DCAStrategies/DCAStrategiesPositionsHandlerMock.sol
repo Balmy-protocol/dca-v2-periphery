@@ -35,7 +35,7 @@ contract DCAStrategiesPositionsHandlerMock is DCAStrategiesPositionsHandler {
     return 1;
   }
 
-  function _getTotal() internal pure override returns (uint16 _total) {
+  function _getTotalShares() internal pure override returns (uint16 _total) {
     return 100e2;
   }
 }

@@ -28,7 +28,7 @@ contract DCAStrategies is DCAStrategiesManagementHandler, DCAStrategiesPermissio
     _mintId = super._mint(_owner, _permissions);
   }
 
-  function _getTotal() internal pure override returns (uint16 _total) {
+  function _getTotalShares() internal pure override returns (uint16 _total) {
     return _TOTAL;
   }
 }
