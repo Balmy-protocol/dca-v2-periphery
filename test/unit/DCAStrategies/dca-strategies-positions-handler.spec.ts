@@ -1,4 +1,4 @@
-import { expect } from 'chai';
+import chai, { expect } from 'chai';
 import { ethers } from 'hardhat';
 import { DCAStrategiesPositionsHandlerMock__factory, DCAStrategiesPositionsHandlerMock, IERC20 } from '@typechained';
 import { FakeContract, smock } from '@defi-wonderland/smock';
@@ -8,6 +8,8 @@ import { snapshot } from '@test-utils/evm';
 import { TransactionResponse } from '@ethersproject/abstract-provider';
 import { BigNumber } from '@ethersproject/bignumber';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers';
+
+chai.use(smock.matchers);
 
 contract('DCAStrategiesPositionsHandler', () => {
   let snapshotId: string;
@@ -23,12 +25,12 @@ contract('DCAStrategiesPositionsHandler', () => {
     [user, random, governor] = await ethers.getSigners();
     factory = await ethers.getContractFactory('DCAStrategiesPositionsHandlerMock');
     DCAStrategiesPositionsHandlerMock = await factory.deploy();
-    snapshotId = await snapshot.take();
     tokenA = await smock.fake('IERC20');
     tokenB = await smock.fake('IERC20');
     SHARE_TOKEN_A = { token: tokenA.address, share: BigNumber.from(50e2) };
     SHARE_TOKEN_B = { token: tokenB.address, share: BigNumber.from(50e2) };
     SHARES = [SHARE_TOKEN_A, SHARE_TOKEN_B];
+    snapshotId = await snapshot.take();
   });
 
   beforeEach(async () => {
@@ -37,9 +39,9 @@ contract('DCAStrategiesPositionsHandler', () => {
 
   describe('deposit', () => {
     let tx: TransactionResponse;
-    let toDeposit: BigNumber = ethers.utils.parseUnits('300');
-    let amountOfSwaps: number = 5;
-    let swapInterval: number = 7 * 24 * 60 * 60; // 1 week
+    let toDeposit = ethers.utils.parseUnits('300');
+    let amountOfSwaps = 5;
+    let swapInterval = 7 * 24 * 60 * 60; // 1 week
     let permissions: any[] = [];
 
     when('invalid strategy and version provided', () => {
@@ -76,6 +78,9 @@ contract('DCAStrategiesPositionsHandler', () => {
           owner: user.address,
           permissions: permissions,
         });
+      });
+      then('transferFrom() is called correctly', async () => {
+        expect(tokenA.transferFrom).to.have.been.calledOnceWith(user.address, DCAStrategiesPositionsHandlerMock.address, toDeposit);
       });
       then('_create() is called correctly', async () => {
         let createCalls = await DCAStrategiesPositionsHandlerMock.getCreateCalls();

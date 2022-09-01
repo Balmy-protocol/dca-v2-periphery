@@ -1,9 +1,12 @@
 // SPDX-License-Identifier: GPL-2.0-or-later
 pragma solidity >=0.8.7 <0.9.0;
 
+import '@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol';
 import '../../interfaces/IDCAStrategies.sol';
 
 abstract contract DCAStrategiesPositionsHandler is IDCAStrategiesPositionsHandler {
+  using SafeERC20 for IERC20;
+
   // TODO: add function similar to this one https://github.com/Mean-Finance/dca-v2-core/blob/main/contracts/interfaces/IDCAHub.sol#L243
 
   /// @inheritdoc IDCAStrategiesPositionsHandler
@@ -11,7 +14,7 @@ abstract contract DCAStrategiesPositionsHandler is IDCAStrategiesPositionsHandle
     IDCAStrategies.ShareOfToken[] memory _tokens = _getTokenShares(parameters.strategyId, parameters.version);
     if (_tokens.length == 0) revert InvalidStrategy();
 
-    IERC20(parameters.from).transferFrom(msg.sender, address(this), parameters.amount);
+    IERC20(parameters.from).safeTransferFrom(msg.sender, address(this), parameters.amount);
 
     for (uint256 i = 0; i < _tokens.length; ) {
       // uint256 _toDeposit = (parameters.amount * _tokens[i].share) / _TOTAL;

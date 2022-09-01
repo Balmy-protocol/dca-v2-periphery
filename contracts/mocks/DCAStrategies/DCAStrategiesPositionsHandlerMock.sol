@@ -19,14 +19,11 @@ contract DCAStrategiesPositionsHandlerMock is DCAStrategiesPositionsHandler {
   function setTokenShares(IDCAStrategies.ShareOfToken[] calldata _tokens) external {
     _tokenShares.push();
     for (uint256 i = 0; i < _tokens.length; i++) {
-      _tokenShares[_tokenShares.length - 1].token = _tokens[i].token;
-      _tokenShares[_tokenShares.length - 1].share = _tokens[i].share;
+      _tokenShares.push(_tokens[i]);
     }
   }
 
-  function _getTokenShares(uint80 _strategyId, uint16 _version) internal view override returns (IDCAStrategies.ShareOfToken[] memory) {
-    _strategyId; // shh
-    _version; // shh
+  function _getTokenShares(uint80, uint16) internal view override returns (IDCAStrategies.ShareOfToken[] memory) {
     return _tokenShares;
   }
 
