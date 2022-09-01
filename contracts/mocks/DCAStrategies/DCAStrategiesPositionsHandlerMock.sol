@@ -50,10 +50,7 @@ contract DCAStrategiesPositionsHandlerMock is DCAStrategiesPositionsHandler {
     IDCAHub _hub,
     uint256 _amount
   ) internal override {
-    _approveHubCalls.push();
-    _approveHubCalls[_approveHubCalls.length - 1].token = _token;
-    _approveHubCalls[_approveHubCalls.length - 1].hub = _hub;
-    _approveHubCalls[_approveHubCalls.length - 1].amount = _amount;
+    _approveHubCalls.push(ApproveHubCalls(_token, _hub, _amount));
     super._approveHub(_token, _hub, _amount);
   }
 

@@ -91,7 +91,7 @@ contract('DCAStrategiesPositionsHandler', () => {
 
   describe('deposit', () => {
     let tx: TransactionResponse;
-    let toDeposit = ethers.utils.parseUnits('300');
+    let toDeposit = ethers.utils.parseUnits('301');
     let amountOfSwaps = 5;
     let swapInterval = 7 * 24 * 60 * 60; // 1 week
     let permissions: any[] = [];
@@ -136,8 +136,8 @@ contract('DCAStrategiesPositionsHandler', () => {
         expect(tokenA.transferFrom).to.have.been.calledOnceWith(user.address, DCAStrategiesPositionsHandlerMock.address, toDeposit);
       });
       then('_approveHub() is called correctly', async () => {
-        expect(tokenA.approve).to.have.been.calledOnceWith(hub.address, constants.MAX_UINT_256);
         let approveHubCalls = await DCAStrategiesPositionsHandlerMock.getApproveHubCalls();
+        expect(approveHubCalls.length).to.be.equal(1);
         expect(approveHubCalls[0].token).to.be.equal(tokenA.address);
         expect(approveHubCalls[0].hub).to.be.equal(hub.address);
         expect(approveHubCalls[0].amount).to.be.equal(toDeposit);
@@ -156,7 +156,7 @@ contract('DCAStrategiesPositionsHandler', () => {
         expect(hub['deposit(address,address,uint256,uint32,uint32,address,(address,uint8[])[])'].atCall(1)).to.have.been.calledWith(
           tokenA.address,
           tokenC.address,
-          toDeposit.div(2),
+          toDeposit.sub(toDeposit.div(2)),
           amountOfSwaps,
           swapInterval,
           DCAStrategiesPositionsHandlerMock.address,
