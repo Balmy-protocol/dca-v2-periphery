@@ -373,9 +373,35 @@ interface IDCAStrategiesPermissionsHandler is IERC721, IERC721BasicEnumerable {
 }
 
 interface IDCAStrategiesPositionsHandler {
+  /**
+   * @notice Emitted when a position is created
+   * @param depositor The address of the user that creates the position
+   * @param owner The address of the user that will own the position
+   * @param positionId The id of the position that was created
+   * @param fromToken The address of the "from" token
+   * @param strategyId The id of the strategy selected
+   * @param version The version number of the strategy selected
+   * @param swapInterval How frequently the position's swaps should be executed
+   * @param permissions The permissions defined for the position
+   */
+  event Deposited(
+    address indexed depositor,
+    address indexed owner,
+    uint256 positionId,
+    address fromToken,
+    uint80 strategyId,
+    uint16 version,
+    uint32 swapInterval,
+    IDCAStrategies.PermissionSet[] permissions
+  );
+
+  /// @notice Thrown when a pair of strategy id and version are non-existing
+  error InvalidStrategy();
+
   struct DepositParams {
     IDCAHub hub;
     uint80 strategyId;
+    uint16 version;
     address from;
     uint256 amount;
     uint32 amountOfSwaps;

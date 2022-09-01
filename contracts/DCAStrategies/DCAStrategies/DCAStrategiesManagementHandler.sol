@@ -8,6 +8,7 @@ abstract contract DCAStrategiesManagementHandler is IDCAStrategiesManagementHand
     address owner;
     uint16 latestVersion;
   }
+
   /// @inheritdoc IDCAStrategiesManagementHandler
   mapping(uint80 => address) public strategiesPendingOwners;
   /// @inheritdoc IDCAStrategiesManagementHandler
