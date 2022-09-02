@@ -417,6 +417,13 @@ interface IDCAStrategiesPositionsHandler {
     uint256[] positions;
   }
 
+  /**
+   * @notice Returns a user position
+   * @param positionId The id of the position
+   * @return position The position itself
+   */
+  function userPosition(uint256 positionId) external view returns (Position memory position);
+
   function deposit(DepositParams calldata parameters) external returns (uint256);
 
   function withdrawSwapped(uint256 positionId, address recipient) external returns (uint256);

@@ -7,41 +7,33 @@ import '../../interfaces/IDCAStrategies.sol';
 abstract contract DCAStrategiesPositionsHandler is IDCAStrategiesPositionsHandler {
   using SafeERC20 for IERC20;
 
-  // TODO: add function similar to this one https://github.com/Mean-Finance/dca-v2-core/blob/main/contracts/interfaces/IDCAHub.sol#L243
+  mapping(uint256 => Position) internal _userPositions;
 
   /// @inheritdoc IDCAStrategiesPositionsHandler
   function deposit(IDCAStrategies.DepositParams calldata _parameters) external returns (uint256) {
+    // get tokens data
     IDCAStrategies.ShareOfToken[] memory _tokens = _getTokenShares(_parameters.strategyId, _parameters.version);
     if (_tokens.length == 0) revert InvalidStrategy();
 
+    // extract money from user
     IERC20(_parameters.from).safeTransferFrom(msg.sender, address(this), _parameters.amount);
+
+    // approve hub (if needed)
     _approveHub(_parameters.from, _parameters.hub, _parameters.amount);
 
-    uint256 _amountSpent;
-    uint16 _total = _getTotalShares();
-    for (uint256 i = 0; i < _tokens.length; ) {
-      IDCAStrategies.ShareOfToken memory _token = _tokens[i];
-      uint256 _toDeposit = i < _tokens.length - 1 ? (_parameters.amount * _token.share) / _total : _parameters.amount - _amountSpent;
+    // deposit in loop
+    uint256[] memory _positions = _depositLoop(_parameters, _tokens);
 
-      IDCAPermissionManager.PermissionSet[] memory _permissions = new IDCAPermissionManager.PermissionSet[](0);
-      _parameters.hub.deposit(
-        _parameters.from,
-        _token.token,
-        _toDeposit,
-        _parameters.amountOfSwaps,
-        _parameters.swapInterval,
-        address(this),
-        _permissions
-      );
-
-      _amountSpent += _toDeposit;
-
-      unchecked {
-        i++;
-      }
-    }
-
+    // mint NFT
     uint256 _positionId = _create(_parameters.owner, _parameters.permissions);
+
+    // save position
+    _userPositions[_positionId] = Position({
+      hub: _parameters.hub,
+      strategyId: _parameters.strategyId,
+      strategyVersion: _parameters.version,
+      positions: _positions
+    });
 
     emit Deposited(
       msg.sender,
@@ -55,6 +47,11 @@ abstract contract DCAStrategiesPositionsHandler is IDCAStrategiesPositionsHandle
     );
 
     return _positionId;
+  }
+
+  /// @inheritdoc IDCAStrategiesPositionsHandler
+  function userPosition(uint256 _positionId) external view returns (Position memory _position) {
+    return _userPositions[_positionId];
   }
 
   /// @inheritdoc IDCAStrategiesPositionsHandler
@@ -118,5 +115,38 @@ abstract contract DCAStrategiesPositionsHandler is IDCAStrategiesPositionsHandle
       }
       IERC20(_token).approve(address(_hub), type(uint256).max);
     }
+  }
+
+  function _depositLoop(IDCAStrategies.DepositParams calldata _parameters, IDCAStrategies.ShareOfToken[] memory _tokens)
+    internal
+    returns (uint256[] memory)
+  {
+    uint16 _total = _getTotalShares();
+    uint256 _amountSpent;
+    uint256[] memory _positions = new uint256[](_tokens.length);
+
+    for (uint256 i = 0; i < _tokens.length; ) {
+      IDCAStrategies.ShareOfToken memory _token = _tokens[i];
+      uint256 _toDeposit = i < _tokens.length - 1 ? (_parameters.amount * _token.share) / _total : _parameters.amount - _amountSpent;
+
+      IDCAPermissionManager.PermissionSet[] memory _permissions = new IDCAPermissionManager.PermissionSet[](0);
+      _positions[i] = _parameters.hub.deposit(
+        _parameters.from,
+        _token.token,
+        _toDeposit,
+        _parameters.amountOfSwaps,
+        _parameters.swapInterval,
+        address(this),
+        _permissions
+      );
+
+      _amountSpent += _toDeposit;
+
+      unchecked {
+        i++;
+      }
+    }
+
+    return _positions;
   }
 }
