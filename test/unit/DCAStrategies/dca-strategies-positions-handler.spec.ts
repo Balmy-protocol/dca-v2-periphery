@@ -1,6 +1,12 @@
 import chai, { expect } from 'chai';
 import { ethers } from 'hardhat';
-import { DCAStrategiesPositionsHandlerMock__factory, DCAStrategiesPositionsHandlerMock, IERC20, IDCAHub } from '@typechained';
+import {
+  DCAStrategiesPositionsHandlerMock__factory,
+  DCAStrategiesPositionsHandlerMock,
+  IERC20,
+  IDCAHub,
+  IDCAStrategiesPositionsHandler,
+} from '@typechained';
 import { FakeContract, smock } from '@defi-wonderland/smock';
 import { constants } from '@test-utils';
 import { given, then, when, contract } from '@test-utils/bdd';
@@ -95,6 +101,7 @@ contract('DCAStrategiesPositionsHandler', () => {
     let amountOfSwaps = 5;
     let swapInterval = 7 * 24 * 60 * 60; // 1 week
     let permissions: any[] = [];
+    let expectedPositionsIds = [BigNumber.from(1), BigNumber.from(2)];
 
     when('invalid strategy and version provided', () => {
       then('tx reverts with message', async () => {
@@ -114,11 +121,14 @@ contract('DCAStrategiesPositionsHandler', () => {
       });
     });
     when('deposit is called', () => {
+      let userPosition: IDCAStrategiesPositionsHandler.PositionStruct;
       given(async () => {
         await DCAStrategiesPositionsHandlerMock.setTokenShares(SHARES);
 
         tokenA.transferFrom.returns(true);
         tokenA.allowance.returns(0);
+        hub['deposit(address,address,uint256,uint32,uint32,address,(address,uint8[])[])'].returnsAtCall(0, 1);
+        hub['deposit(address,address,uint256,uint32,uint32,address,(address,uint8[])[])'].returnsAtCall(1, 2);
 
         tx = await DCAStrategiesPositionsHandlerMock.connect(user).deposit({
           hub: hub.address,
@@ -131,6 +141,8 @@ contract('DCAStrategiesPositionsHandler', () => {
           owner: user.address,
           permissions: permissions,
         });
+
+        userPosition = await DCAStrategiesPositionsHandlerMock.userPosition(1);
       });
       then('transferFrom() is called correctly', async () => {
         expect(tokenA.transferFrom).to.have.been.calledOnceWith(user.address, DCAStrategiesPositionsHandlerMock.address, toDeposit);
@@ -169,10 +181,20 @@ contract('DCAStrategiesPositionsHandler', () => {
         expect(createCalls[0].permissionSets.length).to.be.equal(permissions.length);
         expect(createCalls[0].permissionSets).to.have.all.members(permissions);
       });
+      then('user position is saved correctly', async () => {
+        expect(userPosition.hub).to.be.equal(hub.address);
+        expect(userPosition.strategyId).to.be.equal(1);
+        expect(userPosition.strategyVersion).to.be.equal(1);
+
+        expect(userPosition.positions.length).to.be.equal(expectedPositionsIds.length);
+        userPosition.positions.forEach((p, i) => {
+          expect(p).to.be.equal(expectedPositionsIds[i]);
+        });
+      });
       then('event is emitted', async () => {
         await expect(tx)
           .to.emit(DCAStrategiesPositionsHandlerMock, 'Deposited')
-          .withArgs(user.address, user.address, 1, tokenA.address, 1, 1, swapInterval, []);
+          .withArgs(user.address, user.address, 1, tokenA.address, 1, 1, swapInterval, [], expectedPositionsIds);
       });
     });
   });
