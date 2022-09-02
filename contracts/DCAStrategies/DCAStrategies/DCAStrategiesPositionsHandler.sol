@@ -10,6 +10,11 @@ abstract contract DCAStrategiesPositionsHandler is IDCAStrategiesPositionsHandle
   mapping(uint256 => Position) internal _userPositions;
 
   /// @inheritdoc IDCAStrategiesPositionsHandler
+  function userPosition(uint256 _positionId) external view returns (Position memory _position) {
+    return _userPositions[_positionId];
+  }
+
+  /// @inheritdoc IDCAStrategiesPositionsHandler
   function deposit(IDCAStrategies.DepositParams calldata _parameters) external returns (uint256) {
     // get tokens data
     IDCAStrategies.ShareOfToken[] memory _tokens = _getTokenShares(_parameters.strategyId, _parameters.version);
@@ -47,11 +52,6 @@ abstract contract DCAStrategiesPositionsHandler is IDCAStrategiesPositionsHandle
     );
 
     return _positionId;
-  }
-
-  /// @inheritdoc IDCAStrategiesPositionsHandler
-  function userPosition(uint256 _positionId) external view returns (Position memory _position) {
-    return _userPositions[_positionId];
   }
 
   /// @inheritdoc IDCAStrategiesPositionsHandler
@@ -119,11 +119,11 @@ abstract contract DCAStrategiesPositionsHandler is IDCAStrategiesPositionsHandle
 
   function _depositLoop(IDCAStrategies.DepositParams calldata _parameters, IDCAStrategies.ShareOfToken[] memory _tokens)
     internal
-    returns (uint256[] memory)
+    returns (uint256[] memory _positions)
   {
     uint16 _total = _getTotalShares();
     uint256 _amountSpent;
-    uint256[] memory _positions = new uint256[](_tokens.length);
+    _positions = new uint256[](_tokens.length);
 
     for (uint256 i = 0; i < _tokens.length; ) {
       IDCAStrategies.ShareOfToken memory _token = _tokens[i];
@@ -146,7 +146,5 @@ abstract contract DCAStrategiesPositionsHandler is IDCAStrategiesPositionsHandle
         i++;
       }
     }
-
-    return _positions;
   }
 }

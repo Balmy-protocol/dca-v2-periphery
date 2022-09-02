@@ -186,6 +186,7 @@ contract('DCAStrategiesPositionsHandler', () => {
         expect(userPosition.strategyVersion).to.be.equal(1);
 
         let expectedPositionsIds = [BigNumber.from(1), BigNumber.from(2)];
+        expect(userPosition.positions.length).to.be.equal(expectedPositionsIds.length);
         userPosition.positions.forEach((p, i) => {
           expect(p).to.be.equal(expectedPositionsIds[i]);
         });
