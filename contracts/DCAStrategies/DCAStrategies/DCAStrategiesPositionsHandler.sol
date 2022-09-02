@@ -48,7 +48,8 @@ abstract contract DCAStrategiesPositionsHandler is IDCAStrategiesPositionsHandle
       _parameters.strategyId,
       _parameters.version,
       _parameters.swapInterval,
-      _parameters.permissions
+      _parameters.permissions,
+      _positions
     );
 
     return _positionId;

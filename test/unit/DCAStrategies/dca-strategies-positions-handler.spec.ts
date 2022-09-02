@@ -101,6 +101,7 @@ contract('DCAStrategiesPositionsHandler', () => {
     let amountOfSwaps = 5;
     let swapInterval = 7 * 24 * 60 * 60; // 1 week
     let permissions: any[] = [];
+    let expectedPositionsIds = [BigNumber.from(1), BigNumber.from(2)];
 
     when('invalid strategy and version provided', () => {
       then('tx reverts with message', async () => {
@@ -185,7 +186,6 @@ contract('DCAStrategiesPositionsHandler', () => {
         expect(userPosition.strategyId).to.be.equal(1);
         expect(userPosition.strategyVersion).to.be.equal(1);
 
-        let expectedPositionsIds = [BigNumber.from(1), BigNumber.from(2)];
         expect(userPosition.positions.length).to.be.equal(expectedPositionsIds.length);
         userPosition.positions.forEach((p, i) => {
           expect(p).to.be.equal(expectedPositionsIds[i]);
@@ -194,7 +194,7 @@ contract('DCAStrategiesPositionsHandler', () => {
       then('event is emitted', async () => {
         await expect(tx)
           .to.emit(DCAStrategiesPositionsHandlerMock, 'Deposited')
-          .withArgs(user.address, user.address, 1, tokenA.address, 1, 1, swapInterval, []);
+          .withArgs(user.address, user.address, 1, tokenA.address, 1, 1, swapInterval, [], expectedPositionsIds);
       });
     });
   });

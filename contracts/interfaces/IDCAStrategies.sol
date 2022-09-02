@@ -383,6 +383,7 @@ interface IDCAStrategiesPositionsHandler {
    * @param version The version number of the strategy selected
    * @param swapInterval How frequently the position's swaps should be executed
    * @param permissions The permissions defined for the position
+   * @param positions An array containing all underlying positions
    */
   event Deposited(
     address indexed depositor,
@@ -392,7 +393,8 @@ interface IDCAStrategiesPositionsHandler {
     uint80 strategyId,
     uint16 version,
     uint32 swapInterval,
-    IDCAStrategies.PermissionSet[] permissions
+    IDCAStrategies.PermissionSet[] permissions,
+    uint256[] positions
   );
 
   /// @notice Thrown when a pair of strategy id and version are non-existing
