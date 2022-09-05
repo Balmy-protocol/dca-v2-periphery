@@ -32,8 +32,7 @@ contract DCAStrategies is DCAStrategiesManagementHandler, DCAStrategiesPermissio
     return _TOTAL;
   }
 
-  function _isOwnerOf(uint256 _id, address _account) internal view override returns (bool _isOwner) {
-    if (_account == ownerOf(_id)) return true;
-    return false;
+  function _hasWithdrawPermission(uint256 _id, address _account) internal view override returns (bool _hasPermission) {
+    return hasPermission(_id, _account, IDCAStrategies.Permission.WITHDRAW);
   }
 }

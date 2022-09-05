@@ -206,12 +206,12 @@ contract('DCAStrategiesPositionsHandler', () => {
   describe('withdrawSwapped', () => {
     let tx: TransactionResponse;
     let positions = [1, 2, 3];
-    when('when caller is not the owner', () => {
+    when('when caller does not have permissions', () => {
       given(async () => {
-        await DCAStrategiesPositionsHandlerMock.setIsOwner(false);
+        await DCAStrategiesPositionsHandlerMock.setWithdrawPermissions(false);
       });
       then('tx reverts with message', async () => {
-        await expect(DCAStrategiesPositionsHandlerMock.withdrawSwapped(1, random.address)).to.be.revertedWith('NotOwner()');
+        await expect(DCAStrategiesPositionsHandlerMock.withdrawSwapped(1, random.address)).to.be.revertedWith('NoPermissions()');
       });
     });
     when('withdrawSwapped is called', () => {
@@ -235,7 +235,7 @@ contract('DCAStrategiesPositionsHandler', () => {
         amounts.forEach((a, i) => {
           hub.withdrawSwapped.returnsAtCall(i, a);
         });
-        await DCAStrategiesPositionsHandlerMock.setIsOwner(true);
+        await DCAStrategiesPositionsHandlerMock.setWithdrawPermissions(true);
         await DCAStrategiesPositionsHandlerMock.setUserPositions(1, {
           strategyId: 1,
           strategyVersion: 1,
@@ -254,20 +254,14 @@ contract('DCAStrategiesPositionsHandler', () => {
         const withdrawer = await readArgFromEventOrFail(tx, 'Withdrew', 'withdrawer');
         const recipient = await readArgFromEventOrFail(tx, 'Withdrew', 'recipient');
         const positionId = await readArgFromEventOrFail(tx, 'Withdrew', 'positionId');
-        const underlyingsPositionId: any[] = await readArgFromEventOrFail(tx, 'Withdrew', 'underlyingsPositionId');
-        const tokenAmounts: IDCAStrategiesPositionsHandler.TokenAmountsStruct = await readArgFromEventOrFail(tx, 'Withdrew', 'tokenAmounts');
+        const tokenAmounts: IDCAStrategiesPositionsHandler.TokenAmountsStruct[] = await readArgFromEventOrFail(tx, 'Withdrew', 'tokenAmounts');
 
         expect(withdrawer).to.be.equal(user.address);
         expect(recipient).to.be.equal(user.address);
         expect(positionId).to.be.equal(1);
-        underlyingsPositionId.forEach((p, i) => {
-          expect(p).to.be.equal(BigNumber.from(positions[i]));
-        });
-        tokenAmounts.tokens.forEach((t, i) => {
-          expect(t).to.be.equal(tokens[i]);
-        });
-        tokenAmounts.amounts.forEach((a, i) => {
-          expect(a).to.be.equal(amounts[i]);
+        tokenAmounts.forEach((ta, i) => {
+          expect(ta.amount).to.be.equal(amounts[i]);
+          expect(ta.token).to.be.equal(tokens[i]);
         });
       });
     });

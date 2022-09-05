@@ -59,7 +59,7 @@ abstract contract DCAStrategiesPermissionsHandler is IDCAStrategiesPermissionsHa
     uint256 _id,
     address _account,
     IDCAStrategies.Permission _permission
-  ) external view override returns (bool) {
+  ) public view override returns (bool) {
     if (ownerOf(_id) == _account) {
       return true;
     }
@@ -95,7 +95,7 @@ abstract contract DCAStrategiesPermissionsHandler is IDCAStrategiesPermissionsHa
 
   /// @inheritdoc IDCAStrategiesPermissionsHandler
   function modify(uint256 _id, IDCAStrategies.PermissionSet[] calldata _permissions) public virtual override {
-    if (msg.sender != ownerOf(_id)) revert IDCAStrategies.NotOwner();
+    if (msg.sender != ownerOf(_id)) revert NotOwner();
     _modify(_id, _permissions);
   }
 
@@ -174,7 +174,7 @@ abstract contract DCAStrategiesPermissionsHandler is IDCAStrategiesPermissionsHa
       uint256 _tokenId = _permissions[i].tokenId;
       if (i > 0) {
         address _positionOwner = ownerOf(_tokenId);
-        if (_signer != _positionOwner) revert IDCAStrategies.NotOwner();
+        if (_signer != _positionOwner) revert NotOwner();
       }
       _modify(_tokenId, _permissions[i].permissionSets);
       unchecked {

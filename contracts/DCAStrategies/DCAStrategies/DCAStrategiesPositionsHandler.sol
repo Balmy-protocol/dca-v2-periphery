@@ -56,23 +56,22 @@ abstract contract DCAStrategiesPositionsHandler is IDCAStrategiesPositionsHandle
   }
 
   /// @inheritdoc IDCAStrategiesPositionsHandler
-  function withdrawSwapped(uint256 _positionId, address _recipient) external returns (TokenAmounts memory _tokenAmounts) {
-    if (!_isOwnerOf(_positionId, msg.sender)) revert IDCAStrategies.NotOwner();
+  function withdrawSwapped(uint256 _positionId, address _recipient) external returns (TokenAmounts[] memory _tokenAmounts) {
+    if (!_hasWithdrawPermission(_positionId, msg.sender)) revert NoPermissions();
 
     Position memory _position = _userPositions[_positionId];
     IDCAHub _hub = IDCAHub(_position.hub);
-    _tokenAmounts.tokens = new address[](_position.positions.length);
-    _tokenAmounts.amounts = new uint256[](_position.positions.length);
+    _tokenAmounts = new TokenAmounts[](_position.positions.length);
     for (uint256 i = 0; i < _position.positions.length; ) {
-      _tokenAmounts.amounts[i] = _hub.withdrawSwapped(_position.positions[i], _recipient);
-      _tokenAmounts.tokens[i] = address(_hub.userPosition(_position.positions[i]).to);
+      _tokenAmounts[i].amount = _hub.withdrawSwapped(_position.positions[i], _recipient);
+      _tokenAmounts[i].token = address(_hub.userPosition(_position.positions[i]).to);
 
       unchecked {
         i++;
       }
     }
 
-    emit Withdrew(msg.sender, _recipient, _positionId, _position.positions, _tokenAmounts);
+    emit Withdrew(msg.sender, _recipient, _positionId, _tokenAmounts);
   }
 
   /// @inheritdoc IDCAStrategiesPositionsHandler
@@ -121,7 +120,7 @@ abstract contract DCAStrategiesPositionsHandler is IDCAStrategiesPositionsHandle
 
   function _getTotalShares() internal pure virtual returns (uint16 _total) {}
 
-  function _isOwnerOf(uint256 _id, address _account) internal view virtual returns (bool _isOwner) {}
+  function _hasWithdrawPermission(uint256 _id, address _account) internal view virtual returns (bool _hasPermission) {}
 
   function _approveHub(
     address _token,

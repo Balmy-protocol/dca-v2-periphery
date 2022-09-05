@@ -180,6 +180,9 @@ interface IDCAStrategiesPermissionsHandler is IERC721, IERC721BasicEnumerable {
   /// @notice Thrown when a user tries to execute a permit with an invalid signature
   error InvalidSignature();
 
+  /// @notice Thrown when a user tries to perform an action for a token they do not own
+  error NotOwner();
+
   /// @notice A collection of permissions sets for a specific position
   struct PositionPermissions {
     // The id of the token
@@ -399,19 +402,15 @@ interface IDCAStrategiesPositionsHandler {
    * @param withdrawer The address of the user that executed the withdraw
    * @param recipient The address of the user that will receive the withdrawn tokens
    * @param positionId The id of the position that was affected
-   * @param underlyingsPositionId The ids of the underlying positions affected
    * @param tokenAmounts The amounts withdrawn and respective tokens
    */
-  event Withdrew(
-    address indexed withdrawer,
-    address indexed recipient,
-    uint256 positionId,
-    uint256[] underlyingsPositionId,
-    TokenAmounts tokenAmounts
-  );
+  event Withdrew(address indexed withdrawer, address indexed recipient, uint256 positionId, TokenAmounts[] tokenAmounts);
 
   /// @notice Thrown when a pair of strategy id and version are non-existing
   error InvalidStrategy();
+
+  /// @notice Thrown when an action is performed by a user without necessary permissions
+  error NoPermissions();
 
   struct DepositParams {
     IDCAHub hub;
@@ -425,10 +424,9 @@ interface IDCAStrategiesPositionsHandler {
     IDCAStrategies.PermissionSet[] permissions;
   }
 
-  // NOTE: i'm doing it this way because of a strange solidity error
   struct TokenAmounts {
-    address[] tokens;
-    uint256[] amounts;
+    address token;
+    uint256 amount;
   }
 
   struct Position {
@@ -447,7 +445,7 @@ interface IDCAStrategiesPositionsHandler {
 
   function deposit(DepositParams calldata parameters) external returns (uint256);
 
-  function withdrawSwapped(uint256 positionId, address recipient) external returns (TokenAmounts memory);
+  function withdrawSwapped(uint256 positionId, address recipient) external returns (TokenAmounts[] memory tokenAmounts);
 
   function increasePosition(
     uint256 positionId,
@@ -487,9 +485,6 @@ interface IDCAStrategiesPositionsHandler {
 interface IDCAStrategies is IDCAStrategiesManagementHandler, IDCAStrategiesPermissionsHandler, IDCAStrategiesPositionsHandler {
   /// @notice Thrown when a user provides a zero address when they shouldn't
   error ZeroAddress();
-
-  /// @notice Thrown when a user tries to perform an action for a token they do not own
-  error NotOwner();
 
   enum Permission {
     INCREASE,
