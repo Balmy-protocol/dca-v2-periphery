@@ -18,6 +18,7 @@ contract DCAStrategiesPositionsHandlerMock is DCAStrategiesPositionsHandler {
   CreateCall[] private _createCalls;
   IDCAStrategies.ShareOfToken[] private _tokenShares;
   ApproveHubCalls[] private _approveHubCalls;
+  bool public hasPermission;
 
   function getCreateCalls() external view returns (CreateCall[] memory) {
     return _createCalls;
@@ -31,6 +32,14 @@ contract DCAStrategiesPositionsHandlerMock is DCAStrategiesPositionsHandler {
     for (uint256 i = 0; i < _tokens.length; i++) {
       _tokenShares.push(_tokens[i]);
     }
+  }
+
+  function setUserPositions(uint256 _id, Position memory _positionToSet) external {
+    _userPositions[_id] = _positionToSet;
+  }
+
+  function setPermissions(bool _toSet) external {
+    hasPermission = _toSet;
   }
 
   function _getTokenShares(uint80, uint16) internal view override returns (IDCAStrategies.ShareOfToken[] memory) {
@@ -61,6 +70,14 @@ contract DCAStrategiesPositionsHandlerMock is DCAStrategiesPositionsHandler {
       _createCalls[_createCalls.length - 1].permissionSets.push(_permissions[i]);
     }
     return 1;
+  }
+
+  function _hasPermission(
+    uint256,
+    address,
+    IDCAStrategies.Permission
+  ) internal view override returns (bool _result) {
+    return hasPermission;
   }
 
   function _getTotalShares() internal pure override returns (uint16 _total) {

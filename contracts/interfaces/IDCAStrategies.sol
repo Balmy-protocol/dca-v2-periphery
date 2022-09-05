@@ -180,7 +180,7 @@ interface IDCAStrategiesPermissionsHandler is IERC721, IERC721BasicEnumerable {
   /// @notice Thrown when a user tries to execute a permit with an invalid signature
   error InvalidSignature();
 
-  /// @notice Thrown when a user tries to modify permissions for a token they do not own
+  /// @notice Thrown when a user tries to perform an action for a token they do not own
   error NotOwner();
 
   /// @notice A collection of permissions sets for a specific position
@@ -397,8 +397,20 @@ interface IDCAStrategiesPositionsHandler {
     uint256[] positions
   );
 
+  /**
+   * @notice Emitted when a user withdraws all swapped tokens from a position
+   * @param withdrawer The address of the user that executed the withdraw
+   * @param recipient The address of the user that will receive the withdrawn tokens
+   * @param positionId The id of the position that was affected
+   * @param tokenAmounts The amounts withdrawn and respective tokens
+   */
+  event Withdrew(address indexed withdrawer, address indexed recipient, uint256 positionId, TokenAmounts[] tokenAmounts);
+
   /// @notice Thrown when a pair of strategy id and version are non-existing
   error InvalidStrategy();
+
+  /// @notice Thrown when an action is performed by a user without necessary permissions
+  error NoPermissions();
 
   struct DepositParams {
     IDCAHub hub;
@@ -410,6 +422,11 @@ interface IDCAStrategiesPositionsHandler {
     uint32 swapInterval;
     address owner;
     IDCAStrategies.PermissionSet[] permissions;
+  }
+
+  struct TokenAmounts {
+    address token;
+    uint256 amount;
   }
 
   struct Position {
@@ -428,7 +445,7 @@ interface IDCAStrategiesPositionsHandler {
 
   function deposit(DepositParams calldata parameters) external returns (uint256);
 
-  function withdrawSwapped(uint256 positionId, address recipient) external returns (uint256);
+  function withdrawSwapped(uint256 positionId, address recipient) external returns (TokenAmounts[] memory tokenAmounts);
 
   function increasePosition(
     uint256 positionId,

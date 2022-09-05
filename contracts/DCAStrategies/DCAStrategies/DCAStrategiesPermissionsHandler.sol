@@ -59,7 +59,7 @@ abstract contract DCAStrategiesPermissionsHandler is IDCAStrategiesPermissionsHa
     uint256 _id,
     address _account,
     IDCAStrategies.Permission _permission
-  ) external view override returns (bool) {
+  ) public view override returns (bool) {
     if (ownerOf(_id) == _account) {
       return true;
     }
