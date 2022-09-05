@@ -9,11 +9,6 @@ abstract contract DCAStrategiesPositionsHandler is IDCAStrategiesPositionsHandle
 
   mapping(uint256 => Position) internal _userPositions;
 
-  modifier onlyWithPermission(uint256 _positionId, IDCAStrategies.Permission _permission) {
-    if (!_hasPermission(_positionId, msg.sender, _permission)) revert NoPermissions();
-    _;
-  }
-
   /// @inheritdoc IDCAStrategiesPositionsHandler
   function userPosition(uint256 _positionId) external view returns (Position memory _position) {
     return _userPositions[_positionId];
@@ -177,5 +172,10 @@ abstract contract DCAStrategiesPositionsHandler is IDCAStrategiesPositionsHandle
         i++;
       }
     }
+  }
+
+  modifier onlyWithPermission(uint256 _positionId, IDCAStrategies.Permission _permission) {
+    if (!_hasPermission(_positionId, msg.sender, _permission)) revert NoPermissions();
+    _;
   }
 }
