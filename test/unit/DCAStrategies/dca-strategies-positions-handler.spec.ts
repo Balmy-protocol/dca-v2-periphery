@@ -6,6 +6,7 @@ import {
   IERC20,
   IDCAHub,
   IDCAStrategiesPositionsHandler,
+  IDCAHubPositionHandler,
 } from '@typechained';
 import { FakeContract, smock } from '@defi-wonderland/smock';
 import { constants } from '@test-utils';
@@ -13,6 +14,7 @@ import { given, then, when, contract } from '@test-utils/bdd';
 import { snapshot } from '@test-utils/evm';
 import { TransactionResponse } from '@ethersproject/abstract-provider';
 import { BigNumber } from '@ethersproject/bignumber';
+import { readArgFromEventOrFail } from '@test-utils/event-utils';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers';
 
 chai.use(smock.matchers);
@@ -47,6 +49,8 @@ contract('DCAStrategiesPositionsHandler', () => {
     tokenA.transferFrom.reset();
     tokenA.allowance.reset();
     tokenA.approve.reset();
+    hub.userPosition.reset();
+    hub.withdrawSwapped.reset();
     hub['deposit(address,address,uint256,uint32,uint32,address,(address,uint8[])[])'].reset();
   });
 
@@ -195,6 +199,76 @@ contract('DCAStrategiesPositionsHandler', () => {
         await expect(tx)
           .to.emit(DCAStrategiesPositionsHandlerMock, 'Deposited')
           .withArgs(user.address, user.address, 1, tokenA.address, 1, 1, swapInterval, [], expectedPositionsIds);
+      });
+    });
+  });
+
+  describe('withdrawSwapped', () => {
+    let tx: TransactionResponse;
+    let positions = [1, 2, 3];
+    when('when caller is not the owner', () => {
+      given(async () => {
+        await DCAStrategiesPositionsHandlerMock.setIsOwner(false);
+      });
+      then('tx reverts with message', async () => {
+        await expect(DCAStrategiesPositionsHandlerMock.withdrawSwapped(1, random.address)).to.be.revertedWith('NotOwner()');
+      });
+    });
+    when('withdrawSwapped is called', () => {
+      let amounts = [BigNumber.from(50), BigNumber.from(500), BigNumber.from(5000)];
+      let tokens: string[];
+      let toReturn: IDCAHubPositionHandler.UserPositionStruct = {
+        from: constants.NOT_ZERO_ADDRESS,
+        to: constants.NOT_ZERO_ADDRESS,
+        swapInterval: 0,
+        swapsExecuted: 0,
+        swapped: 0,
+        swapsLeft: 0,
+        remaining: 0,
+        rate: 0,
+      };
+      given(async () => {
+        tokens = [tokenA.address, tokenB.address, tokenC.address];
+        tokens.forEach((t, i) => {
+          hub.userPosition.returnsAtCall(i, { ...toReturn, to: t });
+        });
+        amounts.forEach((a, i) => {
+          hub.withdrawSwapped.returnsAtCall(i, a);
+        });
+        await DCAStrategiesPositionsHandlerMock.setIsOwner(true);
+        await DCAStrategiesPositionsHandlerMock.setUserPositions(1, {
+          strategyId: 1,
+          strategyVersion: 1,
+          hub: hub.address,
+          positions: positions,
+        });
+        tx = await DCAStrategiesPositionsHandlerMock.withdrawSwapped(1, user.address);
+      });
+      then('withdrawSwapped in hub is called correctly', async () => {
+        expect(hub.withdrawSwapped).to.have.been.calledThrice;
+        positions.forEach((p, i) => {
+          expect(hub.withdrawSwapped.atCall(i)).to.have.been.calledOnceWith(BigNumber.from(p), user.address);
+        });
+      });
+      then('event is emitted', async () => {
+        const withdrawer = await readArgFromEventOrFail(tx, 'Withdrew', 'withdrawer');
+        const recipient = await readArgFromEventOrFail(tx, 'Withdrew', 'recipient');
+        const positionId = await readArgFromEventOrFail(tx, 'Withdrew', 'positionId');
+        const underlyingsPositionId: any[] = await readArgFromEventOrFail(tx, 'Withdrew', 'underlyingsPositionId');
+        const tokenAmounts: IDCAStrategiesPositionsHandler.TokenAmountsStruct = await readArgFromEventOrFail(tx, 'Withdrew', 'tokenAmounts');
+
+        expect(withdrawer).to.be.equal(user.address);
+        expect(recipient).to.be.equal(user.address);
+        expect(positionId).to.be.equal(1);
+        underlyingsPositionId.forEach((p, i) => {
+          expect(p).to.be.equal(BigNumber.from(positions[i]));
+        });
+        tokenAmounts.tokens.forEach((t, i) => {
+          expect(t).to.be.equal(tokens[i]);
+        });
+        tokenAmounts.amounts.forEach((a, i) => {
+          expect(a).to.be.equal(amounts[i]);
+        });
       });
     });
   });

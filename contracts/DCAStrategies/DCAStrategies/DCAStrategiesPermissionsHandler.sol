@@ -95,7 +95,7 @@ abstract contract DCAStrategiesPermissionsHandler is IDCAStrategiesPermissionsHa
 
   /// @inheritdoc IDCAStrategiesPermissionsHandler
   function modify(uint256 _id, IDCAStrategies.PermissionSet[] calldata _permissions) public virtual override {
-    if (msg.sender != ownerOf(_id)) revert NotOwner();
+    if (msg.sender != ownerOf(_id)) revert IDCAStrategies.NotOwner();
     _modify(_id, _permissions);
   }
 
@@ -174,7 +174,7 @@ abstract contract DCAStrategiesPermissionsHandler is IDCAStrategiesPermissionsHa
       uint256 _tokenId = _permissions[i].tokenId;
       if (i > 0) {
         address _positionOwner = ownerOf(_tokenId);
-        if (_signer != _positionOwner) revert NotOwner();
+        if (_signer != _positionOwner) revert IDCAStrategies.NotOwner();
       }
       _modify(_tokenId, _permissions[i].permissionSets);
       unchecked {

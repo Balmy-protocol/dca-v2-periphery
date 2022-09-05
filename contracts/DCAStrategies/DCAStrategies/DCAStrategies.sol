@@ -31,4 +31,9 @@ contract DCAStrategies is DCAStrategiesManagementHandler, DCAStrategiesPermissio
   function _getTotalShares() internal pure override returns (uint16 _total) {
     return _TOTAL;
   }
+
+  function _isOwnerOf(uint256 _id, address _account) internal view override returns (bool _isOwner) {
+    if (_account == ownerOf(_id)) return true;
+    return false;
+  }
 }

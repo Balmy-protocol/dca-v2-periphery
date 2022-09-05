@@ -18,6 +18,7 @@ contract DCAStrategiesPositionsHandlerMock is DCAStrategiesPositionsHandler {
   CreateCall[] private _createCalls;
   IDCAStrategies.ShareOfToken[] private _tokenShares;
   ApproveHubCalls[] private _approveHubCalls;
+  bool public isOwnerOf;
 
   function getCreateCalls() external view returns (CreateCall[] memory) {
     return _createCalls;
@@ -31,6 +32,14 @@ contract DCAStrategiesPositionsHandlerMock is DCAStrategiesPositionsHandler {
     for (uint256 i = 0; i < _tokens.length; i++) {
       _tokenShares.push(_tokens[i]);
     }
+  }
+
+  function setIsOwner(bool _toSet) external {
+    isOwnerOf = _toSet;
+  }
+
+  function setUserPositions(uint256 _id, Position memory _positionToSet) external {
+    _userPositions[_id] = _positionToSet;
   }
 
   function _getTokenShares(uint80, uint16) internal view override returns (IDCAStrategies.ShareOfToken[] memory) {
@@ -61,6 +70,10 @@ contract DCAStrategiesPositionsHandlerMock is DCAStrategiesPositionsHandler {
       _createCalls[_createCalls.length - 1].permissionSets.push(_permissions[i]);
     }
     return 1;
+  }
+
+  function _isOwnerOf(uint256, address) internal view override returns (bool _isOwner) {
+    return isOwnerOf;
   }
 
   function _getTotalShares() internal pure override returns (uint16 _total) {
