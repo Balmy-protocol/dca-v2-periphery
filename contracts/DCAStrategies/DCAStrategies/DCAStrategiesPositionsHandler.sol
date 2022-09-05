@@ -9,6 +9,11 @@ abstract contract DCAStrategiesPositionsHandler is IDCAStrategiesPositionsHandle
 
   mapping(uint256 => Position) internal _userPositions;
 
+  modifier onlyWithPermission(uint256 _positionId, IDCAStrategies.Permission _permission) {
+    if (!_hasPermission(_positionId, msg.sender, _permission)) revert NoPermissions();
+    _;
+  }
+
   /// @inheritdoc IDCAStrategiesPositionsHandler
   function userPosition(uint256 _positionId) external view returns (Position memory _position) {
     return _userPositions[_positionId];
@@ -56,13 +61,16 @@ abstract contract DCAStrategiesPositionsHandler is IDCAStrategiesPositionsHandle
   }
 
   /// @inheritdoc IDCAStrategiesPositionsHandler
-  function withdrawSwapped(uint256 _positionId, address _recipient) external returns (TokenAmounts[] memory _tokenAmounts) {
-    if (!_hasWithdrawPermission(_positionId, msg.sender)) revert NoPermissions();
-
+  function withdrawSwapped(uint256 _positionId, address _recipient)
+    external
+    onlyWithPermission(_positionId, IDCAStrategies.Permission.WITHDRAW)
+    returns (TokenAmounts[] memory _tokenAmounts)
+  {
     Position memory _position = _userPositions[_positionId];
     IDCAHub _hub = IDCAHub(_position.hub);
     _tokenAmounts = new TokenAmounts[](_position.positions.length);
     for (uint256 i = 0; i < _position.positions.length; ) {
+      // TODO: Test how much cheaper it would be to not return the token (and avoid the call to `hub.userPosition)
       _tokenAmounts[i].amount = _hub.withdrawSwapped(_position.positions[i], _recipient);
       _tokenAmounts[i].token = address(_hub.userPosition(_position.positions[i]).to);
 
@@ -120,7 +128,11 @@ abstract contract DCAStrategiesPositionsHandler is IDCAStrategiesPositionsHandle
 
   function _getTotalShares() internal pure virtual returns (uint16 _total) {}
 
-  function _hasWithdrawPermission(uint256 _id, address _account) internal view virtual returns (bool _hasPermission) {}
+  function _hasPermission(
+    uint256 _id,
+    address _account,
+    IDCAStrategies.Permission _permission
+  ) internal view virtual returns (bool _result) {}
 
   function _approveHub(
     address _token,

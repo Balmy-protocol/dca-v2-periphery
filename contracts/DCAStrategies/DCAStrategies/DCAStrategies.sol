@@ -32,7 +32,11 @@ contract DCAStrategies is DCAStrategiesManagementHandler, DCAStrategiesPermissio
     return _TOTAL;
   }
 
-  function _hasWithdrawPermission(uint256 _id, address _account) internal view override returns (bool _hasPermission) {
-    return hasPermission(_id, _account, IDCAStrategies.Permission.WITHDRAW);
+  function _hasPermission(
+    uint256 _id,
+    address _account,
+    IDCAStrategies.Permission _permission
+  ) internal view override returns (bool _result) {
+    return hasPermission(_id, _account, _permission);
   }
 }

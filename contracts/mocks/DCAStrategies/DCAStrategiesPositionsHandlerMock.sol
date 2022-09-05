@@ -38,7 +38,7 @@ contract DCAStrategiesPositionsHandlerMock is DCAStrategiesPositionsHandler {
     _userPositions[_id] = _positionToSet;
   }
 
-  function setWithdrawPermissions(bool _toSet) external {
+  function setPermissions(bool _toSet) external {
     hasPermission = _toSet;
   }
 
@@ -72,7 +72,11 @@ contract DCAStrategiesPositionsHandlerMock is DCAStrategiesPositionsHandler {
     return 1;
   }
 
-  function _hasWithdrawPermission(uint256, address) internal view override returns (bool _hasPermission) {
+  function _hasPermission(
+    uint256,
+    address,
+    IDCAStrategies.Permission
+  ) internal view override returns (bool _result) {
     return hasPermission;
   }
 

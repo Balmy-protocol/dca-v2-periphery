@@ -208,7 +208,7 @@ contract('DCAStrategiesPositionsHandler', () => {
     let positions = [1, 2, 3];
     when('when caller does not have permissions', () => {
       given(async () => {
-        await DCAStrategiesPositionsHandlerMock.setWithdrawPermissions(false);
+        await DCAStrategiesPositionsHandlerMock.setPermissions(false);
       });
       then('tx reverts with message', async () => {
         await expect(DCAStrategiesPositionsHandlerMock.withdrawSwapped(1, random.address)).to.be.revertedWith('NoPermissions()');
@@ -235,7 +235,7 @@ contract('DCAStrategiesPositionsHandler', () => {
         amounts.forEach((a, i) => {
           hub.withdrawSwapped.returnsAtCall(i, a);
         });
-        await DCAStrategiesPositionsHandlerMock.setWithdrawPermissions(true);
+        await DCAStrategiesPositionsHandlerMock.setPermissions(true);
         await DCAStrategiesPositionsHandlerMock.setUserPositions(1, {
           strategyId: 1,
           strategyVersion: 1,
@@ -259,6 +259,8 @@ contract('DCAStrategiesPositionsHandler', () => {
         expect(withdrawer).to.be.equal(user.address);
         expect(recipient).to.be.equal(user.address);
         expect(positionId).to.be.equal(1);
+        expect(tokenAmounts.length).to.be.equal(tokens.length);
+        expect(tokenAmounts.length).to.be.equal(amounts.length);
         tokenAmounts.forEach((ta, i) => {
           expect(ta.amount).to.be.equal(amounts[i]);
           expect(ta.token).to.be.equal(tokens[i]);
