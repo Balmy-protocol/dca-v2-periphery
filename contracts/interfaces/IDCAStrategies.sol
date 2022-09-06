@@ -406,6 +406,15 @@ interface IDCAStrategiesPositionsHandler {
    */
   event Withdrew(address indexed withdrawer, address indexed recipient, uint256 positionId, TokenAmounts[] tokenAmounts);
 
+  /**
+   * @notice Emitted when a user increase amount or swaps quantity in a position
+   * @param user The address of the user that executed the increase
+   * @param positionId The id of the position that was affected
+   * @param amount The amount increased
+   * @param newSwaps The amount of new swaps
+   */
+  event Increased(address indexed user, uint256 positionId, uint256 amount, uint32 newSwaps);
+
   /// @notice Thrown when a pair of strategy id and version are non-existing
   error InvalidStrategy();
 
@@ -449,6 +458,7 @@ interface IDCAStrategiesPositionsHandler {
 
   function increasePosition(
     uint256 positionId,
+    address _fromToken,
     uint256 amount,
     uint32 newSwaps
   ) external;
