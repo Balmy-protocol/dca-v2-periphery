@@ -415,6 +415,16 @@ interface IDCAStrategiesPositionsHandler {
    */
   event Increased(address indexed user, uint256 positionId, uint256 amount, uint32 newSwaps);
 
+  /**
+   * @notice Emitted when a user reduces amount or swaps quantity in a position
+   * @param user The address of the user that executed the reduce
+   * @param positionId The id of the position that was affected
+   * @param amount The amount reduced
+   * @param newSwaps The amount of new swaps
+   * @param recipient The receiver of funds
+   */
+  event Reduced(address indexed user, uint256 positionId, uint256 amount, uint32 newSwaps, address recipient);
+
   /// @notice Thrown when a pair of strategy id and version are non-existing
   error InvalidStrategy();
 
@@ -458,7 +468,7 @@ interface IDCAStrategiesPositionsHandler {
 
   function increasePosition(
     uint256 positionId,
-    address _fromToken,
+    address fromToken,
     uint256 amount,
     uint32 newSwaps
   ) external;

@@ -118,7 +118,26 @@ abstract contract DCAStrategiesPositionsHandler is IDCAStrategiesPositionsHandle
     uint256 _amount,
     uint32 _newSwaps,
     address _recipient
-  ) external override {}
+  ) external onlyWithPermission(_positionId, IDCAStrategies.Permission.REDUCE) {
+    Position memory _position = _userPositions[_positionId];
+    IDCAStrategies.ShareOfToken[] memory _tokens = _getTokenShares(_position.strategyId, _position.strategyVersion);
+
+    uint16 _total = _getTotalShares();
+    uint256 _amountSpent;
+    for (uint256 i = 0; i < _position.positions.length; ) {
+      uint256 _toReduce = _calculateOptimalAmount(i, _position.positions.length, _amount, _tokens[i].share, _total, _amountSpent);
+
+      _position.hub.reducePosition(_position.positions[i], _toReduce, _newSwaps, _recipient);
+
+      _amountSpent += _toReduce;
+
+      unchecked {
+        i++;
+      }
+    }
+
+    emit Reduced(msg.sender, _positionId, _amount, _newSwaps, _recipient);
+  }
 
   /// @inheritdoc IDCAStrategiesPositionsHandler
   function terminate(

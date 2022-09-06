@@ -52,6 +52,7 @@ contract('DCAStrategiesPositionsHandler', () => {
     hub.userPosition.reset();
     hub.withdrawSwapped.reset();
     hub.increasePosition.reset();
+    hub.reducePosition.reset();
     hub['deposit(address,address,uint256,uint32,uint32,address,(address,uint8[])[])'].reset();
   });
 
@@ -338,6 +339,50 @@ contract('DCAStrategiesPositionsHandler', () => {
         then('event is emitted', async () => {
           await expect(tx).to.emit(DCAStrategiesPositionsHandlerMock, 'Increased').withArgs(user.address, 1, 0, newSwaps);
         });
+      });
+    });
+  });
+
+  describe('reducePosition', () => {
+    let tx: TransactionResponse;
+    let positions = [1, 2];
+    let toReduce = ethers.utils.parseUnits('301');
+    let newSwaps = 1;
+    when('caller does not have permissions', () => {
+      given(async () => {
+        await DCAStrategiesPositionsHandlerMock.setPermissions(false);
+      });
+      then('tx reverts with message', async () => {
+        await expect(DCAStrategiesPositionsHandlerMock.reducePosition(1, toReduce, newSwaps, constants.NOT_ZERO_ADDRESS)).to.be.revertedWith(
+          'NoPermissions()'
+        );
+      });
+    });
+    when('reducePosition is called', () => {
+      given(async () => {
+        await DCAStrategiesPositionsHandlerMock.setPermissions(true);
+        await DCAStrategiesPositionsHandlerMock.setTokenShares(SHARES);
+        tokenA.transferFrom.returns(true);
+        await DCAStrategiesPositionsHandlerMock.setUserPositions(1, {
+          strategyId: 1,
+          strategyVersion: 1,
+          hub: hub.address,
+          positions: positions,
+        });
+        tx = await DCAStrategiesPositionsHandlerMock.connect(user).reducePosition(1, toReduce, newSwaps, user.address);
+      });
+      then('reducePosition in hub is called correctly', async () => {
+        expect(hub.reducePosition).to.have.been.calledTwice;
+        expect(hub.reducePosition.atCall(0)).to.have.been.calledOnceWith(BigNumber.from(1), toReduce.div(2), newSwaps, user.address);
+        expect(hub.reducePosition.atCall(1)).to.have.been.calledOnceWith(
+          BigNumber.from(2),
+          toReduce.sub(toReduce.div(2)),
+          newSwaps,
+          user.address
+        );
+      });
+      then('event is emitted', async () => {
+        await expect(tx).to.emit(DCAStrategiesPositionsHandlerMock, 'Reduced').withArgs(user.address, 1, toReduce, newSwaps, user.address);
       });
     });
   });
