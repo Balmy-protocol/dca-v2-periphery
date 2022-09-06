@@ -87,7 +87,7 @@ abstract contract DCAStrategiesPositionsHandler is IDCAStrategiesPositionsHandle
     Position memory _position = _userPositions[_positionId];
     IDCAStrategies.ShareOfToken[] memory _tokens = _getTokenShares(_position.strategyId, _position.strategyVersion);
 
-    if (_amount != 0) {
+    if (_amount > 0) {
       // extract money from user
       IERC20(_fromToken).safeTransferFrom(msg.sender, address(this), _amount);
 
