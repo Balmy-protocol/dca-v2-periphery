@@ -142,9 +142,32 @@ abstract contract DCAStrategiesPositionsHandler is IDCAStrategiesPositionsHandle
   /// @inheritdoc IDCAStrategiesPositionsHandler
   function terminate(
     uint256 _positionId,
+    address _fromToken,
     address _recipientUnswapped,
     address _recipientSwapped
-  ) external override returns (uint256 _unswapped, uint256 _swapped) {}
+  ) external onlyWithPermission(_positionId, IDCAStrategies.Permission.TERMINATE) returns (uint256 _unswapped, TokenAmounts[] memory _swapped) {
+    Position memory _position = _userPositions[_positionId];
+    IDCAStrategies.ShareOfToken[] memory _tokens = _getTokenShares(_position.strategyId, _position.strategyVersion);
+
+    _swapped = new TokenAmounts[](_position.positions.length);
+    for (uint256 i = 0; i < _position.positions.length; ) {
+      (uint256 __unswapped, uint256 __swapped) = _position.hub.terminate(_position.positions[i], _recipientUnswapped, _recipientSwapped);
+
+      _swapped[i].amount = __swapped;
+      _swapped[i].token = _tokens[i].token;
+
+      _unswapped += __unswapped;
+
+      unchecked {
+        i++;
+      }
+    }
+
+    // transfer unswapped
+    IERC20(_fromToken).safeTransfer(_recipientUnswapped, _unswapped);
+
+    emit Terminated(msg.sender, _recipientUnswapped, _recipientSwapped, _positionId, _unswapped, _swapped);
+  }
 
   /// @inheritdoc IDCAStrategiesPositionsHandler
   function syncPositionToLatestStrategyVersion(uint256 _positionId) external override {}
