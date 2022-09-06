@@ -51,6 +51,7 @@ contract('DCAStrategiesPositionsHandler', () => {
     tokenA.approve.reset();
     hub.userPosition.reset();
     hub.withdrawSwapped.reset();
+    hub.increasePosition.reset();
     hub['deposit(address,address,uint256,uint32,uint32,address,(address,uint8[])[])'].reset();
   });
 
@@ -206,7 +207,8 @@ contract('DCAStrategiesPositionsHandler', () => {
   describe('withdrawSwapped', () => {
     let tx: TransactionResponse;
     let positions = [1, 2, 3];
-    when('when caller does not have permissions', () => {
+
+    when('caller does not have permissions', () => {
       given(async () => {
         await DCAStrategiesPositionsHandlerMock.setPermissions(false);
       });
@@ -240,6 +242,7 @@ contract('DCAStrategiesPositionsHandler', () => {
           strategyId: 1,
           strategyVersion: 1,
           hub: hub.address,
+          fromToken: tokenA.address,
           positions: positions,
         });
         tx = await DCAStrategiesPositionsHandlerMock.withdrawSwapped(1, user.address);
@@ -265,6 +268,54 @@ contract('DCAStrategiesPositionsHandler', () => {
           expect(ta.amount).to.be.equal(amounts[i]);
           expect(ta.token).to.be.equal(tokens[i]);
         });
+      });
+    });
+  });
+
+  describe('increasePosition', () => {
+    let tx: TransactionResponse;
+    let positions = [1, 2];
+    let toIncrease = ethers.utils.parseUnits('301');
+    let newSwaps = 1;
+    when('caller does not have permissions', () => {
+      given(async () => {
+        await DCAStrategiesPositionsHandlerMock.setPermissions(false);
+      });
+      then('tx reverts with message', async () => {
+        await expect(DCAStrategiesPositionsHandlerMock.increasePosition(1, toIncrease, 0)).to.be.revertedWith('NoPermissions()');
+      });
+    });
+    when('increasePosition is called', () => {
+      given(async () => {
+        await DCAStrategiesPositionsHandlerMock.setPermissions(true);
+        await DCAStrategiesPositionsHandlerMock.setTokenShares(SHARES);
+        tokenA.transferFrom.returns(true);
+        await DCAStrategiesPositionsHandlerMock.setUserPositions(1, {
+          strategyId: 1,
+          strategyVersion: 1,
+          hub: hub.address,
+          fromToken: tokenA.address,
+          positions: positions,
+        });
+        tx = await DCAStrategiesPositionsHandlerMock.connect(user).increasePosition(1, toIncrease, newSwaps);
+      });
+      then('transferFrom() is called correctly', async () => {
+        expect(tokenA.transferFrom).to.have.been.calledOnceWith(user.address, DCAStrategiesPositionsHandlerMock.address, toIncrease);
+      });
+      then('_approveHub() is called correctly', async () => {
+        let approveHubCalls = await DCAStrategiesPositionsHandlerMock.getApproveHubCalls();
+        expect(approveHubCalls.length).to.be.equal(1);
+        expect(approveHubCalls[0].token).to.be.equal(tokenA.address);
+        expect(approveHubCalls[0].hub).to.be.equal(hub.address);
+        expect(approveHubCalls[0].amount).to.be.equal(toIncrease);
+      });
+      then('increasePosition in hub is called correctly', async () => {
+        expect(hub.increasePosition).to.have.been.calledTwice;
+        expect(hub.increasePosition.atCall(0)).to.have.been.calledOnceWith(BigNumber.from(1), toIncrease.div(2), newSwaps);
+        expect(hub.increasePosition.atCall(1)).to.have.been.calledOnceWith(BigNumber.from(2), toIncrease.sub(toIncrease.div(2)), newSwaps);
+      });
+      then('event is emitted', async () => {
+        await expect(tx).to.emit(DCAStrategiesPositionsHandlerMock, 'Increased').withArgs(user.address, 1, toIncrease, newSwaps);
       });
     });
   });

@@ -37,6 +37,7 @@ abstract contract DCAStrategiesPositionsHandler is IDCAStrategiesPositionsHandle
       hub: _parameters.hub,
       strategyId: _parameters.strategyId,
       strategyVersion: _parameters.version,
+      fromToken: _parameters.from,
       positions: _positions
     });
 
@@ -82,7 +83,32 @@ abstract contract DCAStrategiesPositionsHandler is IDCAStrategiesPositionsHandle
     uint256 _positionId,
     uint256 _amount,
     uint32 _newSwaps
-  ) external override {}
+  ) external onlyWithPermission(_positionId, IDCAStrategies.Permission.INCREASE) {
+    Position memory _position = _userPositions[_positionId];
+    IDCAStrategies.ShareOfToken[] memory _tokens = _getTokenShares(_position.strategyId, _position.strategyVersion);
+
+    // extract money from user
+    IERC20(_position.fromToken).safeTransferFrom(msg.sender, address(this), _amount);
+
+    // approve hub (if needed)
+    _approveHub(_position.fromToken, _position.hub, _amount);
+
+    uint16 _total = _getTotalShares();
+    uint256 _amountSpent;
+    for (uint256 i = 0; i < _position.positions.length; ) {
+      uint256 _toIncrease = _calculateOptimalAmount(i, _position.positions.length, _amount, _tokens[i].share, _total, _amountSpent);
+
+      _position.hub.increasePosition(_position.positions[i], _toIncrease, _newSwaps);
+
+      _amountSpent += _toIncrease;
+
+      unchecked {
+        i++;
+      }
+    }
+
+    emit Increased(msg.sender, _positionId, _amount, _newSwaps);
+  }
 
   /// @inheritdoc IDCAStrategiesPositionsHandler
   function reducePosition(
@@ -153,7 +179,7 @@ abstract contract DCAStrategiesPositionsHandler is IDCAStrategiesPositionsHandle
 
     for (uint256 i = 0; i < _tokens.length; ) {
       IDCAStrategies.ShareOfToken memory _token = _tokens[i];
-      uint256 _toDeposit = i < _tokens.length - 1 ? (_parameters.amount * _token.share) / _total : _parameters.amount - _amountSpent;
+      uint256 _toDeposit = _calculateOptimalAmount(i, _tokens.length, _parameters.amount, _token.share, _total, _amountSpent);
 
       IDCAPermissionManager.PermissionSet[] memory _permissions = new IDCAPermissionManager.PermissionSet[](0);
       _positions[i] = _parameters.hub.deposit(
@@ -172,6 +198,17 @@ abstract contract DCAStrategiesPositionsHandler is IDCAStrategiesPositionsHandle
         i++;
       }
     }
+  }
+
+  function _calculateOptimalAmount(
+    uint256 _index,
+    uint256 _arrayLength,
+    uint256 _amount,
+    uint256 _share,
+    uint256 _total,
+    uint256 _amountSpent
+  ) internal pure returns (uint256 _optimal) {
+    return _index < _arrayLength - 1 ? (_amount * _share) / _total : _amount - _amountSpent;
   }
 
   modifier onlyWithPermission(uint256 _positionId, IDCAStrategies.Permission _permission) {
