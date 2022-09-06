@@ -442,7 +442,6 @@ interface IDCAStrategiesPositionsHandler {
     IDCAHub hub; // 20 bytes
     uint80 strategyId; // 10 bytes
     uint16 strategyVersion; // 2 bytes
-    address fromToken;
     uint256[] positions;
   }
 
@@ -459,6 +458,7 @@ interface IDCAStrategiesPositionsHandler {
 
   function increasePosition(
     uint256 positionId,
+    address _fromToken,
     uint256 amount,
     uint32 newSwaps
   ) external;

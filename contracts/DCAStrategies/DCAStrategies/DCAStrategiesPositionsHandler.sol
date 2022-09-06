@@ -37,7 +37,6 @@ abstract contract DCAStrategiesPositionsHandler is IDCAStrategiesPositionsHandle
       hub: _parameters.hub,
       strategyId: _parameters.strategyId,
       strategyVersion: _parameters.version,
-      fromToken: _parameters.from,
       positions: _positions
     });
 
@@ -81,17 +80,20 @@ abstract contract DCAStrategiesPositionsHandler is IDCAStrategiesPositionsHandle
   /// @inheritdoc IDCAStrategiesPositionsHandler
   function increasePosition(
     uint256 _positionId,
+    address _fromToken,
     uint256 _amount,
     uint32 _newSwaps
   ) external onlyWithPermission(_positionId, IDCAStrategies.Permission.INCREASE) {
     Position memory _position = _userPositions[_positionId];
     IDCAStrategies.ShareOfToken[] memory _tokens = _getTokenShares(_position.strategyId, _position.strategyVersion);
 
-    // extract money from user
-    IERC20(_position.fromToken).safeTransferFrom(msg.sender, address(this), _amount);
+    if (_amount != 0) {
+      // extract money from user
+      IERC20(_fromToken).safeTransferFrom(msg.sender, address(this), _amount);
 
-    // approve hub (if needed)
-    _approveHub(_position.fromToken, _position.hub, _amount);
+      // approve hub (if needed)
+      _approveHub(_fromToken, _position.hub, _amount);
+    }
 
     uint16 _total = _getTotalShares();
     uint256 _amountSpent;
@@ -208,6 +210,7 @@ abstract contract DCAStrategiesPositionsHandler is IDCAStrategiesPositionsHandle
     uint256 _total,
     uint256 _amountSpent
   ) internal pure returns (uint256 _optimal) {
+    if (_amount == 0) return 0;
     return _index < _arrayLength - 1 ? (_amount * _share) / _total : _amount - _amountSpent;
   }
 

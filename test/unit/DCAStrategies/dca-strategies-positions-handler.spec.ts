@@ -242,7 +242,6 @@ contract('DCAStrategiesPositionsHandler', () => {
           strategyId: 1,
           strategyVersion: 1,
           hub: hub.address,
-          fromToken: tokenA.address,
           positions: positions,
         });
         tx = await DCAStrategiesPositionsHandlerMock.withdrawSwapped(1, user.address);
@@ -282,7 +281,7 @@ contract('DCAStrategiesPositionsHandler', () => {
         await DCAStrategiesPositionsHandlerMock.setPermissions(false);
       });
       then('tx reverts with message', async () => {
-        await expect(DCAStrategiesPositionsHandlerMock.increasePosition(1, toIncrease, 0)).to.be.revertedWith('NoPermissions()');
+        await expect(DCAStrategiesPositionsHandlerMock.increasePosition(1, tokenA.address, toIncrease, 0)).to.be.revertedWith('NoPermissions()');
       });
     });
     when('increasePosition is called', () => {
@@ -294,28 +293,51 @@ contract('DCAStrategiesPositionsHandler', () => {
           strategyId: 1,
           strategyVersion: 1,
           hub: hub.address,
-          fromToken: tokenA.address,
           positions: positions,
         });
-        tx = await DCAStrategiesPositionsHandlerMock.connect(user).increasePosition(1, toIncrease, newSwaps);
       });
-      then('transferFrom() is called correctly', async () => {
-        expect(tokenA.transferFrom).to.have.been.calledOnceWith(user.address, DCAStrategiesPositionsHandlerMock.address, toIncrease);
+      when('amount is greater than zero', () => {
+        given(async () => {
+          tx = await DCAStrategiesPositionsHandlerMock.connect(user).increasePosition(1, tokenA.address, toIncrease, newSwaps);
+        });
+        then('transferFrom() is called correctly', async () => {
+          expect(tokenA.transferFrom).to.have.been.calledOnceWith(user.address, DCAStrategiesPositionsHandlerMock.address, toIncrease);
+        });
+        then('_approveHub() is called correctly', async () => {
+          let approveHubCalls = await DCAStrategiesPositionsHandlerMock.getApproveHubCalls();
+          expect(approveHubCalls.length).to.be.equal(1);
+          expect(approveHubCalls[0].token).to.be.equal(tokenA.address);
+          expect(approveHubCalls[0].hub).to.be.equal(hub.address);
+          expect(approveHubCalls[0].amount).to.be.equal(toIncrease);
+        });
+        then('increasePosition in hub is called correctly', async () => {
+          expect(hub.increasePosition).to.have.been.calledTwice;
+          expect(hub.increasePosition.atCall(0)).to.have.been.calledOnceWith(BigNumber.from(1), toIncrease.div(2), newSwaps);
+          expect(hub.increasePosition.atCall(1)).to.have.been.calledOnceWith(BigNumber.from(2), toIncrease.sub(toIncrease.div(2)), newSwaps);
+        });
+        then('event is emitted', async () => {
+          await expect(tx).to.emit(DCAStrategiesPositionsHandlerMock, 'Increased').withArgs(user.address, 1, toIncrease, newSwaps);
+        });
       });
-      then('_approveHub() is called correctly', async () => {
-        let approveHubCalls = await DCAStrategiesPositionsHandlerMock.getApproveHubCalls();
-        expect(approveHubCalls.length).to.be.equal(1);
-        expect(approveHubCalls[0].token).to.be.equal(tokenA.address);
-        expect(approveHubCalls[0].hub).to.be.equal(hub.address);
-        expect(approveHubCalls[0].amount).to.be.equal(toIncrease);
-      });
-      then('increasePosition in hub is called correctly', async () => {
-        expect(hub.increasePosition).to.have.been.calledTwice;
-        expect(hub.increasePosition.atCall(0)).to.have.been.calledOnceWith(BigNumber.from(1), toIncrease.div(2), newSwaps);
-        expect(hub.increasePosition.atCall(1)).to.have.been.calledOnceWith(BigNumber.from(2), toIncrease.sub(toIncrease.div(2)), newSwaps);
-      });
-      then('event is emitted', async () => {
-        await expect(tx).to.emit(DCAStrategiesPositionsHandlerMock, 'Increased').withArgs(user.address, 1, toIncrease, newSwaps);
+      when('amount is zero', () => {
+        given(async () => {
+          tx = await DCAStrategiesPositionsHandlerMock.connect(user).increasePosition(1, tokenA.address, 0, newSwaps);
+        });
+        then('transferFrom() is not called', async () => {
+          expect(tokenA.transferFrom).to.have.been.not.called;
+        });
+        then('_approveHub() is not called', async () => {
+          let approveHubCalls = await DCAStrategiesPositionsHandlerMock.getApproveHubCalls();
+          expect(approveHubCalls.length).to.be.equal(0);
+        });
+        then('increasePosition in hub is called correctly', async () => {
+          expect(hub.increasePosition).to.have.been.calledTwice;
+          expect(hub.increasePosition.atCall(0)).to.have.been.calledOnceWith(BigNumber.from(1), 0, newSwaps);
+          expect(hub.increasePosition.atCall(1)).to.have.been.calledOnceWith(BigNumber.from(2), 0, newSwaps);
+        });
+        then('event is emitted', async () => {
+          await expect(tx).to.emit(DCAStrategiesPositionsHandlerMock, 'Increased').withArgs(user.address, 1, 0, newSwaps);
+        });
       });
     });
   });
