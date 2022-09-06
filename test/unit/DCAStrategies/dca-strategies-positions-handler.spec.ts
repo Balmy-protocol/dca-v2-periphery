@@ -362,7 +362,6 @@ contract('DCAStrategiesPositionsHandler', () => {
       given(async () => {
         await DCAStrategiesPositionsHandlerMock.setPermissions(true);
         await DCAStrategiesPositionsHandlerMock.setTokenShares(SHARES);
-        tokenA.transferFrom.returns(true);
         await DCAStrategiesPositionsHandlerMock.setUserPositions(1, {
           strategyId: 1,
           strategyVersion: 1,
