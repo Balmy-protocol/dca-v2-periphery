@@ -398,16 +398,13 @@ contract('DCAStrategiesPositionsHandler', () => {
         await DCAStrategiesPositionsHandlerMock.setPermissions(false);
       });
       then('tx reverts with message', async () => {
-        await expect(DCAStrategiesPositionsHandlerMock.terminate(1, tokenA.address, user.address, user.address)).to.be.revertedWith(
-          'NoPermissions()'
-        );
+        await expect(DCAStrategiesPositionsHandlerMock.terminate(1, user.address, user.address)).to.be.revertedWith('NoPermissions()');
       });
     });
     when('terminate is called', () => {
       given(async () => {
         await DCAStrategiesPositionsHandlerMock.setPermissions(true);
         await DCAStrategiesPositionsHandlerMock.setTokenShares(SHARES);
-        tokenA.transfer.returns(true);
         hub.terminate.returns([unswapped, swapped]);
         await DCAStrategiesPositionsHandlerMock.setUserPositions(1, {
           strategyId: 1,
@@ -415,15 +412,12 @@ contract('DCAStrategiesPositionsHandler', () => {
           hub: hub.address,
           positions: positions,
         });
-        tx = await DCAStrategiesPositionsHandlerMock.connect(user).terminate(1, tokenA.address, user.address, user.address);
+        tx = await DCAStrategiesPositionsHandlerMock.connect(user).terminate(1, user.address, user.address);
       });
       then('terminate in hub is called correctly', async () => {
         expect(hub.terminate).to.have.been.calledTwice;
         expect(hub.terminate.atCall(0)).to.have.been.calledOnceWith(BigNumber.from(1), user.address, user.address);
         expect(hub.terminate.atCall(1)).to.have.been.calledOnceWith(BigNumber.from(2), user.address, user.address);
-      });
-      then('transfer() is called correctly', async () => {
-        expect(tokenA.transfer).to.have.been.calledOnceWith(user.address, unswapped.mul(2));
       });
       then('event is emitted', async () => {
         const sender: string = await readArgFromEventOrFail(tx, 'Terminated', 'user');

@@ -500,7 +500,6 @@ interface IDCAStrategiesPositionsHandler {
 
   function terminate(
     uint256 positionId,
-    address fromToken,
     address recipientUnswapped,
     address recipientSwapped
   ) external returns (uint256 unswapped, TokenAmounts[] memory swapped);

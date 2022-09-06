@@ -142,7 +142,6 @@ abstract contract DCAStrategiesPositionsHandler is IDCAStrategiesPositionsHandle
   /// @inheritdoc IDCAStrategiesPositionsHandler
   function terminate(
     uint256 _positionId,
-    address _fromToken,
     address _recipientUnswapped,
     address _recipientSwapped
   ) external onlyWithPermission(_positionId, IDCAStrategies.Permission.TERMINATE) returns (uint256 _unswapped, TokenAmounts[] memory _swapped) {
@@ -162,9 +161,6 @@ abstract contract DCAStrategiesPositionsHandler is IDCAStrategiesPositionsHandle
         i++;
       }
     }
-
-    // transfer unswapped
-    IERC20(_fromToken).safeTransfer(_recipientUnswapped, _unswapped);
 
     emit Terminated(msg.sender, _recipientUnswapped, _recipientSwapped, _positionId, _unswapped, _swapped);
   }
