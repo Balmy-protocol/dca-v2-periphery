@@ -425,6 +425,24 @@ interface IDCAStrategiesPositionsHandler {
    */
   event Reduced(address indexed user, uint256 positionId, uint256 amount, uint32 newSwaps, address recipient);
 
+  /**
+   * @notice Emitted when a position is terminated
+   * @param user The address of the user that terminated the position
+   * @param recipientUnswapped The address of the user that will receive the unswapped tokens
+   * @param recipientSwapped The address of the user that will receive the swapped tokens
+   * @param positionId The id of the position that was terminated
+   * @param returnedUnswapped How many "from" tokens were returned to the caller
+   * @param returnedSwapped An array contaning how many "to" tokens were returned to the caller
+   */
+  event Terminated(
+    address indexed user,
+    address indexed recipientUnswapped,
+    address indexed recipientSwapped,
+    uint256 positionId,
+    uint256 returnedUnswapped,
+    TokenAmounts[] returnedSwapped
+  );
+
   /// @notice Thrown when a pair of strategy id and version are non-existing
   error InvalidStrategy();
 
@@ -484,7 +502,7 @@ interface IDCAStrategiesPositionsHandler {
     uint256 positionId,
     address recipientUnswapped,
     address recipientSwapped
-  ) external returns (uint256 unswapped, uint256 swapped);
+  ) external returns (uint256 unswapped, TokenAmounts[] memory swapped);
 
   function syncPositionToLatestStrategyVersion(uint256 positionId) external;
 

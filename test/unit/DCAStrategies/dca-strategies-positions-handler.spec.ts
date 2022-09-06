@@ -47,6 +47,7 @@ contract('DCAStrategiesPositionsHandler', () => {
   beforeEach(async () => {
     await snapshot.revert(snapshotId);
     tokenA.transferFrom.reset();
+    tokenA.transfer.reset();
     tokenA.allowance.reset();
     tokenA.approve.reset();
     hub.userPosition.reset();
@@ -54,6 +55,7 @@ contract('DCAStrategiesPositionsHandler', () => {
     hub.increasePosition.reset();
     hub.reducePosition.reset();
     hub['deposit(address,address,uint256,uint32,uint32,address,(address,uint8[])[])'].reset();
+    hub.terminate.reset();
   });
 
   describe('_approveHub', () => {
@@ -382,6 +384,64 @@ contract('DCAStrategiesPositionsHandler', () => {
       });
       then('event is emitted', async () => {
         await expect(tx).to.emit(DCAStrategiesPositionsHandlerMock, 'Reduced').withArgs(user.address, 1, toReduce, newSwaps, user.address);
+      });
+    });
+  });
+
+  describe('terminate', () => {
+    let tx: TransactionResponse;
+    let positions = [1, 2];
+    let unswapped = ethers.utils.parseUnits('100');
+    let swapped = ethers.utils.parseUnits('50');
+    when('caller does not have permissions', () => {
+      given(async () => {
+        await DCAStrategiesPositionsHandlerMock.setPermissions(false);
+      });
+      then('tx reverts with message', async () => {
+        await expect(DCAStrategiesPositionsHandlerMock.terminate(1, user.address, user.address)).to.be.revertedWith('NoPermissions()');
+      });
+    });
+    when('terminate is called', () => {
+      given(async () => {
+        await DCAStrategiesPositionsHandlerMock.setPermissions(true);
+        await DCAStrategiesPositionsHandlerMock.setTokenShares(SHARES);
+        hub.terminate.returns([unswapped, swapped]);
+        await DCAStrategiesPositionsHandlerMock.setUserPositions(1, {
+          strategyId: 1,
+          strategyVersion: 1,
+          hub: hub.address,
+          positions: positions,
+        });
+        tx = await DCAStrategiesPositionsHandlerMock.connect(user).terminate(1, user.address, user.address);
+      });
+      then('terminate in hub is called correctly', async () => {
+        expect(hub.terminate).to.have.been.calledTwice;
+        expect(hub.terminate.atCall(0)).to.have.been.calledOnceWith(BigNumber.from(1), user.address, user.address);
+        expect(hub.terminate.atCall(1)).to.have.been.calledOnceWith(BigNumber.from(2), user.address, user.address);
+      });
+      then('event is emitted', async () => {
+        const sender: string = await readArgFromEventOrFail(tx, 'Terminated', 'user');
+        const recipientUnswapped: string = await readArgFromEventOrFail(tx, 'Terminated', 'recipientUnswapped');
+        const recipientSwapped: string = await readArgFromEventOrFail(tx, 'Terminated', 'recipientSwapped');
+        const positionId: BigNumber = await readArgFromEventOrFail(tx, 'Terminated', 'positionId');
+        const returnedUnswapped: string = await readArgFromEventOrFail(tx, 'Terminated', 'returnedUnswapped');
+        const returnedSwapped: IDCAStrategiesPositionsHandler.TokenAmountsStruct[] = await readArgFromEventOrFail(
+          tx,
+          'Terminated',
+          'returnedSwapped'
+        );
+
+        expect(sender).to.be.equal(user.address);
+        expect(recipientUnswapped).to.be.equal(user.address);
+        expect(recipientSwapped).to.be.equal(user.address);
+        expect(positionId).to.be.equal(1);
+        expect(returnedUnswapped).to.be.equal(unswapped.mul(2));
+        expect(returnedSwapped.length).to.be.equal(positions.length);
+        expect(returnedSwapped.length).to.be.equal(SHARES.length);
+        returnedSwapped.forEach((ta, i) => {
+          expect(ta.amount).to.be.equal(swapped);
+          expect(ta.token).to.be.equal(SHARES[i].token);
+        });
       });
     });
   });
