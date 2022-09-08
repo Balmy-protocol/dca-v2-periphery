@@ -6,7 +6,7 @@ import {
   IDCAStrategiesManagementHandler,
   IDCAStrategies,
 } from '@typechained';
-import { constants, wallet } from '@test-utils';
+import { constants } from '@test-utils';
 import { given, then, when, contract } from '@test-utils/bdd';
 import { snapshot } from '@test-utils/evm';
 import { TransactionResponse } from '@ethersproject/abstract-provider';
@@ -21,15 +21,18 @@ contract('DCAStrategiesManagementHandler', () => {
   let factory: DCAStrategiesManagementHandlerMock__factory;
   const MAX_TOKEN_SHARES: number = 5;
   const NAME = ethers.utils.formatBytes32String('Optimism Ecosystem - v1');
-  const SHARE_TOKEN_A = { token: wallet.generateRandomAddress(), share: BigNumber.from(50e2) };
-  const SHARE_TOKEN_B = { token: wallet.generateRandomAddress(), share: BigNumber.from(50e2) };
-  const SHARES = [SHARE_TOKEN_A, SHARE_TOKEN_B];
-  const SHARE_EXCEED_AMOUNT = { token: wallet.generateRandomAddress(), share: BigNumber.from(10e2) };
+  const NOT_ZERO_ADDRESS_SHARE = { token: constants.NOT_ZERO_ADDRESS, share: BigNumber.from(50e2) };
+  const SHARE_TOKEN_A = { token: generateRandomAddress(), share: BigNumber.from(50e2) };
+  const SHARE_TOKEN_B = { token: generateRandomAddress(), share: BigNumber.from(50e2) };
+  const SHARES = sortTokens([SHARE_TOKEN_A, SHARE_TOKEN_B]);
+  const SHARE_EXCEED_AMOUNT = { token: generateRandomAddress(), share: BigNumber.from(10e2) };
   const SHARES_EXCEED_AMOUNT = Array(10).fill(SHARE_EXCEED_AMOUNT);
-  const EMPTY_SHARE = { token: wallet.generateRandomAddress(), share: BigNumber.from(0) };
-  const EMPTY_SHARES = [SHARE_TOKEN_A, EMPTY_SHARE];
-  const INVALID_SHARE = { token: wallet.generateRandomAddress(), share: BigNumber.from(30e2) };
-  const INVALID_SHARES = [SHARE_TOKEN_A, INVALID_SHARE];
+  const EMPTY_SHARE = { token: generateRandomAddress(), share: BigNumber.from(0) };
+  const EMPTY_SHARES = sortTokens([SHARE_TOKEN_A, EMPTY_SHARE]);
+  const INVALID_SHARE = { token: generateRandomAddress(), share: BigNumber.from(30e2) };
+  const INVALID_SHARES = sortTokens([SHARE_TOKEN_A, INVALID_SHARE]);
+  const NOT_SORTED_SHARES = [SHARE_TOKEN_A, NOT_ZERO_ADDRESS_SHARE];
+  const DUPLICATED_SHARES = [NOT_ZERO_ADDRESS_SHARE, NOT_ZERO_ADDRESS_SHARE];
 
   before('Setup accounts and contracts', async () => {
     factory = await ethers.getContractFactory('DCAStrategiesManagementHandlerMock');
@@ -92,6 +95,18 @@ contract('DCAStrategiesManagementHandler', () => {
       params: () => [NAME, SHARES_EXCEED_AMOUNT, user.address],
       errorName: 'TokenSharesExceedAmount()',
     });
+    tokenShareSanityTest({
+      title: 'token shares are not sorted',
+      method: 'createStrategy',
+      params: () => [NAME, NOT_SORTED_SHARES, user.address],
+      errorName: 'TokenSharesNotSorted()',
+    });
+    tokenShareSanityTest({
+      title: 'there is a duplicate in token shares',
+      method: 'createStrategy',
+      params: () => [NAME, DUPLICATED_SHARES, user.address],
+      errorName: 'TokenSharesNotSorted()',
+    });
     when('strategy is created', () => {
       let tx: TransactionResponse;
       let strategy: IDCAStrategiesManagementHandler.StrategyStruct;
@@ -137,10 +152,10 @@ contract('DCAStrategiesManagementHandler', () => {
   });
 
   describe('updateStrategyTokens', () => {
-    const SHARE_TOKEN_A_2 = { token: constants.NOT_ZERO_ADDRESS, share: BigNumber.from(30e2) };
-    const SHARE_TOKEN_B_2 = { token: constants.NOT_ZERO_ADDRESS, share: BigNumber.from(40e2) };
-    const SHARE_TOKEN_C_2 = { token: generateRandomAddress(), share: BigNumber.from(30e2) };
-    const SHARES_2 = [SHARE_TOKEN_A_2, SHARE_TOKEN_B_2, SHARE_TOKEN_C_2];
+    const SHARE_TOKEN_A_2 = { token: generateRandomAddress(), share: BigNumber.from(30e2) };
+    const SHARE_TOKEN_B_2 = { token: generateRandomAddress(), share: BigNumber.from(30e2) };
+    const SHARE_TOKEN_C_2 = { token: constants.NOT_ZERO_ADDRESS, share: BigNumber.from(40e2) };
+    const SHARES_2 = sortTokens([SHARE_TOKEN_A_2, SHARE_TOKEN_B_2, SHARE_TOKEN_C_2]);
 
     given(async () => {
       await DCAStrategiesManagementHandlerMock.createStrategy(NAME, SHARES, user.address);
@@ -175,6 +190,18 @@ contract('DCAStrategiesManagementHandler', () => {
       method: 'updateStrategyTokens',
       params: () => [1, SHARES_EXCEED_AMOUNT],
       errorName: 'TokenSharesExceedAmount()',
+    });
+    tokenShareSanityTest({
+      title: 'token shares are not sorted',
+      method: 'updateStrategyTokens',
+      params: () => [1, NOT_SORTED_SHARES],
+      errorName: 'TokenSharesNotSorted()',
+    });
+    tokenShareSanityTest({
+      title: 'there is a duplicate in token shares',
+      method: 'updateStrategyTokens',
+      params: () => [1, DUPLICATED_SHARES],
+      errorName: 'TokenSharesNotSorted()',
     });
     when('strategy is updated', () => {
       let tx: TransactionResponse;
@@ -338,5 +365,15 @@ contract('DCAStrategiesManagementHandler', () => {
       expect(s.share).to.be.equal(arrayB[i].share);
       expect(s.token).to.be.equal(arrayB[i].token);
     });
+  }
+
+  function sortTokens(array: IDCAStrategies.ShareOfTokenStruct[]) {
+    function compare(a: IDCAStrategies.ShareOfTokenStruct, b: IDCAStrategies.ShareOfTokenStruct) {
+      if (parseInt(a.token, 16) < parseInt(b.token, 16)) return -1;
+      if (parseInt(a.token, 16) > parseInt(b.token, 16)) return 1;
+      return 0;
+    }
+
+    return array.sort(compare);
   }
 });

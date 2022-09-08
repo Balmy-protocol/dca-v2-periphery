@@ -127,10 +127,20 @@ abstract contract DCAStrategiesManagementHandler is IDCAStrategiesManagementHand
     if (_length > MAX_TOKEN_SHARES) revert TokenSharesExceedAmount(); // need to have less than the max
 
     uint256 _shares = 0;
-    for (uint256 i = 0; i < _length; i++) {
+    for (uint256 i = 0; i < _length; ) {
+      // isn't the last token
+      if (i < _length - 1) {
+        // ascending order ([1, 2, 3])
+        if (_tokens[i].token >= _tokens[i + 1].token) revert TokenSharesNotSorted(); // not sorted
+      }
+
       uint16 _share = _tokens[i].share;
       if (_share == 0) revert ShareIsEmpty(); // need to be more than 0%
       _shares += _share;
+
+      unchecked {
+        i++;
+      }
     }
 
     if (_shares != _TOTAL) revert InvalidTokenShares(); // need to be equal 100%

@@ -166,22 +166,7 @@ abstract contract DCAStrategiesPositionsHandler is IDCAStrategiesPositionsHandle
   }
 
   /// @inheritdoc IDCAStrategiesPositionsHandler
-  function syncPositionToLatestStrategyVersion(uint256 _positionId) external override {}
-
-  /// @inheritdoc IDCAStrategiesPositionsHandler
-  function increaseAndSyncPositionToLatestStrategyVersion(
-    uint256 _positionId,
-    uint256 _amount,
-    uint32 _newSwaps
-  ) external override {}
-
-  /// @inheritdoc IDCAStrategiesPositionsHandler
-  function reduceAndSyncPositionToLatestStrategyVersion(
-    uint256 _positionId,
-    uint256 _amount,
-    uint32 _newSwaps,
-    address _recipient
-  ) external {}
+  function syncPositionToLatestStrategyVersion(uint256 _positionId) external onlyWithPermission(_positionId, IDCAStrategies.Permission.SYNC) {}
 
   function _getTokenShares(uint80 _strategyId, uint16 _version) internal virtual returns (IDCAStrategies.ShareOfToken[] memory) {}
 
