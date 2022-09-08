@@ -4,6 +4,11 @@ pragma solidity >=0.8.7 <0.9.0;
 import '../../interfaces/IDCAStrategies.sol';
 
 abstract contract DCAStrategiesManagementHandler is IDCAStrategiesManagementHandler {
+  struct StrategyOwnerAndVersion {
+    address owner;
+    uint16 latestVersion;
+  }
+
   /// @inheritdoc IDCAStrategiesManagementHandler
   mapping(uint80 => address) public strategiesPendingOwners;
   /// @inheritdoc IDCAStrategiesManagementHandler
@@ -126,7 +131,7 @@ abstract contract DCAStrategiesManagementHandler is IDCAStrategiesManagementHand
       // isn't the last token
       if (i < _length - 1) {
         // ascending order ([1, 2, 3])
-        if (_tokens[i].token > _tokens[i + 1].token) revert TokenSharesNotSorted(); // not sorted
+        if (_tokens[i].token >= _tokens[i + 1].token) revert TokenSharesNotSorted(); // not sorted
       }
 
       uint16 _share = _tokens[i].share;

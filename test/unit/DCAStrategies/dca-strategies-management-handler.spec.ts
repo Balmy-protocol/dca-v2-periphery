@@ -21,6 +21,7 @@ contract('DCAStrategiesManagementHandler', () => {
   let factory: DCAStrategiesManagementHandlerMock__factory;
   const MAX_TOKEN_SHARES: number = 5;
   const NAME = ethers.utils.formatBytes32String('Optimism Ecosystem - v1');
+  const NOT_ZERO_ADDRESS_SHARE = { token: constants.NOT_ZERO_ADDRESS, share: BigNumber.from(50e2) };
   const SHARE_TOKEN_A = { token: generateRandomAddress(), share: BigNumber.from(50e2) };
   const SHARE_TOKEN_B = { token: generateRandomAddress(), share: BigNumber.from(50e2) };
   const SHARES = sortTokens([SHARE_TOKEN_A, SHARE_TOKEN_B]);
@@ -30,7 +31,8 @@ contract('DCAStrategiesManagementHandler', () => {
   const EMPTY_SHARES = sortTokens([SHARE_TOKEN_A, EMPTY_SHARE]);
   const INVALID_SHARE = { token: generateRandomAddress(), share: BigNumber.from(30e2) };
   const INVALID_SHARES = sortTokens([SHARE_TOKEN_A, INVALID_SHARE]);
-  const NOT_SORTED_SHARES = [SHARE_TOKEN_A, { token: constants.NOT_ZERO_ADDRESS, share: BigNumber.from(50e2) }];
+  const NOT_SORTED_SHARES = [SHARE_TOKEN_A, NOT_ZERO_ADDRESS_SHARE];
+  const DUPLICATED_SHARES = [NOT_ZERO_ADDRESS_SHARE, NOT_ZERO_ADDRESS_SHARE];
 
   before('Setup accounts and contracts', async () => {
     factory = await ethers.getContractFactory('DCAStrategiesManagementHandlerMock');
@@ -97,6 +99,12 @@ contract('DCAStrategiesManagementHandler', () => {
       title: 'token shares are not sorted',
       method: 'createStrategy',
       params: () => [NAME, NOT_SORTED_SHARES, user.address],
+      errorName: 'TokenSharesNotSorted()',
+    });
+    tokenShareSanityTest({
+      title: 'there is a duplicate in token shares',
+      method: 'createStrategy',
+      params: () => [NAME, DUPLICATED_SHARES, user.address],
       errorName: 'TokenSharesNotSorted()',
     });
     when('strategy is created', () => {
@@ -187,6 +195,12 @@ contract('DCAStrategiesManagementHandler', () => {
       title: 'token shares are not sorted',
       method: 'updateStrategyTokens',
       params: () => [1, NOT_SORTED_SHARES],
+      errorName: 'TokenSharesNotSorted()',
+    });
+    tokenShareSanityTest({
+      title: 'there is a duplicate in token shares',
+      method: 'updateStrategyTokens',
+      params: () => [1, DUPLICATED_SHARES],
       errorName: 'TokenSharesNotSorted()',
     });
     when('strategy is updated', () => {
@@ -354,16 +368,12 @@ contract('DCAStrategiesManagementHandler', () => {
   }
 
   function sortTokens(array: IDCAStrategies.ShareOfTokenStruct[]) {
-    for (let i = 0; i < array.length; i++) {
-      //Inner pass
-      for (let j = 0; j < array.length - i - 1; j++) {
-        //Value comparison using ascending order
-        if (parseInt(array[j + 1].token, 16) < parseInt(array[j].token, 16)) {
-          //Swapping
-          [array[j + 1], array[j]] = [array[j], array[j + 1]];
-        }
-      }
+    function compare(a: IDCAStrategies.ShareOfTokenStruct, b: IDCAStrategies.ShareOfTokenStruct) {
+      if (parseInt(a.token, 16) < parseInt(b.token, 16)) return -1;
+      if (parseInt(a.token, 16) > parseInt(b.token, 16)) return 1;
+      return 0;
     }
-    return array;
+
+    return array.sort(compare);
   }
 });

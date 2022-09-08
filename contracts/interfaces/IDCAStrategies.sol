@@ -76,11 +76,6 @@ interface IDCAStrategiesManagementHandler {
   /// @notice Thrown when a provided array of token shares is misconfigured
   error InvalidTokenShares();
 
-  struct StrategyOwnerAndVersion {
-    address owner;
-    uint16 latestVersion;
-  }
-
   struct Strategy {
     address owner;
     bytes32 name;

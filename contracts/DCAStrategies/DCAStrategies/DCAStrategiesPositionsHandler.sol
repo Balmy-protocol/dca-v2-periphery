@@ -180,8 +180,6 @@ abstract contract DCAStrategiesPositionsHandler is IDCAStrategiesPositionsHandle
     IDCAStrategies.Permission _permission
   ) internal view virtual returns (bool _result) {}
 
-  function _getStrategyOwnerAndVersion(uint80 _strategyId) internal view virtual returns (IDCAStrategies.StrategyOwnerAndVersion memory) {}
-
   function _approveHub(
     address _token,
     IDCAHub _hub,
