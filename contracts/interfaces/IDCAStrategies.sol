@@ -58,6 +58,9 @@ interface IDCAStrategiesManagementHandler {
   /// @notice Thrown when a provided array is larger than the allowed amount
   error TokenSharesExceedAmount();
 
+  /// @notice Thrown when a provided array is not correctly sorted
+  error TokenSharesNotSorted();
+
   /// @notice Thrown when a share is 0%
   error ShareIsEmpty();
 
@@ -72,6 +75,11 @@ interface IDCAStrategiesManagementHandler {
 
   /// @notice Thrown when a provided array of token shares is misconfigured
   error InvalidTokenShares();
+
+  struct StrategyOwnerAndVersion {
+    address owner;
+    uint16 latestVersion;
+  }
 
   struct Strategy {
     address owner;
@@ -505,19 +513,6 @@ interface IDCAStrategiesPositionsHandler {
   ) external returns (uint256 unswapped, TokenAmounts[] memory swapped);
 
   function syncPositionToLatestStrategyVersion(uint256 positionId) external;
-
-  function increaseAndSyncPositionToLatestStrategyVersion(
-    uint256 positionId,
-    uint256 amount,
-    uint32 newSwaps
-  ) external;
-
-  function reduceAndSyncPositionToLatestStrategyVersion(
-    uint256 positionId,
-    uint256 amount,
-    uint32 newSwaps,
-    address recipient
-  ) external;
 }
 
 interface IDCAStrategies is IDCAStrategiesManagementHandler, IDCAStrategiesPermissionsHandler, IDCAStrategiesPositionsHandler {
