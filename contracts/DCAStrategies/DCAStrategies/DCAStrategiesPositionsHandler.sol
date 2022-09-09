@@ -110,7 +110,7 @@ abstract contract DCAStrategiesPositionsHandler is IDCAStrategiesPositionsHandle
     uint16 _total = _getTotalShares();
     uint256 _amountSpent;
     for (uint256 i = 0; i < _position.positions.length; ) {
-      uint256 _toIncrease = _calculateOptimalAmount(i < _position.positions.length - 1, _amount, _tokens[i].share, _total, _amountSpent);
+      uint256 _toIncrease = _calculateOptimalAmount(i == _position.positions.length - 1, _amount, _tokens[i].share, _total, _amountSpent);
 
       _position.hub.increasePosition(_position.positions[i], _toIncrease, _newSwaps);
 
@@ -137,7 +137,7 @@ abstract contract DCAStrategiesPositionsHandler is IDCAStrategiesPositionsHandle
     uint16 _total = _getTotalShares();
     uint256 _amountSpent;
     for (uint256 i = 0; i < _position.positions.length; ) {
-      uint256 _toReduce = _calculateOptimalAmount(i < _position.positions.length - 1, _amount, _tokens[i].share, _total, _amountSpent);
+      uint256 _toReduce = _calculateOptimalAmount(i == _position.positions.length - 1, _amount, _tokens[i].share, _total, _amountSpent);
 
       _position.hub.reducePosition(_position.positions[i], _toReduce, _newSwaps, _recipient);
 
@@ -228,7 +228,7 @@ abstract contract DCAStrategiesPositionsHandler is IDCAStrategiesPositionsHandle
 
     for (uint256 i = 0; i < _tokens.length; ) {
       IDCAStrategies.ShareOfToken memory _token = _tokens[i];
-      uint256 _toDeposit = _calculateOptimalAmount(i < _tokens.length - 1, _parameters.amount, _token.share, _total, _amountSpent);
+      uint256 _toDeposit = _calculateOptimalAmount(i == _tokens.length - 1, _parameters.amount, _token.share, _total, _amountSpent);
 
       IDCAPermissionManager.PermissionSet[] memory _permissions = new IDCAPermissionManager.PermissionSet[](0);
       _positions[i] = _parameters.hub.deposit(
