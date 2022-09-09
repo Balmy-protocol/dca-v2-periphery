@@ -507,7 +507,7 @@ interface IDCAStrategiesPositionsHandler {
     address recipientSwapped
   ) external returns (uint256 unswapped, TokenAmounts[] memory swapped);
 
-  function syncPositionToLatestStrategyVersion(
+  function syncPositionToNewVersion(
     uint256 positionId,
     uint16 newVersion,
     address recipientUnswapped,

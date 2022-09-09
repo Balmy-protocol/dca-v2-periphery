@@ -178,7 +178,7 @@ abstract contract DCAStrategiesPositionsHandler is IDCAStrategiesPositionsHandle
   }
 
   /// @inheritdoc IDCAStrategiesPositionsHandler
-  function syncPositionToLatestStrategyVersion(
+  function syncPositionToNewVersion(
     uint256 _positionId,
     uint16 _newVersion,
     address _recipientUnswapped,
@@ -291,17 +291,15 @@ abstract contract DCAStrategiesPositionsHandler is IDCAStrategiesPositionsHandle
         // same token. Need to update position
         if (_userPosition.remaining > _correspondingToPosition) {
           // reduce
-          _syncReduceBlock(
-            _position.hub,
-            _tasks,
-            _newAmountSwaps,
-            _userPosition.remaining - _correspondingToPosition,
-            _currentPositionId,
-            _newPositionsIndex
-          );
+          _position.hub.reducePosition(_currentPositionId, _userPosition.remaining - _correspondingToPosition, _newAmountSwaps, address(this));
+          _tasks[_newPositionsIndex] = Task({action: Action.REDUCE, positionId: 0, amount: 0});
         } else if (_userPosition.remaining < _correspondingToPosition) {
           // increase
-          _syncIncreaseBlock(_tasks, _correspondingToPosition - _userPosition.remaining, _currentPositionId, _newPositionsIndex);
+          _tasks[_newPositionsIndex] = Task({
+            action: Action.INCREASE,
+            positionId: _currentPositionId,
+            amount: _correspondingToPosition - _userPosition.remaining
+          });
         }
         _totalRemaining += _userPosition.remaining; // Do I need to add the remaining or just the diff between that and `_correspondingToPosition` (in the case of reduce)? (In the case of increase will be subtract the diff between `_correspondingToPosition` and `remaining`)
         _newPositionsIndex++;
@@ -317,31 +315,6 @@ abstract contract DCAStrategiesPositionsHandler is IDCAStrategiesPositionsHandle
         _newPositionsIndex++;
       }
     }
-  }
-
-  function _syncReduceBlock(
-    IDCAHub _hub,
-    Task[] memory _tasks,
-    uint32 _newAmountSwaps,
-    uint256 _amount,
-    uint256 _currentPositionId,
-    uint256 _newPositionsIndex
-  ) internal returns (Task[] memory) {
-    _hub.reducePosition(_currentPositionId, _amount, _newAmountSwaps, address(this));
-    _tasks[_newPositionsIndex] = Task({action: Action.REDUCE, positionId: 0, amount: 0});
-
-    return _tasks;
-  }
-
-  function _syncIncreaseBlock(
-    Task[] memory _tasks,
-    uint256 _amount,
-    uint256 _currentPositionId,
-    uint256 _newPositionsIndex
-  ) internal pure returns (Task[] memory) {
-    _tasks[_newPositionsIndex] = Task({action: Action.INCREASE, positionId: _currentPositionId, amount: _amount});
-
-    return _tasks;
   }
 
   modifier onlyWithPermission(uint256 _positionId, IDCAStrategies.Permission _permission) {
