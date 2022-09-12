@@ -507,7 +507,14 @@ interface IDCAStrategiesPositionsHandler {
     address recipientSwapped
   ) external returns (uint256 unswapped, TokenAmounts[] memory swapped);
 
-  function syncPositionToLatestStrategyVersion(uint256 positionId) external;
+  function syncPositionToNewVersion(
+    uint256 positionId,
+    uint16 newVersion,
+    address recipientUnswapped,
+    address recipientSwapped,
+    uint256 totalAmount,
+    uint32 newAmountSwaps
+  ) external;
 }
 
 interface IDCAStrategies is IDCAStrategiesManagementHandler, IDCAStrategiesPermissionsHandler, IDCAStrategiesPositionsHandler {
