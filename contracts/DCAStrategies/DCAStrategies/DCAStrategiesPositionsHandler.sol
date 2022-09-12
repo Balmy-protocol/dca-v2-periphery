@@ -19,9 +19,11 @@ abstract contract DCAStrategiesPositionsHandler is IDCAStrategiesPositionsHandle
     uint256 amount;
   }
 
-  struct Indexes {
+  struct Data {
     uint8 currentPositionsIndex;
     uint8 newPositionsIndex;
+    uint256 totalRemaining;
+    uint256 amountSpent;
   }
 
   mapping(uint256 => Position) internal _userPositions;
@@ -193,40 +195,47 @@ abstract contract DCAStrategiesPositionsHandler is IDCAStrategiesPositionsHandle
   ) external onlyWithPermission(_positionId, IDCAStrategies.Permission.SYNC) {
     Position memory _position = _userPositions[_positionId];
     IDCAStrategies.ShareOfToken[] memory _newTokenShares = _getTokenShares(_position.strategyId, _newVersion);
+    IDCAHub.UserPosition memory _positionMetadata = IDCAHub(_position.hub).userPosition(_position.positions[0]);
 
-    (Indexes memory _indexes, uint256 _totalRemaining, uint256 _amountSpent, Task[] memory _tasks) = _syncFirstBlock(
-      _position,
-      _totalAmount,
-      _newTokenShares,
-      _newAmountSwaps,
-      _recipientSwapped
-    );
+    (Data memory _data, Task[] memory _tasks) = _syncFirstBlock(_position, _totalAmount, _newTokenShares, _newAmountSwaps, _recipientSwapped);
 
-    _totalRemaining = _syncSecondBlock(_indexes.currentPositionsIndex, _totalRemaining, _recipientSwapped, _position);
-
-    _tasks = _syncThirdBlock(_indexes.newPositionsIndex, _newTokenShares, _totalAmount, _amountSpent, _tasks);
-
-    // extract or send
-    if (_totalAmount > _totalRemaining) {
-      IERC20(IDCAHub(_position.hub).userPosition(_position.positions[0]).from).safeTransferFrom(
-        msg.sender,
-        address(this),
-        _totalAmount - _totalRemaining
-      );
-    } else if (_totalAmount < _totalRemaining) {
-      IERC20(IDCAHub(_position.hub).userPosition(_position.positions[0]).from).safeTransfer(_recipientUnswapped, _totalRemaining - _totalAmount);
+    // If get to this place, then we just need to terminate existing positions
+    while (_data.currentPositionsIndex < _position.positions.length) {
+      (uint256 _unswapped, ) = _position.hub.terminate(_position.positions[_data.currentPositionsIndex], address(this), _recipientSwapped);
+      _data.totalRemaining += _unswapped;
     }
 
+    while (_data.newPositionsIndex < _newTokenShares.length) {
+      IDCAStrategies.ShareOfToken memory _newTokenShare = _newTokenShares[_data.newPositionsIndex];
+      uint256 _correspondingToPosition = _calculateOptimalAmount(
+        _data.newPositionsIndex == _newTokenShares.length - 1,
+        _totalAmount,
+        _newTokenShare.share,
+        _getTotalShares(),
+        _data.amountSpent
+      );
+      _tasks[_data.newPositionsIndex] = Task({action: Action.DEPOSIT, amount: _correspondingToPosition, positionId: 0});
+      _data.amountSpent += _correspondingToPosition;
+    }
+
+    // extract (increase) or send (reduce)
+    if (_totalAmount > _data.totalRemaining) {
+      IERC20(_positionMetadata.from).safeTransferFrom(msg.sender, address(this), _totalAmount - _data.totalRemaining);
+    } else if (_totalAmount < _data.totalRemaining) {
+      IERC20(_positionMetadata.from).safeTransfer(_recipientUnswapped, _data.totalRemaining - _totalAmount);
+    }
+
+    // perform deposit and increase
     for (uint256 i = 0; i < _tasks.length; i++) {
       if (_tasks[i].action == Action.INCREASE) {
         _position.hub.increasePosition(_tasks[i].positionId, _tasks[i].amount, _newAmountSwaps);
       } else if (_tasks[i].action == Action.DEPOSIT) {
         uint256 _newPositionId = _position.hub.deposit(
-          address(IDCAHub(_position.hub).userPosition(_position.positions[0]).from),
+          address(_positionMetadata.from),
           _newTokenShares[i].token,
           _tasks[i].amount,
           _newAmountSwaps,
-          IDCAHub(_position.hub).userPosition(_position.positions[0]).swapInterval,
+          _positionMetadata.swapInterval,
           address(this),
           new IDCAPermissionManager.PermissionSet[](0)
         );
@@ -313,95 +322,54 @@ abstract contract DCAStrategiesPositionsHandler is IDCAStrategiesPositionsHandle
     IDCAStrategies.ShareOfToken[] memory _newTokenShares,
     uint32 _newAmountSwaps,
     address _recipientSwapped
-  )
-    internal
-    returns (
-      Indexes memory _indexes,
-      uint256 _totalRemaining,
-      uint256 _amountSpent,
-      Task[] memory _tasks
-    )
-  {
+  ) internal returns (Data memory _data, Task[] memory _tasks) {
     // _currentPositionsIndex -  old positions index
     // _newPositionsIndex -  new positions index
     // _totalRemaining - cash. The amount of money ready to use. (Used to know if need to send whats left or request whats missing)
     _tasks = new Task[](_newTokenShares.length); // an array containing required tasks
 
     // will iterate while arrays are not finished
-    while (_indexes.currentPositionsIndex < _position.positions.length && _indexes.newPositionsIndex < _newTokenShares.length) {
-      uint256 _currentPositionId = _position.positions[_indexes.currentPositionsIndex];
-      IDCAStrategies.ShareOfToken memory _newTokenShare = _newTokenShares[_indexes.newPositionsIndex];
+    while (_data.currentPositionsIndex < _position.positions.length && _data.newPositionsIndex < _newTokenShares.length) {
+      uint256 _currentPositionId = _position.positions[_data.currentPositionsIndex];
+      IDCAStrategies.ShareOfToken memory _newTokenShare = _newTokenShares[_data.newPositionsIndex];
       IDCAHub.UserPosition memory _userPosition = _position.hub.userPosition(_currentPositionId);
 
       uint256 _correspondingToPosition = _calculateOptimalAmount(
-        _indexes.newPositionsIndex == _newTokenShares.length - 1,
+        _data.newPositionsIndex == _newTokenShares.length - 1,
         _totalAmount,
         _newTokenShare.share,
         _getTotalShares(),
-        _amountSpent
+        _data.amountSpent
       );
       if (address(_userPosition.from) == _newTokenShare.token) {
         // same token. Need to update position
         if (_userPosition.remaining > _correspondingToPosition) {
           // reduce
           _position.hub.reducePosition(_currentPositionId, _userPosition.remaining - _correspondingToPosition, _newAmountSwaps, address(this));
-          _tasks[_indexes.newPositionsIndex] = Task({action: Action.REDUCE, positionId: 0, amount: 0});
+          _tasks[_data.newPositionsIndex] = Task({action: Action.REDUCE, positionId: 0, amount: 0});
         } else if (_userPosition.remaining < _correspondingToPosition) {
           // increase
-          _tasks[_indexes.newPositionsIndex] = Task({
+          _tasks[_data.newPositionsIndex] = Task({
             action: Action.INCREASE,
             positionId: _currentPositionId,
             amount: _correspondingToPosition - _userPosition.remaining
           });
         }
-        _totalRemaining += _userPosition.remaining; // Do I need to add the remaining or just the diff between that and `_correspondingToPosition` (in the case of reduce)? (In the case of increase will be subtract the diff between `_correspondingToPosition` and `remaining`)
-        _indexes.newPositionsIndex++;
-        _indexes.currentPositionsIndex++;
+        _data.totalRemaining += _userPosition.remaining; // Do I need to add the remaining or just the diff between that and `_correspondingToPosition` (in the case of reduce)? (In the case of increase will be subtract the diff between `_correspondingToPosition` and `remaining`)
+        _data.newPositionsIndex++;
+        _data.currentPositionsIndex++;
+        _data.amountSpent += _correspondingToPosition;
       } else if (_newTokenShare.token > address(_userPosition.from)) {
         // then position needs to be deleted
         _position.hub.terminate(_currentPositionId, address(this), _recipientSwapped);
-        _totalRemaining += _userPosition.remaining;
-        _indexes.currentPositionsIndex++;
+        _data.totalRemaining += _userPosition.remaining;
+        _data.currentPositionsIndex++;
       } else {
         // then just create a new position
-        _tasks[_indexes.newPositionsIndex] = Task({action: Action.DEPOSIT, positionId: 0, amount: _correspondingToPosition});
-        _indexes.newPositionsIndex++;
+        _tasks[_data.newPositionsIndex] = Task({action: Action.DEPOSIT, positionId: 0, amount: _correspondingToPosition});
+        _data.newPositionsIndex++;
+        _data.amountSpent += _correspondingToPosition;
       }
-    }
-  }
-
-  function _syncSecondBlock(
-    uint8 _currentPositionsIndex,
-    uint256 _totalRemaining,
-    address _recipientSwapped,
-    Position memory _position
-  ) internal returns (uint256 _remaining) {
-    while (_currentPositionsIndex < _position.positions.length) {
-      // If get to this place, then we just need to terminate existing positions
-      (uint256 _unswapped, ) = _position.hub.terminate(_position.positions[_currentPositionsIndex], address(this), _recipientSwapped);
-      _totalRemaining += _unswapped;
-      return _totalRemaining;
-    }
-  }
-
-  function _syncThirdBlock(
-    uint8 _newPositionsIndex,
-    IDCAStrategies.ShareOfToken[] memory _newTokenShares,
-    uint256 _totalAmount,
-    uint256 _amountSpent,
-    Task[] memory _tasks
-  ) internal pure returns (Task[] memory __tasks) {
-    while (_newPositionsIndex < _newTokenShares.length) {
-      IDCAStrategies.ShareOfToken memory _newTokenShare = _newTokenShares[_newPositionsIndex];
-      uint256 _correspondingToPosition = _calculateOptimalAmount(
-        _newPositionsIndex == _newTokenShares.length - 1,
-        _totalAmount,
-        _newTokenShare.share,
-        _getTotalShares(),
-        _amountSpent
-      );
-      _tasks[_newPositionsIndex] = Task({action: Action.DEPOSIT, amount: _correspondingToPosition, positionId: 0});
-      return __tasks;
     }
   }
 
