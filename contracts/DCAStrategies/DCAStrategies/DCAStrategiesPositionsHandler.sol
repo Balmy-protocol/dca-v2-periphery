@@ -197,7 +197,7 @@ abstract contract DCAStrategiesPositionsHandler is IDCAStrategiesPositionsHandle
     IDCAStrategies.ShareOfToken[] memory _newTokenShares = _getTokenShares(_position.strategyId, _newVersion);
     IDCAHub.UserPosition memory _positionMetadata = IDCAHub(_position.hub).userPosition(_position.positions[0]);
 
-    (Data memory _data, Task[] memory _tasks) = _syncFirstBlock(_position, _totalAmount, _newTokenShares, _newAmountSwaps, _recipientSwapped);
+    (Data memory _data, Task[] memory _tasks) = _syncBlock(_position, _totalAmount, _newTokenShares, _newAmountSwaps, _recipientSwapped);
 
     // If get to this place, then we just need to terminate existing positions
     while (_data.currentPositionsIndex < _position.positions.length) {
@@ -240,7 +240,7 @@ abstract contract DCAStrategiesPositionsHandler is IDCAStrategiesPositionsHandle
           new IDCAPermissionManager.PermissionSet[](0)
         );
         if (i < _position.positions.length) {
-          _position.positions[i] = _newPositionId;
+          _userPositions[_newPositionId].positions[i] = _newPositionId;
         } else {
           _userPositions[_newPositionId].positions.push(_newPositionId);
         }
@@ -316,7 +316,7 @@ abstract contract DCAStrategiesPositionsHandler is IDCAStrategiesPositionsHandle
     return !_isLastOne ? (_amount * _share) / _total : _amount - _amountSpent;
   }
 
-  function _syncFirstBlock(
+  function _syncBlock(
     Position memory _position,
     uint256 _totalAmount,
     IDCAStrategies.ShareOfToken[] memory _newTokenShares,
