@@ -446,6 +446,26 @@ interface IDCAStrategiesPositionsHandler {
     TokenAmounts[] returnedSwapped
   );
 
+  /**
+   * @notice Emitted when a position is synced to another version
+   * @param user The address of the user that synced the position
+   * @param positionId The id of the position that was synced
+   * @param newVersion The new version of the position
+   * @param recipientUnswapped The address of the user that will receive the unswapped tokens
+   * @param recipientSwapped The address of the user that will receive the swapped tokens
+   * @param totalAmount The final amount the user wants in the position (used for increase or reduce)
+   * @param newAmountSwaps The amount of new swaps
+   */
+  event Synced(
+    address indexed user,
+    uint256 positionId,
+    uint16 newVersion,
+    address recipientUnswapped,
+    address recipientSwapped,
+    uint256 totalAmount,
+    uint32 newAmountSwaps
+  );
+
   /// @notice Thrown when a pair of strategy id and version are non-existing
   error InvalidStrategy();
 
