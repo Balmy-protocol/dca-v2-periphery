@@ -226,14 +226,16 @@ abstract contract DCAStrategiesPositionsHandler is IDCAStrategiesPositionsHandle
     }
 
     // perform deposit and increase
-    for (uint256 i = 0; i < _tasks.length; i++) {
-      if (_tasks[i].action == Action.INCREASE) {
-        _position.hub.increasePosition(_tasks[i].positionId, _tasks[i].amount, _newAmountSwaps);
-      } else if (_tasks[i].action == Action.DEPOSIT) {
+    for (uint256 i = 0; i < _tasks.length; ) {
+      Task memory _task = _tasks[i];
+
+      if (_task.action == Action.INCREASE) {
+        _position.hub.increasePosition(_task.positionId, _task.amount, _newAmountSwaps);
+      } else if (_task.action == Action.DEPOSIT) {
         uint256 _newPositionId = _position.hub.deposit(
           address(_positionMetadata.from),
           _newTokenShares[i].token,
-          _tasks[i].amount,
+          _task.amount,
           _newAmountSwaps,
           _positionMetadata.swapInterval,
           address(this),
@@ -244,6 +246,10 @@ abstract contract DCAStrategiesPositionsHandler is IDCAStrategiesPositionsHandle
         } else {
           _userPositions[_newPositionId].positions.push(_newPositionId);
         }
+      }
+
+      unchecked {
+        i++;
       }
     }
 
