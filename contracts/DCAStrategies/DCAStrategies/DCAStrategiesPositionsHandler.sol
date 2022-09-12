@@ -241,6 +241,7 @@ abstract contract DCAStrategiesPositionsHandler is IDCAStrategiesPositionsHandle
           address(this),
           new IDCAPermissionManager.PermissionSet[](0)
         );
+        // TODO: search for a way of changing `_task.positionId` for `positionId`
         if (i < _position.positions.length) {
           _userPositions[_task.positionId].positions[i] = _newPositionId;
         } else {
@@ -367,7 +368,7 @@ abstract contract DCAStrategiesPositionsHandler is IDCAStrategiesPositionsHandle
             amount: _correspondingToPosition - _userPosition.remaining
           });
         }
-        _data.totalRemaining += _userPosition.remaining; // Do I need to add the remaining or just the diff between that and `_correspondingToPosition` (in the case of reduce)? (In the case of increase will be subtract the diff between `_correspondingToPosition` and `remaining`)
+        _data.totalRemaining += _userPosition.remaining;
         _data.newPositionsIndex++;
         _data.currentPositionsIndex++;
         _data.amountSpent += _correspondingToPosition;
