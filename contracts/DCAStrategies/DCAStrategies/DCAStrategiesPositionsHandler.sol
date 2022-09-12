@@ -246,6 +246,8 @@ abstract contract DCAStrategiesPositionsHandler is IDCAStrategiesPositionsHandle
         }
       }
     }
+
+    emit Synced(msg.sender, _positionId, _newVersion, _recipientUnswapped, _recipientSwapped, _totalAmount, _newAmountSwaps);
   }
 
   function _getTokenShares(uint80 _strategyId, uint16 _version) internal virtual returns (IDCAStrategies.ShareOfToken[] memory) {}
