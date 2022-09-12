@@ -24,6 +24,7 @@ abstract contract DCAStrategiesPositionsHandler is IDCAStrategiesPositionsHandle
     uint8 newPositionsIndex;
     uint256 totalRemaining;
     uint256 amountSpent;
+    IDCAHub.UserPosition positionMetadata;
   }
 
   mapping(uint256 => Position) internal _userPositions;
@@ -195,7 +196,6 @@ abstract contract DCAStrategiesPositionsHandler is IDCAStrategiesPositionsHandle
   ) external onlyWithPermission(_positionId, IDCAStrategies.Permission.SYNC) {
     Position memory _position = _userPositions[_positionId];
     IDCAStrategies.ShareOfToken[] memory _newTokenShares = _getTokenShares(_position.strategyId, _newVersion);
-    IDCAHub.UserPosition memory _positionMetadata = IDCAHub(_position.hub).userPosition(_position.positions[0]);
 
     (Data memory _data, Task[] memory _tasks) = _syncBlock(_position, _totalAmount, _newTokenShares, _newAmountSwaps, _recipientSwapped);
 
@@ -220,9 +220,9 @@ abstract contract DCAStrategiesPositionsHandler is IDCAStrategiesPositionsHandle
 
     // extract (increase) or send (reduce)
     if (_totalAmount > _data.totalRemaining) {
-      IERC20(_positionMetadata.from).safeTransferFrom(msg.sender, address(this), _totalAmount - _data.totalRemaining);
+      IERC20(_data.positionMetadata.from).safeTransferFrom(msg.sender, address(this), _totalAmount - _data.totalRemaining);
     } else if (_totalAmount < _data.totalRemaining) {
-      IERC20(_positionMetadata.from).safeTransfer(_recipientUnswapped, _data.totalRemaining - _totalAmount);
+      IERC20(_data.positionMetadata.from).safeTransfer(_recipientUnswapped, _data.totalRemaining - _totalAmount);
     }
 
     // perform deposit and increase
@@ -233,11 +233,11 @@ abstract contract DCAStrategiesPositionsHandler is IDCAStrategiesPositionsHandle
         _position.hub.increasePosition(_task.positionId, _task.amount, _newAmountSwaps);
       } else if (_task.action == Action.DEPOSIT) {
         uint256 _newPositionId = _position.hub.deposit(
-          address(_positionMetadata.from),
+          address(_data.positionMetadata.from),
           _newTokenShares[i].token,
           _task.amount,
           _newAmountSwaps,
-          _positionMetadata.swapInterval,
+          _data.positionMetadata.swapInterval,
           address(this),
           new IDCAPermissionManager.PermissionSet[](0)
         );
@@ -341,6 +341,10 @@ abstract contract DCAStrategiesPositionsHandler is IDCAStrategiesPositionsHandle
       uint256 _currentPositionId = _position.positions[_data.currentPositionsIndex];
       IDCAStrategies.ShareOfToken memory _newTokenShare = _newTokenShares[_data.newPositionsIndex];
       IDCAHub.UserPosition memory _userPosition = _position.hub.userPosition(_currentPositionId);
+
+      if (address(_data.positionMetadata.from) == address(0)) {
+        _data.positionMetadata = _userPosition;
+      }
 
       uint256 _correspondingToPosition = _calculateOptimalAmount(
         _data.newPositionsIndex == _newTokenShares.length - 1,
