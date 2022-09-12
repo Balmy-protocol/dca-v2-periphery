@@ -214,7 +214,7 @@ abstract contract DCAStrategiesPositionsHandler is IDCAStrategiesPositionsHandle
         _getTotalShares(),
         _data.amountSpent
       );
-      _tasks[_data.newPositionsIndex] = Task({action: Action.DEPOSIT, amount: _correspondingToPosition, positionId: 0});
+      _tasks[_data.newPositionsIndex] = Task({action: Action.DEPOSIT, amount: _correspondingToPosition, positionId: _positionId});
       _data.amountSpent += _correspondingToPosition;
     }
 
@@ -242,9 +242,9 @@ abstract contract DCAStrategiesPositionsHandler is IDCAStrategiesPositionsHandle
           new IDCAPermissionManager.PermissionSet[](0)
         );
         if (i < _position.positions.length) {
-          _userPositions[_newPositionId].positions[i] = _newPositionId;
+          _userPositions[_task.positionId].positions[i] = _newPositionId;
         } else {
-          _userPositions[_newPositionId].positions.push(_newPositionId);
+          _userPositions[_task.positionId].positions.push(_newPositionId);
         }
       }
 
