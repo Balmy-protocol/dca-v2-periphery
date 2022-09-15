@@ -3,6 +3,7 @@ pragma solidity >=0.8.7 <0.9.0;
 
 import '@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol';
 import '../../interfaces/IDCAStrategies.sol';
+import 'hardhat/console.sol';
 
 abstract contract DCAStrategiesPositionsHandler is IDCAStrategiesPositionsHandler {
   using SafeERC20 for IERC20;
@@ -203,6 +204,7 @@ abstract contract DCAStrategiesPositionsHandler is IDCAStrategiesPositionsHandle
     while (_data.currentPositionsIndex < _position.positions.length) {
       (uint256 _unswapped, ) = _position.hub.terminate(_position.positions[_data.currentPositionsIndex], address(this), _recipientSwapped);
       _data.totalRemaining += _unswapped;
+      _data.currentPositionsIndex++;
     }
 
     while (_data.newPositionsIndex < _newTokenShares.length) {
@@ -216,6 +218,7 @@ abstract contract DCAStrategiesPositionsHandler is IDCAStrategiesPositionsHandle
       );
       _tasks[_data.newPositionsIndex] = Task({action: Action.DEPOSIT, amount: _correspondingToPosition, positionId: _positionId});
       _data.amountSpent += _correspondingToPosition;
+      _data.newPositionsIndex++;
     }
 
     // extract (increase) or send (reduce)
