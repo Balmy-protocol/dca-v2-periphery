@@ -368,12 +368,19 @@ contract('DCAStrategiesManagementHandler', () => {
   }
 
   function sortTokens(array: IDCAStrategies.ShareOfTokenStruct[]) {
+    function hexToNumber(hexaNumber: string) {
+      return parseInt(hexaNumber, 16);
+    }
+
     function compare(a: IDCAStrategies.ShareOfTokenStruct, b: IDCAStrategies.ShareOfTokenStruct) {
-      if (parseInt(a.token, 16) < parseInt(b.token, 16)) return -1;
-      if (parseInt(a.token, 16) > parseInt(b.token, 16)) return 1;
+      if (hexToNumber(a.token) < hexToNumber(b.token)) return -1;
+      if (hexToNumber(a.token) > hexToNumber(b.token)) return 1;
+      if (hexToNumber(a.token) == hexToNumber(b.token)) console.error('found duplicate when sorting');
       return 0;
     }
 
-    return array.sort(compare);
+    let f = array.sort(compare);
+    console.log('array f', f);
+    return f;
   }
 });

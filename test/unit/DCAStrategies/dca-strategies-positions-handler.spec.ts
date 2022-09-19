@@ -490,9 +490,9 @@ contract('DCAStrategiesPositionsHandler', () => {
         const NEW_SHARE_E = { token: tokenE.address, share: BigNumber.from(25e2) }; // deposit
         const NEW_SHARES = sortTokens([NEW_SHARE_A, NEW_SHARE_B, NEW_SHARE_D, NEW_SHARE_E]);
 
-        hub.userPosition.returnsAtCall(0, createUserPosition(tokenF.address, amountOfSwaps, totalAmount, BigNumber.from(5), OLD_SHARE_A));
-        hub.userPosition.returnsAtCall(1, createUserPosition(tokenF.address, amountOfSwaps, totalAmount, BigNumber.from(5), OLD_SHARE_B));
-        hub.userPosition.returnsAtCall(2, createUserPosition(tokenF.address, amountOfSwaps, totalAmount, BigNumber.from(5), OLD_SHARE_C));
+        hub.userPosition.returnsAtCall(0, createUserPosition(tokenF.address, amountOfSwaps, totalAmount, BigNumber.from(5), OLD_SHARES[0]));
+        hub.userPosition.returnsAtCall(1, createUserPosition(tokenF.address, amountOfSwaps, totalAmount, BigNumber.from(5), OLD_SHARES[1]));
+        hub.userPosition.returnsAtCall(2, createUserPosition(tokenF.address, amountOfSwaps, totalAmount, BigNumber.from(5), OLD_SHARES[2]));
 
         hub.terminate.returns([totalAmount, 0]);
 
@@ -506,7 +506,6 @@ contract('DCAStrategiesPositionsHandler', () => {
         tokenF.transferFrom.returns(true);
 
         await DCAStrategiesPositionsHandlerMock.setPermissions(true);
-        await DCAStrategiesPositionsHandlerMock.setTokenShares(1, OLD_SHARES);
         await DCAStrategiesPositionsHandlerMock.setTokenShares(3, NEW_SHARES);
         await DCAStrategiesPositionsHandlerMock.setUserPositions(1, {
           strategyId: 1,
@@ -594,7 +593,7 @@ contract('DCAStrategiesPositionsHandler', () => {
     amountOfSwaps: BigNumber,
     totalAmount: BigNumber,
     swapInterval: BigNumber,
-    tokenShare: { token: string; share: BigNumber }
+    tokenShare: IDCAStrategies.ShareOfTokenStruct
   ) {
     let toReturn: IDCAHubPositionHandler.UserPositionStruct = {
       from: from,
@@ -610,12 +609,19 @@ contract('DCAStrategiesPositionsHandler', () => {
   }
 
   function sortTokens(array: IDCAStrategies.ShareOfTokenStruct[]) {
+    function hexToNumber(hexaNumber: string) {
+      return parseInt(hexaNumber, 16);
+    }
+
     function compare(a: IDCAStrategies.ShareOfTokenStruct, b: IDCAStrategies.ShareOfTokenStruct) {
-      if (parseInt(a.token, 16) < parseInt(b.token, 16)) return -1;
-      if (parseInt(a.token, 16) > parseInt(b.token, 16)) return 1;
+      if (hexToNumber(a.token) < hexToNumber(b.token)) return -1;
+      if (hexToNumber(a.token) > hexToNumber(b.token)) return 1;
+      if (hexToNumber(a.token) == hexToNumber(b.token)) console.error('found duplicate when sorting');
       return 0;
     }
 
-    return array.sort(compare);
+    let f = array.sort(compare);
+    console.log('array f', f);
+    return f;
   }
 });
