@@ -490,9 +490,15 @@ contract('DCAStrategiesPositionsHandler', () => {
         const NEW_SHARE_E = { token: tokenE.address, share: BigNumber.from(25e2) }; // deposit
         const NEW_SHARES = sortTokens([NEW_SHARE_A, NEW_SHARE_B, NEW_SHARE_D, NEW_SHARE_E]);
 
-        hub.userPosition.returnsAtCall(0, createUserPosition(tokenF.address, amountOfSwaps, totalAmount, BigNumber.from(5), OLD_SHARES[0]));
-        hub.userPosition.returnsAtCall(1, createUserPosition(tokenF.address, amountOfSwaps, totalAmount, BigNumber.from(5), OLD_SHARES[1]));
-        hub.userPosition.returnsAtCall(2, createUserPosition(tokenF.address, amountOfSwaps, totalAmount, BigNumber.from(5), OLD_SHARES[2]));
+        hub.userPosition
+          .whenCalledWith(1)
+          .returns(createUserPosition(tokenF.address, amountOfSwaps, totalAmount, BigNumber.from(5), OLD_SHARES[0]));
+        hub.userPosition
+          .whenCalledWith(2)
+          .returns(createUserPosition(tokenF.address, amountOfSwaps, totalAmount, BigNumber.from(5), OLD_SHARES[1]));
+        hub.userPosition
+          .whenCalledWith(3)
+          .returns(createUserPosition(tokenF.address, amountOfSwaps, totalAmount, BigNumber.from(5), OLD_SHARES[2]));
 
         hub.terminate.returns([totalAmount, 0]);
 
@@ -621,7 +627,6 @@ contract('DCAStrategiesPositionsHandler', () => {
     }
 
     let f = array.sort(compare);
-    console.log('array f', f);
     return f;
   }
 });
