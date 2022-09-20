@@ -4,7 +4,7 @@ import { TransactionResponse } from '@ethersproject/providers';
 import { constants, wallet } from '@test-utils';
 import { given, then, when } from '@test-utils/bdd';
 import evm, { snapshot } from '@test-utils/evm';
-import { IERC20, DCAHubCompanion, DCAHubSwapper } from '@typechained';
+import { IERC20, DCAHubCompanion, DCAHubSwapper, LegacyDCASwapper, LegacyDCASwapper__factory } from '@typechained';
 import { DCAHub } from '@mean-finance/dca-v2-core';
 import { StatefulChainlinkOracle } from '@mean-finance/oracles';
 import { ChainlinkRegistry } from '@mean-finance/chainlink-registry';
@@ -34,7 +34,7 @@ describe('Position Migration', () => {
   let WETH: IERC20, USDC: IERC20;
   let positionOwner: SignerWithAddress, swapper: SignerWithAddress;
   let vulnDCAHub: DCAHub, betaDCAHub: DCAHub, yieldlessDCAHub: DCAHub, DCAHub: DCAHub;
-  let DCAHubCompanion: DCAHubCompanion, DCAHubSwapper: DCAHubSwapper;
+  let DCAHubCompanion: DCAHubCompanion, DCAHubSwapper: DCAHubSwapper, legacyDCAHubSwapper: LegacyDCASwapper;
   let snapshotId: string;
   let chainId: BigNumber;
 
@@ -89,10 +89,10 @@ describe('Position Migration', () => {
     // Send tokens from whales, to our users
     await distributeTokensToUsers();
 
-    // Approve swapper
-    await DCAHubSwapper.connect(msig).grantRole(await DCAHubSwapper.SWAP_EXECUTION_ROLE(), swapper.address);
-
     chainId = BigNumber.from((await ethers.provider.getNetwork()).chainId);
+
+    const legacyDCAHubSwapperFactory: LegacyDCASwapper__factory = await ethers.getContractFactory('LegacyDCASwapper');
+    legacyDCAHubSwapper = await legacyDCAHubSwapperFactory.deploy();
     snapshotId = await snapshot.take();
   });
 
@@ -203,16 +203,10 @@ describe('Position Migration', () => {
     const event = await getHubEvent(tx, 'Deposited');
     const positionId = event.args.positionId;
 
-    await WETH.connect(swapper).approve(DCAHubSwapper.address, constants.MAX_UINT_256);
-    await DCAHubSwapper.connect(swapper).legacySwapForCaller({
-      hub: hub.address,
-      tokens: [WETH_ADDRESS, USDC_ADDRESS],
-      pairsToSwap: [{ indexTokenA: 0, indexTokenB: 1 }],
-      minimumOutput: [0, 0],
-      maximumInput: [constants.MAX_UINT_256, constants.MAX_UINT_256],
-      recipient: swapper.address,
-      deadline: constants.MAX_UINT_256,
-    });
+    await WETH.connect(swapper).approve(legacyDCAHubSwapper.address, constants.MAX_UINT_256);
+    await legacyDCAHubSwapper
+      .connect(swapper)
+      .swapForCaller(hub.address, [WETH_ADDRESS, USDC_ADDRESS], [{ indexTokenA: 0, indexTokenB: 1 }], swapper.address);
 
     const { swapped } = await hub.userPosition(positionId);
     return { positionId, swappedBalance: swapped, unswappedBalance: RATE.mul(AMOUNT_OF_SWAPS - 1) };
