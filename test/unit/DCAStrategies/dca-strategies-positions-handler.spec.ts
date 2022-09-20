@@ -463,8 +463,9 @@ contract('DCAStrategiesPositionsHandler', () => {
     let delta = ethers.utils.parseEther('15');
     let amountOfSwaps = BigNumber.from(5);
     let newAmountOfSwaps = BigNumber.from(7);
-    let expectedNewPositions: BigNumber[] = [BigNumber.from(1), BigNumber.from(2), BigNumber.from(4), BigNumber.from(5)];
     let newPositions: BigNumber[];
+    let oldShares: IDCAStrategies.ShareOfTokenStruct[];
+    let newShares: IDCAStrategies.ShareOfTokenStruct[];
 
     when('caller does not have permissions', () => {
       given(async () => {
@@ -482,33 +483,33 @@ contract('DCAStrategiesPositionsHandler', () => {
         const OLD_SHARE_A = { token: tokenA.address, share: BigNumber.from(33e2) }; // reduce
         const OLD_SHARE_B = { token: tokenB.address, share: BigNumber.from(33e2) }; // increase
         const OLD_SHARE_C = { token: tokenC.address, share: BigNumber.from(34e2) }; // terminate
-        const OLD_SHARES = sortTokens([OLD_SHARE_A, OLD_SHARE_B, OLD_SHARE_C]);
+        oldShares = sortTokens([OLD_SHARE_A, OLD_SHARE_B, OLD_SHARE_C]);
 
         const NEW_SHARE_A = { token: tokenA.address, share: BigNumber.from(20e2) };
         const NEW_SHARE_B = { token: tokenB.address, share: BigNumber.from(35e2) };
         const NEW_SHARE_D = { token: tokenD.address, share: BigNumber.from(20e2) }; // deposit
         const NEW_SHARE_E = { token: tokenE.address, share: BigNumber.from(25e2) }; // deposit
-        const NEW_SHARES = sortTokens([NEW_SHARE_A, NEW_SHARE_B, NEW_SHARE_D, NEW_SHARE_E]);
+        newShares = sortTokens([NEW_SHARE_A, NEW_SHARE_B, NEW_SHARE_D, NEW_SHARE_E]);
 
         hub.userPosition
           .whenCalledWith(1)
-          .returns(createUserPosition(tokenF.address, amountOfSwaps, totalAmount, BigNumber.from(5), OLD_SHARES[0]));
+          .returns(createUserPosition(tokenF.address, amountOfSwaps, totalAmount, BigNumber.from(5), oldShares[0]));
         hub.userPosition
           .whenCalledWith(2)
-          .returns(createUserPosition(tokenF.address, amountOfSwaps, totalAmount, BigNumber.from(5), OLD_SHARES[1]));
+          .returns(createUserPosition(tokenF.address, amountOfSwaps, totalAmount, BigNumber.from(5), oldShares[1]));
         hub.userPosition
           .whenCalledWith(3)
-          .returns(createUserPosition(tokenF.address, amountOfSwaps, totalAmount, BigNumber.from(5), OLD_SHARES[2]));
+          .returns(createUserPosition(tokenF.address, amountOfSwaps, totalAmount, BigNumber.from(5), oldShares[2]));
 
         hub.terminate
           .whenCalledWith(1, DCAStrategiesPositionsHandlerMock.address, user.address)
-          .returns([totalAmount.mul(OLD_SHARES[0].share).div(100e2), 0]);
+          .returns([totalAmount.mul(oldShares[0].share).div(100e2), 0]);
         hub.terminate
           .whenCalledWith(2, DCAStrategiesPositionsHandlerMock.address, user.address)
-          .returns([totalAmount.mul(OLD_SHARES[1].share).div(100e2), 0]);
+          .returns([totalAmount.mul(oldShares[1].share).div(100e2), 0]);
         hub.terminate
           .whenCalledWith(3, DCAStrategiesPositionsHandlerMock.address, user.address)
-          .returns([totalAmount.mul(OLD_SHARES[2].share).div(100e2), 0]);
+          .returns([totalAmount.mul(oldShares[2].share).div(100e2), 0]);
 
         hub.reducePosition.returns(true);
         hub.increasePosition.returns(true);
@@ -520,7 +521,7 @@ contract('DCAStrategiesPositionsHandler', () => {
         tokenF.transferFrom.returns(true);
 
         await DCAStrategiesPositionsHandlerMock.setPermissions(true);
-        await DCAStrategiesPositionsHandlerMock.setTokenShares(3, NEW_SHARES);
+        await DCAStrategiesPositionsHandlerMock.setTokenShares(3, newShares);
         await DCAStrategiesPositionsHandlerMock.setUserPositions(1, {
           strategyId: 1,
           strategyVersion: 1,
@@ -542,7 +543,9 @@ contract('DCAStrategiesPositionsHandler', () => {
           expect(hub.reducePosition).to.have.been.calledTwice;
           expect(hub.increasePosition).to.have.callCount(0);
         });
-        then('positions array is saved correctly', async () => {});
+        then('positions array is saved correctly', async () => {
+          checkPositions(newPositions, newShares);
+        });
         then('event is emitted', async () => {
           await expect(tx)
             .to.emit(DCAStrategiesPositionsHandlerMock, 'Synced')
@@ -552,6 +555,8 @@ contract('DCAStrategiesPositionsHandler', () => {
       when('is called (trying to increase position)', () => {
         given(async () => {
           tx = await callSync(totalAmount.add(delta), newAmountOfSwaps);
+
+          newPositions = (await DCAStrategiesPositionsHandlerMock.userPosition(1)).positions;
         });
         then('transferFrom() is called correctly', async () => {
           expect(tokenF.transferFrom).to.have.been.calledWith(user.address, DCAStrategiesPositionsHandlerMock.address, delta);
@@ -561,7 +566,9 @@ contract('DCAStrategiesPositionsHandler', () => {
           expect(hub.increasePosition).to.have.been.calledOnce;
           expect(hub.reducePosition).to.have.been.calledOnce;
         });
-        then('positions array is saved correctly', async () => {});
+        then('positions array is saved correctly', async () => {
+          checkPositions(newPositions, newShares);
+        });
         then('event is emitted', async () => {
           await expect(tx)
             .to.emit(DCAStrategiesPositionsHandlerMock, 'Synced')
@@ -571,6 +578,8 @@ contract('DCAStrategiesPositionsHandler', () => {
       when('is called (without increasing or reducing)', () => {
         given(async () => {
           tx = await callSync(totalAmount, amountOfSwaps);
+
+          newPositions = (await DCAStrategiesPositionsHandlerMock.userPosition(1)).positions;
         });
         then('neither transfer() or transferFrom() is called', async () => {
           expect(tokenF.transferFrom).to.have.callCount(0);
@@ -581,7 +590,9 @@ contract('DCAStrategiesPositionsHandler', () => {
           expect(hub.reducePosition).to.have.been.calledOnce;
           expect(hub.increasePosition).to.have.been.calledOnce;
         });
-        then('positions array is saved correctly', async () => {});
+        then('positions array is saved correctly', async () => {
+          checkPositions(newPositions, newShares);
+        });
         then('event is emitted', async () => {
           await expect(tx)
             .to.emit(DCAStrategiesPositionsHandlerMock, 'Synced')
@@ -608,33 +619,12 @@ contract('DCAStrategiesPositionsHandler', () => {
       expect(hub.terminate).to.have.been.calledOnce;
     }
 
-    async function checkPositions(oldShares: IDCAStrategies.ShareOfTokenStruct[], newShares: IDCAStrategies.ShareOfTokenStruct[]) {
-      function checkAvailability(arr: IDCAStrategies.ShareOfTokenStruct[], token: string): IDCAStrategies.ShareOfTokenStruct | undefined {
-        // check if the item is in array, return it (undefined if it's not exist)
-        for (let i = 0; i < arr.length; i++) {
-          const element = arr[i];
-          if (element.token == token) {
-            return element;
-          }
-        }
-      }
-
-      newShares.forEach((item, i) => {
-        // if the item is in old array it means it was reduced or increased
-        let result = checkAvailability(oldShares, item.token);
-        let oldShare: BigNumber = BigNumber.from(result?.share);
-        let newShare: BigNumber = BigNumber.from(item.share);
-
-        if (result != undefined) {
-          if (newShare.lt(oldShare)) {
-            // reduce
-          } else {
-            // increase
-          }
-        } else {
-          // deposit
-        }
+    function checkPositions(newPositions: BigNumber[], newShares: IDCAStrategies.ShareOfTokenStruct[]) {
+      expect(newPositions.length).to.be.equal(newShares.length);
+      newPositions.forEach((i) => {
+        expect(i).to.not.be.equal(BigNumber.from(0));
       });
+      expect(new Set(newPositions).size !== newPositions.length).to.be.false; // `false` if no duplicates
     }
   });
 

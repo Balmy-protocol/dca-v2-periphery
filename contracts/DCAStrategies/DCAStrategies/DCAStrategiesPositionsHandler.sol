@@ -228,15 +228,16 @@ abstract contract DCAStrategiesPositionsHandler is IDCAStrategiesPositionsHandle
       IERC20(_data.positionMetadata.from).safeTransfer(_recipientUnswapped, _data.totalRemaining - _totalAmount);
     }
 
+    uint256[] memory _newPositions = new uint256[](_tasks.length);
+
     // perform deposit and increase
     for (uint256 i = 0; i < _tasks.length; ) {
       Task memory _task = _tasks[i];
-      uint256 _auxPositionId = _positionId;
 
       if (_task.action == Action.INCREASE) {
         _position.hub.increasePosition(_task.positionId, _task.amount, _newAmountSwaps);
       } else if (_task.action == Action.DEPOSIT) {
-        uint256 _newPositionId = _position.hub.deposit(
+        _task.positionId = _position.hub.deposit(
           address(_data.positionMetadata.from),
           _newTokenShares[i].token,
           _task.amount,
@@ -245,20 +246,16 @@ abstract contract DCAStrategiesPositionsHandler is IDCAStrategiesPositionsHandle
           address(this),
           new IDCAPermissionManager.PermissionSet[](0)
         );
-
-        if (i < _position.positions.length) {
-          // inside array
-          _userPositions[_auxPositionId].positions[i] = _newPositionId;
-        } else {
-          // outside array
-          _userPositions[_auxPositionId].positions.push(_newPositionId);
-        }
       }
+
+      _newPositions[i] = _task.positionId;
 
       unchecked {
         i++;
       }
     }
+
+    _userPositions[_positionId].positions = _newPositions;
 
     emit Synced(msg.sender, _positionId, _newVersion, _recipientUnswapped, _recipientSwapped, _totalAmount, _newAmountSwaps);
   }
@@ -366,7 +363,7 @@ abstract contract DCAStrategiesPositionsHandler is IDCAStrategiesPositionsHandle
         if (_userPosition.remaining > _correspondingToPosition) {
           // reduce
           _position.hub.reducePosition(_currentPositionId, _userPosition.remaining - _correspondingToPosition, _newAmountSwaps, address(this));
-          _tasks[_data.newPositionsIndex] = Task({action: Action.REDUCE, positionId: 0, amount: 0});
+          _tasks[_data.newPositionsIndex] = Task({action: Action.REDUCE, positionId: _currentPositionId, amount: 0});
         } else if (_userPosition.remaining < _correspondingToPosition) {
           // increase
           _tasks[_data.newPositionsIndex] = Task({
