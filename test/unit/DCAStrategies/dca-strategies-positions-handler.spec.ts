@@ -500,7 +500,15 @@ contract('DCAStrategiesPositionsHandler', () => {
           .whenCalledWith(3)
           .returns(createUserPosition(tokenF.address, amountOfSwaps, totalAmount, BigNumber.from(5), OLD_SHARES[2]));
 
-        hub.terminate.returns([totalAmount, 0]);
+        hub.terminate
+          .whenCalledWith(1, DCAStrategiesPositionsHandlerMock.address, user.address)
+          .returns([totalAmount.mul(OLD_SHARES[0].share).div(100e2), 0]);
+        hub.terminate
+          .whenCalledWith(2, DCAStrategiesPositionsHandlerMock.address, user.address)
+          .returns([totalAmount.mul(OLD_SHARES[1].share).div(100e2), 0]);
+        hub.terminate
+          .whenCalledWith(3, DCAStrategiesPositionsHandlerMock.address, user.address)
+          .returns([totalAmount.mul(OLD_SHARES[2].share).div(100e2), 0]);
 
         hub.reducePosition.returns(true);
         hub.increasePosition.returns(true);
