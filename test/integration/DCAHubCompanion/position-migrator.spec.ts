@@ -4,7 +4,7 @@ import { TransactionResponse } from '@ethersproject/providers';
 import { constants, wallet } from '@test-utils';
 import { given, then, when } from '@test-utils/bdd';
 import evm, { snapshot } from '@test-utils/evm';
-import { IERC20, DCAHubCompanion, DCAHubSwapper, LegacyDCASwapper, LegacyDCASwapper__factory } from '@typechained';
+import { IERC20, DCAHubCompanion, LegacyDCASwapper, LegacyDCASwapper__factory } from '@typechained';
 import { DCAHub } from '@mean-finance/dca-v2-core';
 import { StatefulChainlinkOracle } from '@mean-finance/oracles';
 import { ChainlinkRegistry } from '@mean-finance/chainlink-registry';
@@ -34,7 +34,7 @@ describe('Position Migration', () => {
   let WETH: IERC20, USDC: IERC20;
   let positionOwner: SignerWithAddress, swapper: SignerWithAddress;
   let vulnDCAHub: DCAHub, betaDCAHub: DCAHub, yieldlessDCAHub: DCAHub, DCAHub: DCAHub;
-  let DCAHubCompanion: DCAHubCompanion, DCAHubSwapper: DCAHubSwapper, legacyDCAHubSwapper: LegacyDCASwapper;
+  let DCAHubCompanion: DCAHubCompanion, legacyDCAHubSwapper: LegacyDCASwapper;
   let snapshotId: string;
   let chainId: BigNumber;
 
@@ -56,7 +56,6 @@ describe('Position Migration', () => {
 
     DCAHub = await ethers.getContract('DCAHub');
     DCAHubCompanion = await ethers.getContract('DCAHubCompanion');
-    DCAHubSwapper = await ethers.getContract('DCAHubSwapper');
     betaDCAHub = await ethers.getContractAt(DCA_HUB_ABI, BETA_HUB);
     vulnDCAHub = await ethers.getContractAt(DCA_HUB_ABI, VULN_HUB);
     yieldlessDCAHub = await ethers.getContractAt(DCA_HUB_ABI, YIELDLESS_HUB);
