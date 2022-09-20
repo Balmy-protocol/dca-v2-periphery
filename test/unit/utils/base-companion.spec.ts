@@ -2,9 +2,9 @@ import chai, { expect } from 'chai';
 import { ethers } from 'hardhat';
 import { contract, given, then, when } from '@test-utils/bdd';
 import { snapshot } from '@test-utils/evm';
-import { BaseCompanionMock, BaseCompanionMock__factory, IERC20, IERC20Permit } from '@typechained';
+import { BaseCompanionMock, BaseCompanionMock__factory, IERC20 } from '@typechained';
 import { FakeContract, smock } from '@defi-wonderland/smock';
-import { constants, utils, Wallet } from 'ethers';
+import { Wallet } from 'ethers';
 
 chai.use(smock.matchers);
 
@@ -70,26 +70,6 @@ contract('BaseCompanion', () => {
         expect(calls).to.have.lengthOf(1);
         expect(calls[0].token).to.equal(token.address);
         expect(calls[0].recipient).to.equal(RECIPIENT.address);
-      });
-    });
-  });
-
-  describe('permit', () => {
-    const OWNER = '0x0000000000000000000000000000000000000001';
-    const SPENDER = '0x0000000000000000000000000000000000000002';
-    const VALUE = 10000;
-    const DEADLINE = 1234566;
-    const V = 12;
-    const R = utils.formatBytes32String('r');
-    const S = utils.formatBytes32String('s');
-    when('executing permit', () => {
-      let token: FakeContract<IERC20Permit>;
-      given(async () => {
-        token = await smock.fake('IERC20Permit');
-        await baseCompanion.permit(token.address, OWNER, SPENDER, VALUE, DEADLINE, V, R, S);
-      });
-      then('token permit is called correctly', async () => {
-        expect(token.permit).to.have.been.calledOnceWith(OWNER, SPENDER, VALUE, DEADLINE, V, R, S);
       });
     });
   });
