@@ -537,7 +537,11 @@ contract('DCAStrategiesPositionsHandler', () => {
         then('transfer() is called correctly', async () => {
           expect(tokenF.transfer).to.have.been.calledWith(user.address, delta);
         });
-        then('increase, reduce, deposit or terminate is called correctly', async () => {});
+        then('increase, reduce, deposit or terminate is called correctly', async () => {
+          checkCallsToHub();
+          expect(hub.reducePosition).to.have.been.calledTwice;
+          expect(hub.increasePosition).to.have.callCount(0);
+        });
         then('positions array is saved correctly', async () => {});
         then('event is emitted', async () => {
           await expect(tx)
@@ -552,7 +556,11 @@ contract('DCAStrategiesPositionsHandler', () => {
         then('transferFrom() is called correctly', async () => {
           expect(tokenF.transferFrom).to.have.been.calledWith(user.address, DCAStrategiesPositionsHandlerMock.address, delta);
         });
-        then('increase, reduce, deposit or terminate is called correctly', async () => {});
+        then('increase, reduce, deposit or terminate is called correctly', async () => {
+          checkCallsToHub();
+          expect(hub.increasePosition).to.have.been.calledOnce;
+          expect(hub.reducePosition).to.have.been.calledOnce;
+        });
         then('positions array is saved correctly', async () => {});
         then('event is emitted', async () => {
           await expect(tx)
@@ -568,7 +576,11 @@ contract('DCAStrategiesPositionsHandler', () => {
           expect(tokenF.transferFrom).to.have.callCount(0);
           expect(tokenF.transfer).to.have.callCount(0);
         });
-        then('increase, reduce, deposit or terminate is called correctly', async () => {});
+        then('increase, reduce, deposit or terminate is called correctly', async () => {
+          checkCallsToHub();
+          expect(hub.reducePosition).to.have.been.calledOnce;
+          expect(hub.increasePosition).to.have.been.calledOnce;
+        });
         then('positions array is saved correctly', async () => {});
         then('event is emitted', async () => {
           await expect(tx)
@@ -589,6 +601,11 @@ contract('DCAStrategiesPositionsHandler', () => {
       );
 
       return tx;
+    }
+
+    function checkCallsToHub() {
+      expect(hub['deposit(address,address,uint256,uint32,uint32,address,(address,uint8[])[])']).to.have.been.calledTwice;
+      expect(hub.terminate).to.have.been.calledOnce;
     }
 
     async function checkPositions(oldShares: IDCAStrategies.ShareOfTokenStruct[], newShares: IDCAStrategies.ShareOfTokenStruct[]) {
