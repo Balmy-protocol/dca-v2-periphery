@@ -293,8 +293,8 @@ contract('Optimized multi pair swap with DEX', () => {
         [
           swap.swappers,
           swap.executions.map(({ index, data }) => [index, data]),
-          swap.leftoverRecipient.address,
           swap.extraTokens,
+          swap.leftoverRecipient.address,
           swap.sendToProvideLeftoverToHub,
         ],
       ]
