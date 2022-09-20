@@ -160,6 +160,7 @@ contract('Optimized multi pair swap with DEX', () => {
             { index: 0, data: dexQuotes[1].data },
           ],
           leftoverRecipient: recipient,
+          extraTokens: [],
           sendToProvideLeftoverToHub: false,
         });
         const swapTx = await DCAHubSwapper.optimizedSwap({
@@ -281,13 +282,22 @@ contract('Optimized multi pair swap with DEX', () => {
     swappers: string[];
     executions: { data: BytesLike; index: number }[];
     sendToProvideLeftoverToHub: boolean;
+    extraTokens: string[];
     leftoverRecipient: { address: string };
   };
   function encode(swap: SwapWithDexes) {
     const abiCoder = new utils.AbiCoder();
     const swapData = abiCoder.encode(
-      ['tuple(address[], tuple(uint8, bytes)[], address, bool)'],
-      [[swap.swappers, swap.executions.map(({ index, data }) => [index, data]), swap.leftoverRecipient.address, swap.sendToProvideLeftoverToHub]]
+      ['tuple(address[], tuple(uint8, bytes)[], address[], address, bool)'],
+      [
+        [
+          swap.swappers,
+          swap.executions.map(({ index, data }) => [index, data]),
+          swap.leftoverRecipient.address,
+          swap.extraTokens,
+          swap.sendToProvideLeftoverToHub,
+        ],
+      ]
     );
     return abiCoder.encode(['tuple(uint256, bytes)'], [[2, swapData]]);
   }

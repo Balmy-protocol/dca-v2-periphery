@@ -17,8 +17,14 @@ contract DCAHubSwapperMock is DCAHubSwapper {
     address recipient;
   }
 
+  struct SendBalanceOnContractToRecipientCall {
+    address token;
+    address recipient;
+  }
+
   MaxApproveSpenderCall[] internal _maxApproveSpenderCalls;
   SendToRecipientCall[] internal _sendToRecipientCalls;
+  SendBalanceOnContractToRecipientCall[] internal _sendBalanceOnContractToRecipientCalls;
   RevokeAction[][] internal _revokeCalls;
 
   constructor(
@@ -30,6 +36,10 @@ contract DCAHubSwapperMock is DCAHubSwapper {
 
   function maxApproveSpenderCalls() external view returns (MaxApproveSpenderCall[] memory) {
     return _maxApproveSpenderCalls;
+  }
+
+  function sendBalanceOnContractToRecipientCalls() external view returns (SendBalanceOnContractToRecipientCall[] memory) {
+    return _sendBalanceOnContractToRecipientCalls;
   }
 
   function sendToRecipientCalls() external view returns (SendToRecipientCall[] memory) {
@@ -66,6 +76,11 @@ contract DCAHubSwapperMock is DCAHubSwapper {
   ) internal override {
     _sendToRecipientCalls.push(SendToRecipientCall(_token, _amount, _recipient));
     super._sendToRecipient(_token, _amount, _recipient);
+  }
+
+  function _sendBalanceOnContractToRecipient(address _token, address _recipient) internal override {
+    _sendBalanceOnContractToRecipientCalls.push(SendBalanceOnContractToRecipientCall(_token, _recipient));
+    super._sendBalanceOnContractToRecipient(_token, _recipient);
   }
 
   function isSwapExecutorEmpty() external view returns (bool) {
