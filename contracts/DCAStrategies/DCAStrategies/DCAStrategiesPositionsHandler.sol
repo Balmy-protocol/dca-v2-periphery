@@ -247,8 +247,10 @@ abstract contract DCAStrategiesPositionsHandler is IDCAStrategiesPositionsHandle
         );
 
         if (i < _position.positions.length) {
+          // inside array
           _userPositions[_auxPositionId].positions[i] = _newPositionId;
         } else {
+          // outside array
           _userPositions[_auxPositionId].positions.push(_newPositionId);
         }
       }
