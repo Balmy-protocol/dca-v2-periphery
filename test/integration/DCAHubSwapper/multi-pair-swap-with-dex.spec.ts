@@ -167,6 +167,7 @@ contract('Multi pair swap with DEX', () => {
             { swapperIndex: 0, swapData: dexQuotes[0].data },
             { swapperIndex: 0, swapData: dexQuotes[1].data },
           ],
+          intermediateTokensToCheck: [],
           leftoverRecipient: recipient.address,
           deadline: constants.MAX_UINT_256,
         });
