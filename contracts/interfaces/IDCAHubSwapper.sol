@@ -26,6 +26,9 @@ interface IDCAHubSwapper is IDCAHubSwapCallee {
     SwapExecution[] executions;
     // Address that will receive all unspent tokens
     address leftoverRecipient;
+    // A list of tokens to check for unspent balance. These should be tokens that were
+    // not `toProvide` nor `reward` tokens
+    address[] intermediateTokensToCheck;
     // Deadline when the swap becomes invalid
     uint256 deadline;
   }

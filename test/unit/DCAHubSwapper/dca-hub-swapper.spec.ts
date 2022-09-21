@@ -22,7 +22,7 @@ contract('DCAHubSwapper', () => {
   let DCAHubSwapperFactory: DCAHubSwapperMock__factory;
   let DCAHubSwapper: DCAHubSwapperMock;
   let swapperRegistry: FakeContract<ISwapperRegistry>;
-  let tokenA: FakeContract<IERC20>, tokenB: FakeContract<IERC20>;
+  let tokenA: FakeContract<IERC20>, tokenB: FakeContract<IERC20>, intermediateToken: FakeContract<IERC20>;
   let swapExecutionRole: string, adminRole: string, superAdminRole: string;
   let snapshotId: string;
 
@@ -37,6 +37,7 @@ contract('DCAHubSwapper', () => {
     DCAHubSwapper = await DCAHubSwapperFactory.deploy(swapperRegistry.address, superAdmin.address, [admin.address], [swapExecutioner.address]);
     tokenA = await smock.fake('IERC20');
     tokenB = await smock.fake('IERC20');
+    intermediateToken = await smock.fake('IERC20');
     tokens = [tokenA.address, tokenB.address];
     swapExecutionRole = await DCAHubSwapper.SWAP_EXECUTION_ROLE();
     adminRole = await DCAHubSwapper.ADMIN_ROLE();
@@ -248,6 +249,7 @@ contract('DCAHubSwapper', () => {
           pairsToSwap: [],
           oracleData: BYTES,
           allowanceTargets: [],
+          intermediateTokensToCheck: [],
           swappers: [],
           executions: [],
           leftoverRecipient: recipient.address,
@@ -263,6 +265,7 @@ contract('DCAHubSwapper', () => {
           pairsToSwap: INDEXES,
           oracleData: BYTES,
           allowanceTargets: [{ token: tokenA.address, allowanceTarget: DEX, minAllowance: 2000 }],
+          intermediateTokensToCheck: [intermediateToken.address],
           swappers: [DEX],
           executions: [{ swapData: BYTES, swapperIndex: 0 }],
           leftoverRecipient: recipient.address,
@@ -286,6 +289,7 @@ contract('DCAHubSwapper', () => {
             bytes: {
               swappers: [DEX],
               executions: [{ data: BYTES, index: 0 }],
+              extraTokens: [intermediateToken.address],
               sendToProvideLeftoverToHub: false,
               leftoverRecipient: recipient,
             },
@@ -304,6 +308,7 @@ contract('DCAHubSwapper', () => {
           allowanceTargets: [{ token: tokenA.address, allowanceTarget: DEX, minAllowance: 2000 }],
           swappers: [DEX],
           executions: [{ swapData: BYTES, swapperIndex: 0 }],
+          intermediateTokensToCheck: [],
           leftoverRecipient: recipient.address,
           deadline: constants.MAX_UINT_256,
         },
@@ -324,6 +329,7 @@ contract('DCAHubSwapper', () => {
           allowanceTargets: [],
           swappers: [],
           executions: [],
+          intermediateTokensToCheck: [],
           leftoverRecipient: recipient.address,
           deadline: 0,
         },
@@ -339,6 +345,7 @@ contract('DCAHubSwapper', () => {
           allowanceTargets: [{ token: tokenA.address, allowanceTarget: DEX, minAllowance: 2000 }],
           swappers: [DEX],
           executions: [{ swapData: BYTES, swapperIndex: 0 }],
+          intermediateTokensToCheck: [intermediateToken.address],
           leftoverRecipient: recipient.address,
           deadline: constants.MAX_UINT_256,
         });
@@ -360,6 +367,7 @@ contract('DCAHubSwapper', () => {
             bytes: {
               swappers: [DEX],
               executions: [{ data: BYTES, index: 0 }],
+              extraTokens: [intermediateToken.address],
               sendToProvideLeftoverToHub: true,
               leftoverRecipient: recipient,
             },
@@ -378,6 +386,7 @@ contract('DCAHubSwapper', () => {
           allowanceTargets: [{ token: tokenA.address, allowanceTarget: DEX, minAllowance: 2000 }],
           swappers: [DEX],
           executions: [{ swapData: BYTES, swapperIndex: 0 }],
+          intermediateTokensToCheck: [],
           leftoverRecipient: recipient.address,
           deadline: constants.MAX_UINT_256,
         },
@@ -547,6 +556,7 @@ contract('DCAHubSwapper', () => {
           plan: 'dexes',
           bytes: {
             swappers: [swapper.address],
+            extraTokens: [intermediateToken.address],
             executions: callsToSwapper.map((swap) => ({ index: 0, data: swap })),
             leftoverRecipient: recipient,
             sendToProvideLeftoverToHub: sendToHubFlag,
@@ -652,6 +662,12 @@ contract('DCAHubSwapper', () => {
           then('swap is executed correctly', () => {
             expect(swapper.swap).to.have.been.calledOnceWith(tokenA.address, 1000, tokenA.address);
           });
+          then('send balance on contract to recipient was called correctly', async () => {
+            const calls = await DCAHubSwapper.sendBalanceOnContractToRecipientCalls();
+            expect(calls).to.have.lengthOf(1);
+            expect(calls[0].token).to.equal(intermediateToken.address);
+            expect(calls[0].recipient).to.equal(recipient.address);
+          });
         });
       }
     });
@@ -705,6 +721,7 @@ contract('DCAHubSwapper', () => {
   type SwapWithDexes = {
     swappers: string[];
     executions: { data: BytesLike; index: number }[];
+    extraTokens: string[];
     sendToProvideLeftoverToHub: boolean;
     leftoverRecipient: { address: string };
   };
@@ -726,11 +743,12 @@ contract('DCAHubSwapper', () => {
       swapData = [];
     } else {
       swapData = ABI_CODER.encode(
-        ['tuple(address[], tuple(uint8, bytes)[], address, bool)'],
+        ['tuple(address[], tuple(uint8, bytes)[], address[], address, bool)'],
         [
           [
             bytes.swappers,
             bytes.executions.map(({ index, data }) => [index, data]),
+            bytes.extraTokens,
             bytes.leftoverRecipient.address,
             bytes.sendToProvideLeftoverToHub,
           ],

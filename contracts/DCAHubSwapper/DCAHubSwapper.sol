@@ -26,6 +26,8 @@ contract DCAHubSwapper is DeadlineValidation, AccessControl, GetBalances, IDCAHu
     address[] swappers;
     // The different swaps to execute
     SwapExecution[] executions;
+    // A list of tokens to check for unspent balance
+    address[] intermediateTokensToCheck;
     // The address that will receive the unspent tokens
     address leftoverRecipient;
     // This flag is just a way to make transactions cheaper. If Mean Finance is executing the swap, then it's the same for us
@@ -175,7 +177,8 @@ contract DCAHubSwapper is DeadlineValidation, AccessControl, GetBalances, IDCAHu
       swappers: _parameters.swappers,
       executions: _parameters.executions,
       leftoverRecipient: _parameters.leftoverRecipient,
-      sendToProvideLeftoverToHub: _sendToProvideLeftoverToHub
+      sendToProvideLeftoverToHub: _sendToProvideLeftoverToHub,
+      intermediateTokensToCheck: _parameters.intermediateTokensToCheck
     });
 
     // Execute swap
@@ -251,6 +254,14 @@ contract DCAHubSwapper is DeadlineValidation, AccessControl, GetBalances, IDCAHu
           _token.safeTransfer(_callbackData.leftoverRecipient, _balance);
         }
       }
+      unchecked {
+        i++;
+      }
+    }
+
+    // Check intermediate tokens
+    for (uint256 i = 0; i < _callbackData.intermediateTokensToCheck.length; ) {
+      _sendBalanceOnContractToRecipient(_callbackData.intermediateTokensToCheck[i], _callbackData.leftoverRecipient);
       unchecked {
         i++;
       }

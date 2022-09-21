@@ -143,6 +143,7 @@ contract('Single pair swap with DEX', () => {
           swappers: [dexQuote.to],
           executions: [{ swapperIndex: 0, swapData: dexQuote.data }],
           leftoverRecipient: recipient.address,
+          intermediateTokensToCheck: [],
           deadline: constants.MAX_UINT_256,
         });
         ({ reward, toProvide, receivedFromAgg, sentToAgg } = await getTransfers(swapTx));
