@@ -8,6 +8,7 @@ abstract contract DCAStrategiesPositionsHandler is IDCAStrategiesPositionsHandle
   using SafeERC20 for IERC20;
 
   enum Action {
+    NOTHING,
     REDUCE,
     INCREASE,
     DEPOSIT
@@ -371,6 +372,9 @@ abstract contract DCAStrategiesPositionsHandler is IDCAStrategiesPositionsHandle
             positionId: _currentPositionId,
             amount: _correspondingToPosition - _userPosition.remaining
           });
+        } else {
+          // do nothing
+          _tasks[_data.newPositionsIndex] = Task({action: Action.NOTHING, positionId: _currentPositionId, amount: 0});
         }
         _data.totalRemaining += _userPosition.remaining;
         _data.newPositionsIndex++;

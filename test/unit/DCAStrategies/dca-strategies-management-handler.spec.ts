@@ -380,7 +380,6 @@ contract('DCAStrategiesManagementHandler', () => {
     }
 
     let f = array.sort(compare);
-    console.log('array f', f);
     return f;
   }
 });
