@@ -1279,10 +1279,10 @@
     "@openzeppelin/contracts" "4.7.3"
     "@uniswap/v3-core" "1.0.1"
 
-"@mean-finance/swappers@1.0.0-rc13":
-  version "1.0.0-rc13"
-  resolved "https://registry.yarnpkg.com/@mean-finance/swappers/-/swappers-1.0.0-rc13.tgz#9309c2719f8d349abb8e619a9c6d8c5ad9cc0831"
-  integrity sha512-QuJKV/3Mel1DwnIQ4o/5QywC7Z74qddHLI2HMR909ITRv1azEOXG3Vznz5+oFojAv3yE2C6NYIq009YLtfAVPA==
+"@mean-finance/swappers@1.0.0-rc14":
+  version "1.0.0-rc14"
+  resolved "https://registry.yarnpkg.com/@mean-finance/swappers/-/swappers-1.0.0-rc14.tgz#0a6c5377488c72c24ee7ab6dc5d64571778388fe"
+  integrity sha512-o5Vn8Fo67vr4+JNl6hfLECzq+TgODOqFZdiSSlxvzg3/4Z7M4XXe3XezsJ3bLlWokMqxTZKYK9r8JEpUiany1g==
   dependencies:
     "@0xged/hardhat-deploy" "0.11.5"
     "@mean-finance/deterministic-factory" "1.4.2"
