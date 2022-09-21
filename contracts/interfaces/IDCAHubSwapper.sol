@@ -56,26 +56,6 @@ interface IDCAHubSwapper is IDCAHubSwapCallee {
     uint256 deadline;
   }
 
-  /// @notice Parameters to execute a swap with dexes
-  struct LegacySwapWithDexesParams {
-    // The address of the DCAHub
-    ILegacyDCAHub hub;
-    // The tokens involved in the swap
-    address[] tokens;
-    // The pairs to swap
-    IDCAHub.PairIndexes[] pairsToSwap;
-    // The accounts that should be approved for spending
-    Allowance[] allowanceTargets;
-    // The different swappers involved in the swap
-    address[] swappers;
-    // The different swaps to execute
-    SwapExecution[] executions;
-    // Address that will receive all unspent tokens
-    address leftoverRecipient;
-    // Deadline when the swap becomes invalid
-    uint256 deadline;
-  }
-
   /// @notice Parameters to execute a swap for caller
   struct SwapForCallerParams {
     // The address of the DCAHub
@@ -86,24 +66,6 @@ interface IDCAHubSwapper is IDCAHubSwapCallee {
     IDCAHub.PairIndexes[] pairsToSwap;
     // Bytes to send to the oracle when executing a quote
     bytes oracleData;
-    // The minimum amount of tokens to receive as part of the swap
-    uint256[] minimumOutput;
-    // The maximum amount of tokens to provide as part of the swap
-    uint256[] maximumInput;
-    // Address that will receive all the tokens from the swap
-    address recipient;
-    // Deadline when the swap becomes invalid
-    uint256 deadline;
-  }
-
-  /// @notice Parameters to execute a swap for caller
-  struct LegacySwapForCallerParams {
-    // The address of the DCAHub
-    ILegacyDCAHub hub;
-    // The tokens involved in the swap
-    address[] tokens;
-    // The pairs to swap
-    IDCAHub.PairIndexes[] pairsToSwap;
     // The minimum amount of tokens to receive as part of the swap
     uint256[] minimumOutput;
     // The maximum amount of tokens to provide as part of the swap
@@ -134,28 +96,11 @@ interface IDCAHubSwapper is IDCAHubSwapCallee {
   function swapForCaller(SwapForCallerParams calldata parameters) external payable returns (IDCAHub.SwapInfo memory);
 
   /**
-   * @notice Executes a swap for the caller, by sending them the reward, and taking from them the needed tokens
-   * @dev Can only be called by user with appropriate role
-   *      Will revert:
-   *      - With RewardNotEnough if the minimum output is not met
-   *      - With ToProvideIsTooMuch if the hub swap requires more than the given maximum input
-   * @return The information about the executed swap
-   */
-  function legacySwapForCaller(LegacySwapForCallerParams calldata parameters) external payable returns (ILegacyDCAHub.SwapInfo memory);
-
-  /**
    * @notice Executes a swap with the given swappers, and sends all unspent tokens to the given recipient
    * @dev Can only be called by user with appropriate role
    * @return The information about the executed swap
    */
   function swapWithDexes(SwapWithDexesParams calldata parameters) external payable returns (IDCAHub.SwapInfo memory);
-
-  /**
-   * @notice Executes a swap with the given swappers, and sends all unspent tokens to the given recipient
-   * @dev Can only be called by user with appropriate role
-   * @return The information about the executed swap
-   */
-  function legacySwapWithDexes(LegacySwapWithDexesParams calldata parameters) external payable returns (ILegacyDCAHub.SwapInfo memory);
 
   /**
    * @notice Meant to be used by Mean Finance keepers, as an cheaper way to execute swaps. This function executes a
@@ -166,16 +111,6 @@ interface IDCAHubSwapper is IDCAHubSwapCallee {
    * @return The information about the executed swap
    */
   function swapWithDexesForMean(SwapWithDexesParams calldata parameters) external payable returns (IDCAHub.SwapInfo memory);
-
-  /**
-   * @notice Meant to be used by Mean Finance keepers, as an cheaper way to execute swaps. This function executes a
-   *         swap with the given swappers, but sends some of the unspent tokens back to the hub. This means that they
-   *         will be considered part of the protocol's balance. Unspent tokens that were given as reward will be
-   *         sent to the provided recipient
-   * @dev Can only be called by user with appropriate role
-   * @return The information about the executed swap
-   */
-  function legacySwapWithDexesForMean(LegacySwapWithDexesParams calldata parameters) external payable returns (ILegacyDCAHub.SwapInfo memory);
 
   /**
    * @notice Executes an optimized swap, by providing parameters already encoded
