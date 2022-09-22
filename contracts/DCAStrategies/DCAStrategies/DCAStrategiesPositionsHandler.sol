@@ -229,7 +229,7 @@ abstract contract DCAStrategiesPositionsHandler is IDCAStrategiesPositionsHandle
       IERC20(_data.positionMetadata.from).safeTransfer(_recipientUnswapped, _data.totalRemaining - _totalAmount);
     }
 
-    uint256[] memory _newPositions = new uint256[](_tasks.length);
+    uint256 _auxPositionId = _positionId;
 
     // perform deposit and increase
     for (uint256 i = 0; i < _tasks.length; ) {
@@ -249,14 +249,26 @@ abstract contract DCAStrategiesPositionsHandler is IDCAStrategiesPositionsHandle
         );
       }
 
-      _newPositions[i] = _task.positionId;
+      if (i < _userPositions[_auxPositionId].positions.length) {
+        if (_task.positionId != _userPositions[_auxPositionId].positions[i]) {
+          _userPositions[_auxPositionId].positions[i] = _task.positionId;
+        }
+      } else {
+        _userPositions[_auxPositionId].positions.push(_task.positionId);
+      }
 
       unchecked {
         i++;
       }
     }
 
-    _userPositions[_positionId].positions = _newPositions;
+    for (uint256 i = _tasks.length; i < _position.positions.length; ) {
+      _userPositions[_positionId].positions.pop();
+
+      unchecked {
+        i++;
+      }
+    }
 
     emit Synced(msg.sender, _positionId, _newVersion, _recipientUnswapped, _recipientSwapped, _totalAmount, _newAmountSwaps);
   }
