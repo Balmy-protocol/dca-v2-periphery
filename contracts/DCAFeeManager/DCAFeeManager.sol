@@ -53,9 +53,12 @@ contract DCAFeeManager is RunSwap, AccessControl, Multicall, IDCAFeeManager {
 
   /// @inheritdoc IDCAFeeManager
   function withdrawFromBalance(IDCAHub.AmountOfToken[] calldata _amountToWithdraw, address _recipient) external onlyRole(ADMIN_ROLE) {
-    for (uint256 i; i < _amountToWithdraw.length; i++) {
+    for (uint256 i = 0; i < _amountToWithdraw.length; ) {
       IDCAHub.AmountOfToken memory _amountOfToken = _amountToWithdraw[i];
       _sendToRecipient(_amountOfToken.token, _amountOfToken.amount, _recipient);
+      unchecked {
+        i++;
+      }
     }
   }
 
@@ -74,7 +77,7 @@ contract DCAFeeManager is RunSwap, AccessControl, Multicall, IDCAFeeManager {
     AmountToFill[] calldata _amounts,
     TargetTokenShare[] calldata _distribution
   ) external onlyRole(ADMIN_ROLE) {
-    for (uint256 i; i < _amounts.length; i++) {
+    for (uint256 i = 0; i < _amounts.length; ) {
       AmountToFill memory _amount = _amounts[i];
 
       _maxApproveSpenderIfNeeded(
@@ -86,7 +89,7 @@ contract DCAFeeManager is RunSwap, AccessControl, Multicall, IDCAFeeManager {
 
       // Distribute to different tokens
       uint256 _amountSpent;
-      for (uint256 j; j < _distribution.length; j++) {
+      for (uint256 j = 0; j < _distribution.length; ) {
         uint256 _amountToDeposit = j < _distribution.length - 1
           ? (_amount.amount * _distribution[j].shares) / MAX_TOKEN_TOTAL_SHARE
           : _amount.amount - _amountSpent; // If this is the last token, then assign everything that hasn't been spent. We do this to prevent unspent tokens due to rounding errors
@@ -95,6 +98,12 @@ contract DCAFeeManager is RunSwap, AccessControl, Multicall, IDCAFeeManager {
         if (!_failed) {
           _amountSpent += _amountToDeposit;
         }
+        unchecked {
+          j++;
+        }
+      }
+      unchecked {
+        i++;
       }
     }
   }
@@ -105,11 +114,14 @@ contract DCAFeeManager is RunSwap, AccessControl, Multicall, IDCAFeeManager {
     uint256[] calldata _positionIds,
     address _recipient
   ) external onlyRole(ADMIN_ROLE) {
-    for (uint256 i; i < _positionIds.length; i++) {
+    for (uint256 i = 0; i < _positionIds.length; ) {
       uint256 _positionId = _positionIds[i];
       IDCAHubPositionHandler.UserPosition memory _position = _hub.userPosition(_positionId);
       _hub.terminate(_positionId, _recipient, _recipient);
       delete positions[getPositionKey(address(_position.from), address(_position.to))];
+      unchecked {
+        i++;
+      }
     }
   }
 
@@ -121,11 +133,11 @@ contract DCAFeeManager is RunSwap, AccessControl, Multicall, IDCAFeeManager {
   /// @inheritdoc IDCAFeeManager
   function availableBalances(IDCAHub _hub, address[] calldata _tokens) external view returns (AvailableBalance[] memory _balances) {
     _balances = new AvailableBalance[](_tokens.length);
-    for (uint256 i; i < _tokens.length; i++) {
+    for (uint256 i = 0; i < _tokens.length; i++) {
       address _token = _tokens[i];
       uint256[] memory _positionIds = _positionsWithToken[_token];
       PositionBalance[] memory _positions = new PositionBalance[](_positionIds.length);
-      for (uint256 j; j < _positionIds.length; j++) {
+      for (uint256 j = 0; j < _positionIds.length; j++) {
         IDCAHubPositionHandler.UserPosition memory _userPosition = _hub.userPosition(_positionIds[j]);
         _positions[j] = PositionBalance({
           positionId: _positionIds[j],
