@@ -66,9 +66,16 @@ abstract contract DCAHubCompanionHubProxyHandler is IDCAHubCompanionHubProxyHand
     IDCAHub.PositionSet[] calldata _positions,
     address _recipient
   ) external payable returns (uint256[] memory _withdrawn) {
-    for (uint256 i; i < _positions.length; i++) {
-      for (uint256 j; j < _positions[i].positionIds.length; j++) {
-        _checkPermissionOrFail(_hub, _positions[i].positionIds[j], IDCAPermissionManager.Permission.WITHDRAW);
+    for (uint256 i = 0; i < _positions.length; ) {
+      uint256[] memory _positionIds = _positions[i].positionIds;
+      for (uint256 j = 0; j < _positionIds.length; ) {
+        _checkPermissionOrFail(_hub, _positionIds[j], IDCAPermissionManager.Permission.WITHDRAW);
+        unchecked {
+          j++;
+        }
+      }
+      unchecked {
+        i++;
       }
     }
     _withdrawn = _hub.withdrawSwappedMany(_positions, _recipient);
