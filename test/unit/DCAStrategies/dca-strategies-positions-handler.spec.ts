@@ -471,6 +471,7 @@ contract('DCAStrategiesPositionsHandler', () => {
     let swapInterval = BigNumber.from(5);
     let oldShares: IDCAStrategies.ShareOfTokenStruct[];
     let newShares: IDCAStrategies.ShareOfTokenStruct[];
+    let expectedNewPositionsIds: BigNumber[] = [BigNumber.from(1), BigNumber.from(2), BigNumber.from(3), BigNumber.from(5), BigNumber.from(6)];
 
     when('caller does not have permissions', () => {
       given(async () => {
@@ -544,9 +545,9 @@ contract('DCAStrategiesPositionsHandler', () => {
           expect(tokenF.transfer).to.have.been.calledWith(user.address, delta);
         });
         then('increase, reduce, deposit or terminate is called correctly', async () => {
-          checkCallsToHub(totalAmount.sub(delta), newShares[3], newShares[4], newAmountOfSwaps);
+          assertDepositAndTerminateWereCalledCorrectly(totalAmount.sub(delta), newShares[3], newShares[4], newAmountOfSwaps);
           expect(hub.reducePosition).to.have.been.calledTwice;
-          expect(hub.increasePosition).to.have.been.called;
+          expect(hub.increasePosition).to.have.been.calledOnce;
           expect(hub.reducePosition.atCall(0)).to.have.been.calledWith(
             1,
             calculateAmount(totalAmount, oldShares[0].share).sub(calculateAmount(totalAmount.sub(delta), newShares[0].share)),
@@ -584,7 +585,7 @@ contract('DCAStrategiesPositionsHandler', () => {
           expect(tokenF.transferFrom).to.have.been.calledWith(user.address, DCAStrategiesPositionsHandlerMock.address, delta);
         });
         then('increase, reduce, deposit or terminate is called correctly', async () => {
-          checkCallsToHub(totalAmount.add(delta), newShares[3], newShares[4], newAmountOfSwaps);
+          assertDepositAndTerminateWereCalledCorrectly(totalAmount.add(delta), newShares[3], newShares[4], newAmountOfSwaps);
           expect(hub.increasePosition).to.have.been.calledTwice;
           expect(hub.reducePosition).to.have.been.calledOnce;
           expect(hub.increasePosition.atCall(0)).to.have.been.calledWith(
@@ -624,7 +625,7 @@ contract('DCAStrategiesPositionsHandler', () => {
           expect(tokenF.transfer).to.not.have.been.called;
         });
         then('increase, reduce, deposit or terminate is called correctly', async () => {
-          checkCallsToHub(totalAmount, newShares[3], newShares[4], amountOfSwaps);
+          assertDepositAndTerminateWereCalledCorrectly(totalAmount, newShares[3], newShares[4], amountOfSwaps);
           expect(hub.reducePosition).to.have.been.calledOnce;
           expect(hub.increasePosition).to.have.been.calledOnce;
           expect(hub.reducePosition.atCall(0)).to.have.been.calledWith(
@@ -663,7 +664,7 @@ contract('DCAStrategiesPositionsHandler', () => {
       return tx;
     }
 
-    function checkCallsToHub(
+    function assertDepositAndTerminateWereCalledCorrectly(
       totalAmount: BigNumber,
       thirdNewShare: IDCAStrategies.ShareOfTokenStruct,
       fourthNewShare: IDCAStrategies.ShareOfTokenStruct,
@@ -694,8 +695,10 @@ contract('DCAStrategiesPositionsHandler', () => {
 
     function checkPositions(newPositions: BigNumber[], newShares: IDCAStrategies.ShareOfTokenStruct[]) {
       expect(newPositions.length).to.be.equal(newShares.length);
-      newPositions.forEach((i) => {
+      expect(newPositions.length).to.be.equal(expectedNewPositionsIds.length);
+      newPositions.forEach((i, index) => {
         expect(i).to.not.be.equal(BigNumber.from(0));
+        expect(i).to.be.equal(expectedNewPositionsIds[index]);
       });
       expect(new Set(newPositions).size !== newPositions.length).to.be.false; // `false` if no duplicates
     }
