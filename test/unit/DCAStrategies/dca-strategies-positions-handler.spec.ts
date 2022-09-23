@@ -30,7 +30,8 @@ contract('DCAStrategiesPositionsHandler', () => {
     tokenC: FakeContract<IERC20>,
     tokenD: FakeContract<IERC20>,
     tokenE: FakeContract<IERC20>,
-    tokenF: FakeContract<IERC20>;
+    tokenF: FakeContract<IERC20>,
+    tokenG: FakeContract<IERC20>;
   let hub: FakeContract<IDCAHub>;
   let SHARE_TOKEN_B;
   let SHARE_TOKEN_C;
@@ -40,7 +41,8 @@ contract('DCAStrategiesPositionsHandler', () => {
     [user, random, governor] = await ethers.getSigners();
     factory = await ethers.getContractFactory('DCAStrategiesPositionsHandlerMock');
     DCAStrategiesPositionsHandlerMock = await factory.deploy();
-    [tokenA, tokenB, tokenC, tokenD, tokenE, tokenF] = sortTokenAddresses([
+    [tokenA, tokenB, tokenC, tokenD, tokenE, tokenF, tokenG] = sortTokenAddresses([
+      await smock.fake('IERC20'),
       await smock.fake('IERC20'),
       await smock.fake('IERC20'),
       await smock.fake('IERC20'),
@@ -482,21 +484,24 @@ contract('DCAStrategiesPositionsHandler', () => {
     });
     when('syncPositionToNewVersion is called', () => {
       given(async () => {
-        const positions = [1, 2, 3];
+        const positions = [1, 2, 3, 4];
         const OLD_SHARE_A = { token: tokenA.address, share: BigNumber.from(33e2) }; // nothing
-        const OLD_SHARE_B = { token: tokenB.address, share: BigNumber.from(33e2) }; // increase
-        const OLD_SHARE_C = { token: tokenC.address, share: BigNumber.from(34e2) }; // terminate
-        oldShares = [OLD_SHARE_A, OLD_SHARE_B, OLD_SHARE_C];
+        const OLD_SHARE_B = { token: tokenB.address, share: BigNumber.from(20e2) }; // increase
+        const OLD_SHARE_C = { token: tokenC.address, share: BigNumber.from(34e2) }; // reduce
+        const OLD_SHARE_G = { token: tokenG.address, share: BigNumber.from(13e2) }; // terminate
+        oldShares = [OLD_SHARE_A, OLD_SHARE_B, OLD_SHARE_C, OLD_SHARE_G];
 
         const NEW_SHARE_A = { token: tokenA.address, share: BigNumber.from(33e2) }; // nothing
         const NEW_SHARE_B = { token: tokenB.address, share: BigNumber.from(35e2) }; // increase
+        const NEW_SHARE_C = { token: tokenC.address, share: BigNumber.from(10e2) }; // reduce
         const NEW_SHARE_D = { token: tokenD.address, share: BigNumber.from(7e2) }; // deposit
-        const NEW_SHARE_E = { token: tokenE.address, share: BigNumber.from(25e2) }; // deposit
-        newShares = [NEW_SHARE_A, NEW_SHARE_B, NEW_SHARE_D, NEW_SHARE_E];
+        const NEW_SHARE_E = { token: tokenE.address, share: BigNumber.from(15e2) }; // deposit
+        newShares = [NEW_SHARE_A, NEW_SHARE_B, NEW_SHARE_C, NEW_SHARE_D, NEW_SHARE_E];
 
         hub.userPosition.whenCalledWith(1).returns(createUserPosition(tokenF.address, amountOfSwaps, totalAmount, swapInterval, oldShares[0]));
         hub.userPosition.whenCalledWith(2).returns(createUserPosition(tokenF.address, amountOfSwaps, totalAmount, swapInterval, oldShares[1]));
         hub.userPosition.whenCalledWith(3).returns(createUserPosition(tokenF.address, amountOfSwaps, totalAmount, swapInterval, oldShares[2]));
+        hub.userPosition.whenCalledWith(4).returns(createUserPosition(tokenF.address, amountOfSwaps, totalAmount, swapInterval, oldShares[3]));
 
         hub.terminate
           .whenCalledWith(1, DCAStrategiesPositionsHandlerMock.address, user.address)
@@ -507,12 +512,15 @@ contract('DCAStrategiesPositionsHandler', () => {
         hub.terminate
           .whenCalledWith(3, DCAStrategiesPositionsHandlerMock.address, user.address)
           .returns([calculateAmount(totalAmount, oldShares[2].share), 0]);
+        hub.terminate
+          .whenCalledWith(4, DCAStrategiesPositionsHandlerMock.address, user.address)
+          .returns([calculateAmount(totalAmount, oldShares[3].share), 0]);
 
         hub.reducePosition.returns(true);
         hub.increasePosition.returns(true);
 
-        hub['deposit(address,address,uint256,uint32,uint32,address,(address,uint8[])[])'].returnsAtCall(0, 4); // at call 0 return id 4
-        hub['deposit(address,address,uint256,uint32,uint32,address,(address,uint8[])[])'].returnsAtCall(1, 5); // at call 1 return id 5
+        hub['deposit(address,address,uint256,uint32,uint32,address,(address,uint8[])[])'].returnsAtCall(0, 5); // at call 0 return id 5
+        hub['deposit(address,address,uint256,uint32,uint32,address,(address,uint8[])[])'].returnsAtCall(1, 6); // at call 1 return id 6
 
         tokenF.transfer.returns(true);
         tokenF.transferFrom.returns(true);
@@ -536,9 +544,9 @@ contract('DCAStrategiesPositionsHandler', () => {
           expect(tokenF.transfer).to.have.been.calledWith(user.address, delta);
         });
         then('increase, reduce, deposit or terminate is called correctly', async () => {
-          checkCallsToHub(totalAmount.sub(delta), newShares[2].share, newShares[3].share, newAmountOfSwaps);
+          checkCallsToHub(totalAmount.sub(delta), newShares[3], newShares[4], newAmountOfSwaps);
           expect(hub.reducePosition).to.have.been.calledTwice;
-          expect(hub.increasePosition).to.not.have.been.called;
+          expect(hub.increasePosition).to.have.been.called;
           expect(hub.reducePosition.atCall(0)).to.have.been.calledWith(
             1,
             calculateAmount(totalAmount, oldShares[0].share).sub(calculateAmount(totalAmount.sub(delta), newShares[0].share)),
@@ -546,10 +554,15 @@ contract('DCAStrategiesPositionsHandler', () => {
             DCAStrategiesPositionsHandlerMock.address
           );
           expect(hub.reducePosition.atCall(1)).to.have.been.calledWith(
-            2,
-            calculateAmount(totalAmount, oldShares[1].share).sub(calculateAmount(totalAmount.sub(delta), newShares[1].share)),
+            3,
+            calculateAmount(totalAmount, oldShares[2].share).sub(calculateAmount(totalAmount.sub(delta), newShares[2].share)),
             newAmountOfSwaps,
             DCAStrategiesPositionsHandlerMock.address
+          );
+          expect(hub.increasePosition.atCall(0)).to.have.been.calledWith(
+            2,
+            calculateAmount(totalAmount.sub(delta), newShares[1].share).sub(calculateAmount(totalAmount, oldShares[1].share)),
+            newAmountOfSwaps
           );
         });
         then('positions array is saved correctly', async () => {
@@ -571,9 +584,9 @@ contract('DCAStrategiesPositionsHandler', () => {
           expect(tokenF.transferFrom).to.have.been.calledWith(user.address, DCAStrategiesPositionsHandlerMock.address, delta);
         });
         then('increase, reduce, deposit or terminate is called correctly', async () => {
-          checkCallsToHub(totalAmount.add(delta), newShares[2].share, newShares[3].share, newAmountOfSwaps);
+          checkCallsToHub(totalAmount.add(delta), newShares[3], newShares[4], newAmountOfSwaps);
           expect(hub.increasePosition).to.have.been.calledTwice;
-          expect(hub.reducePosition).to.not.have.been.called;
+          expect(hub.reducePosition).to.have.been.calledOnce;
           expect(hub.increasePosition.atCall(0)).to.have.been.calledWith(
             1,
             calculateAmount(totalAmount.add(delta), newShares[0].share).sub(calculateAmount(totalAmount, oldShares[0].share)),
@@ -583,6 +596,12 @@ contract('DCAStrategiesPositionsHandler', () => {
             2,
             calculateAmount(totalAmount.add(delta), newShares[1].share).sub(calculateAmount(totalAmount, oldShares[1].share)),
             newAmountOfSwaps
+          );
+          expect(hub.reducePosition.atCall(0)).to.have.been.calledWith(
+            3,
+            calculateAmount(totalAmount, oldShares[2].share).sub(calculateAmount(totalAmount.add(delta), newShares[2].share)),
+            newAmountOfSwaps,
+            DCAStrategiesPositionsHandlerMock.address
           );
         });
         then('positions array is saved correctly', async () => {
@@ -605,12 +624,18 @@ contract('DCAStrategiesPositionsHandler', () => {
           expect(tokenF.transfer).to.not.have.been.called;
         });
         then('increase, reduce, deposit or terminate is called correctly', async () => {
-          checkCallsToHub(totalAmount, newShares[2].share, newShares[3].share, amountOfSwaps);
-          expect(hub.reducePosition).to.not.have.been.called;
+          checkCallsToHub(totalAmount, newShares[3], newShares[4], amountOfSwaps);
+          expect(hub.reducePosition).to.have.been.calledOnce;
           expect(hub.increasePosition).to.have.been.calledOnce;
+          expect(hub.reducePosition.atCall(0)).to.have.been.calledWith(
+            3,
+            calculateAmount(totalAmount, oldShares[2].share).sub(calculateAmount(totalAmount, newShares[2].share)),
+            amountOfSwaps,
+            DCAStrategiesPositionsHandlerMock.address
+          );
           expect(hub.increasePosition.atCall(0)).to.have.been.calledWith(
             2,
-            calculateAmount(totalAmount, newShares[1].share).sub(calculateAmount(totalAmount, oldShares[0].share)),
+            calculateAmount(totalAmount, newShares[1].share).sub(calculateAmount(totalAmount, oldShares[1].share)),
             amountOfSwaps
           );
         });
@@ -638,13 +663,18 @@ contract('DCAStrategiesPositionsHandler', () => {
       return tx;
     }
 
-    function checkCallsToHub(totalAmount: BigNumber, secondNewShare: BigNumberish, thirdNewShare: BigNumberish, newAmountOfSwaps: BigNumber) {
+    function checkCallsToHub(
+      totalAmount: BigNumber,
+      thirdNewShare: IDCAStrategies.ShareOfTokenStruct,
+      fourthNewShare: IDCAStrategies.ShareOfTokenStruct,
+      newAmountOfSwaps: BigNumber
+    ) {
       expect(hub['deposit(address,address,uint256,uint32,uint32,address,(address,uint8[])[])']).to.have.been.calledTwice;
       expect(hub.terminate).to.have.been.calledOnce;
       expect(hub['deposit(address,address,uint256,uint32,uint32,address,(address,uint8[])[])'].atCall(0)).to.have.been.calledWith(
         tokenF.address,
-        newShares[2].token,
-        calculateAmount(totalAmount, secondNewShare),
+        thirdNewShare.token,
+        calculateAmount(totalAmount, thirdNewShare.share),
         newAmountOfSwaps,
         swapInterval,
         DCAStrategiesPositionsHandlerMock.address,
@@ -652,14 +682,14 @@ contract('DCAStrategiesPositionsHandler', () => {
       );
       expect(hub['deposit(address,address,uint256,uint32,uint32,address,(address,uint8[])[])'].atCall(1)).to.have.been.calledWith(
         tokenF.address,
-        newShares[3].token,
-        calculateAmount(totalAmount, thirdNewShare),
+        fourthNewShare.token,
+        calculateAmount(totalAmount, fourthNewShare.share),
         newAmountOfSwaps,
         swapInterval,
         DCAStrategiesPositionsHandlerMock.address,
         []
       );
-      expect(hub.terminate.atCall(0)).to.have.been.calledWith(3, DCAStrategiesPositionsHandlerMock.address, user.address);
+      expect(hub.terminate.atCall(0)).to.have.been.calledWith(4, DCAStrategiesPositionsHandlerMock.address, user.address);
     }
 
     function checkPositions(newPositions: BigNumber[], newShares: IDCAStrategies.ShareOfTokenStruct[]) {
