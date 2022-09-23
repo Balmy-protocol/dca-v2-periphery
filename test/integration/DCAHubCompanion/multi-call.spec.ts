@@ -8,7 +8,7 @@ import { DCAHubCompanion, DCAHubSwapper, IERC20 } from '@typechained';
 import { DCAHub, DCAPermissionsManager } from '@mean-finance/dca-v2-core';
 import { TransformerRegistry } from '@mean-finance/transformers';
 import { SwapperRegistry } from '@mean-finance/swappers';
-import { TransformerOracle } from '@mean-finance/oracles';
+import { TransformerOracle, StatefulChainlinkOracle } from '@mean-finance/oracles';
 import { abi as DCA_HUB_ABI } from '@mean-finance/dca-v2-core/artifacts/contracts/DCAHub/DCAHub.sol/DCAHub.json';
 import { abi as IERC20_ABI } from '@openzeppelin/contracts/build/contracts/IERC20.json';
 import { BigNumber, BigNumberish, BytesLike, utils, Wallet } from 'ethers';
@@ -57,6 +57,7 @@ contract('Multicall', () => {
     const swapperRegistry = await ethers.getContract<SwapperRegistry>('SwapperRegistry');
     const transformerOracle = await ethers.getContract<TransformerOracle>('TransformerOracle');
     const protocolTokenTransformer = await ethers.getContract('ProtocolTokenWrapperTransformer');
+    const chainlinkOracle = await ethers.getContract<StatefulChainlinkOracle>('StatefulChainlinkOracle');
 
     WETH = await ethers.getContractAt(IERC20_ABI, WETH_ADDRESS);
     USDC = await ethers.getContractAt(IERC20_ABI, USDC_ADDRESS);
@@ -65,6 +66,12 @@ contract('Multicall', () => {
     // Allow tokens and swapper
     await DCAHub.connect(admin).setAllowedTokens([WETH_ADDRESS, USDC_ADDRESS, WBTC_ADDRESS], [true, true, true]);
     await DCAHubSwapper.connect(admin).grantRole(await DCAHubSwapper.SWAP_EXECUTION_ROLE(), swapper.address);
+    await chainlinkOracle
+      .connect(admin)
+      .addMappings(
+        [WETH.address, WBTC.address],
+        [await protocolTokenTransformer.PROTOCOL_TOKEN(), '0xbBbBBBBbbBBBbbbBbbBbbbbBBbBbbbbBbBbbBBbB']
+      );
 
     // Send tokens from whales, to our users
     await distributeTokensToUsers();
@@ -668,7 +675,13 @@ contract('Multicall', () => {
   }
 
   async function transformWETHToETH(amount: BigNumber) {
-    const { data } = await transformerRegistry.populateTransaction.transformToUnderlying(WETH.address, amount, DCAHubCompanion.address);
+    const { data } = await transformerRegistry.populateTransaction.transformToUnderlying(
+      WETH.address,
+      amount,
+      DCAHubCompanion.address,
+      [{ underlying: await DCAHubCompanion.PROTOCOL_TOKEN(), amount }],
+      constants.MAX_UINT_256
+    );
     return {
       swapData: data!,
       swapper: transformerRegistry.address,
@@ -680,7 +693,9 @@ contract('Multicall', () => {
     const { data } = await transformerRegistry.populateTransaction.transformToDependent(
       WETH.address,
       [{ underlying: await DCAHubCompanion.PROTOCOL_TOKEN(), amount }],
-      DCAHubCompanion.address
+      DCAHubCompanion.address,
+      amount,
+      constants.MAX_UINT_256
     );
     return {
       swapData: data!,

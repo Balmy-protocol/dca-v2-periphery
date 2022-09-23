@@ -15,7 +15,7 @@ import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers';
 import { SwapInterval } from '@test-utils/interval-utils';
 import forkBlockNumber from '@integration/fork-block-numbers';
 import { fromRpcSig } from 'ethereumjs-util';
-import { deploy } from '@integration/utils';
+import { deployWithAddress } from '@integration/utils';
 
 const WETH_ADDRESS = '0x4200000000000000000000000000000000000006';
 const USDC_ADDRESS = '0x7f5c764cbc14f9669b88837ca1490cca17c31607';
@@ -48,7 +48,7 @@ describe('Position Migration', () => {
     });
     [positionOwner, swapper] = await ethers.getSigners();
 
-    const { msig, eoaAdmin } = await deploy('DCAHubCompanion');
+    const { msig, eoaAdmin } = await deployWithAddress('0x308810881807189cAe91950888b2cB73A1CC5920', 'DCAHubCompanion');
 
     // Hardhat deploy does not reset addresses in each test, so it's not taking the correct msig for optimismi
     const optimismMsig = await wallet.impersonate('0x308810881807189cAe91950888b2cB73A1CC5920');

@@ -12,7 +12,7 @@ import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers';
 import { SwapInterval } from '@test-utils/interval-utils';
 import forkBlockNumber from '@integration/fork-block-numbers';
 import { TransformerRegistry } from '@mean-finance/transformers';
-import { TransformerOracle } from '@mean-finance/oracles';
+import { TransformerOracle, StatefulChainlinkOracle } from '@mean-finance/oracles';
 import { buildSwapInput } from '@test-utils/swap-utils';
 import { deploy } from '@integration/utils';
 
@@ -50,6 +50,7 @@ contract('DCAFeeManager', () => {
     swapperRegistry = await ethers.getContract('SwapperRegistry');
     const transformerOracle = await ethers.getContract<TransformerOracle>('TransformerOracle');
     const protocolTokenTransformer = await ethers.getContract('ProtocolTokenWrapperTransformer');
+    const chainlinkOracle = await ethers.getContract<StatefulChainlinkOracle>('StatefulChainlinkOracle');
 
     // Set up tokens and permissions
     await DCAHub.connect(superAdmin).setAllowedTokens([WETH_ADDRESS, USDC_ADDRESS, WBTC_ADDRESS], [true, true, true]);
@@ -68,6 +69,12 @@ contract('DCAFeeManager', () => {
       .connect(superAdmin)
       .registerTransformers([{ transformer: protocolTokenTransformer.address, dependents: [WETH.address] }]);
     await transformerOracle.connect(superAdmin).avoidMappingToUnderlying([WETH.address]);
+    await chainlinkOracle
+      .connect(superAdmin)
+      .addMappings(
+        [WETH.address, WBTC.address],
+        [await protocolTokenTransformer.PROTOCOL_TOKEN(), '0xbBbBBBBbbBBBbbbBbbBbbbbBBbBbbbbBbBbbBBbB']
+      );
 
     // Handle approvals
     await USDC.connect(swapper).approve(DCAHubSwapper.address, constants.MAX_UINT_256);
@@ -150,7 +157,9 @@ contract('DCAFeeManager', () => {
     const { data: unwrapExecutionData } = await transformerRegistry.populateTransaction.transformToUnderlying(
       WETH.address,
       total,
-      DCAFeeManager.address
+      DCAFeeManager.address,
+      [{ underlying: await transformerRegistry.PROTOCOL_TOKEN(), amount: total }],
+      constants.MAX_UINT_256
     );
     const { data: unwrapData } = await DCAFeeManager.populateTransaction.runSwap({
       swapper: transformerRegistry.address,

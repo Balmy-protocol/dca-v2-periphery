@@ -11,7 +11,7 @@ const deployFunction: DeployFunction = async function (hre: HardhatRuntimeEnviro
   await deployThroughDeterministicFactory({
     deployer,
     name: 'DCAHubSwapper',
-    salt: 'MF-DCAV2-DCAHubSwapper-V3',
+    salt: 'MF-DCAV2-DCAHubSwapper-V1',
     contract: 'contracts/DCAHubSwapper/DCAHubSwapper.sol:DCAHubSwapper',
     bytecode,
     constructorArgs: {

@@ -1,21 +1,32 @@
 import { DeterministicFactory, DeterministicFactory__factory } from '@mean-finance/deterministic-factory';
+import { address as DETERMINISTIC_FACTORY_ADDRESS } from '@mean-finance/deterministic-factory/deployments/ethereum/DeterministicFactory.json';
 import { wallet } from '@test-utils';
 import { getNamedAccounts, deployments, ethers } from 'hardhat';
 import { JsonRpcSigner } from '@ethersproject/providers';
 
 export async function deploy(...contracts: string[]): Promise<{ msig: JsonRpcSigner; eoaAdmin: JsonRpcSigner }> {
+  const { msig } = await getNamedAccounts();
+  return deployWithAddress(msig, ...contracts);
+}
+
+export async function deployWithAddress(
+  deployerAddress: string,
+  ...contracts: string[]
+): Promise<{ msig: JsonRpcSigner; eoaAdmin: JsonRpcSigner }> {
   const { eoaAdmin: eoaAdminAddress, deployer, msig: msigAddress } = await getNamedAccounts();
   const eoaAdmin = await wallet.impersonate(eoaAdminAddress);
   const msig = await wallet.impersonate(msigAddress);
+  const deployerAdmin = await wallet.impersonate(deployerAddress);
   await ethers.provider.send('hardhat_setBalance', [eoaAdminAddress, '0xffffffffffffffff']);
   await ethers.provider.send('hardhat_setBalance', [msigAddress, '0xffffffffffffffff']);
+  await ethers.provider.send('hardhat_setBalance', [deployerAddress, '0xffffffffffffffff']);
 
   const deterministicFactory = await ethers.getContractAt<DeterministicFactory>(
     DeterministicFactory__factory.abi,
-    '0xbb681d77506df5CA21D2214ab3923b4C056aa3e2'
+    DETERMINISTIC_FACTORY_ADDRESS
   );
 
-  await deterministicFactory.connect(eoaAdmin).grantRole(await deterministicFactory.DEPLOYER_ROLE(), deployer);
+  await deterministicFactory.connect(deployerAdmin).grantRole(await deterministicFactory.DEPLOYER_ROLE(), deployer);
   await deployments.run(
     [
       'DCAHubPositionDescriptor',
