@@ -14,7 +14,7 @@ import { BigNumber } from '@ethersproject/bignumber';
 import { readArgFromEventOrFail } from '@test-utils/event-utils';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers';
 
-contract.only('DCAStrategiesManagementHandler', () => {
+contract('DCAStrategiesManagementHandler', () => {
   let snapshotId: string;
   let DCAStrategiesManagementHandlerMock: DCAStrategiesManagementHandlerMock;
   let user: SignerWithAddress, random: SignerWithAddress;
