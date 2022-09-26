@@ -407,7 +407,7 @@ interface IDCAStrategiesPositionsHandler {
    * @param positionId The id of the position that was affected
    * @param tokenAmounts The amounts withdrawn and respective tokens
    */
-  event Withdrew(address indexed withdrawer, address indexed recipient, uint256 positionId, TokenAmounts[] tokenAmounts);
+  event Withdrew(address indexed withdrawer, address indexed recipient, uint256 positionId, uint256[] tokenAmounts);
 
   /**
    * @notice Emitted when a user increase amount or swaps quantity in a position
@@ -443,7 +443,7 @@ interface IDCAStrategiesPositionsHandler {
     address indexed recipientSwapped,
     uint256 positionId,
     uint256 returnedUnswapped,
-    TokenAmounts[] returnedSwapped
+    uint256[] returnedSwapped
   );
 
   /**
@@ -484,11 +484,6 @@ interface IDCAStrategiesPositionsHandler {
     IDCAStrategies.PermissionSet[] permissions;
   }
 
-  struct TokenAmounts {
-    address token;
-    uint256 amount;
-  }
-
   struct Position {
     IDCAHub hub; // 20 bytes
     uint80 strategyId; // 10 bytes
@@ -505,7 +500,7 @@ interface IDCAStrategiesPositionsHandler {
 
   function deposit(DepositParams calldata parameters) external returns (uint256);
 
-  function withdrawSwapped(uint256 positionId, address recipient) external returns (TokenAmounts[] memory tokenAmounts);
+  function withdrawSwapped(uint256 positionId, address recipient) external returns (uint256[] memory tokenAmounts);
 
   function increasePosition(
     uint256 positionId,
@@ -525,7 +520,7 @@ interface IDCAStrategiesPositionsHandler {
     uint256 positionId,
     address recipientUnswapped,
     address recipientSwapped
-  ) external returns (uint256 unswapped, TokenAmounts[] memory swapped);
+  ) external returns (uint256 unswapped, uint256[] memory swapped);
 
   function syncPositionToNewVersion(
     uint256 positionId,

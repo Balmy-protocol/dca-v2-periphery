@@ -134,13 +134,15 @@ abstract contract DCAStrategiesManagementHandler is IDCAStrategiesManagementHand
 
     uint256 _shares;
     for (uint256 i = 0; i < _length; ) {
+      IDCAStrategies.ShareOfToken memory _token = _tokens[i];
+
       // isn't the last token
       if (i < _length - 1) {
         // ascending order ([1, 2, 3])
-        if (_tokens[i].token >= _tokens[i + 1].token) revert TokenSharesNotSorted(); // not sorted
+        if (_token.token >= _tokens[i + 1].token) revert TokenSharesNotSorted(); // not sorted
       }
 
-      uint16 _share = _tokens[i].share;
+      uint16 _share = _token.share;
       if (_share == 0) revert ShareIsEmpty(); // need to be more than 0%
       _shares += _share;
 

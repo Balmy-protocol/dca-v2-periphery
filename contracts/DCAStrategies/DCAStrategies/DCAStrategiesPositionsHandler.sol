@@ -80,15 +80,13 @@ abstract contract DCAStrategiesPositionsHandler is IDCAStrategiesPositionsHandle
   function withdrawSwapped(uint256 _positionId, address _recipient)
     external
     onlyWithPermission(_positionId, IDCAStrategies.Permission.WITHDRAW)
-    returns (TokenAmounts[] memory _tokenAmounts)
+    returns (uint256[] memory _tokenAmounts)
   {
     Position memory _position = userPosition(_positionId);
-    IDCAHub _hub = IDCAHub(_position.hub);
-    _tokenAmounts = new TokenAmounts[](_position.positions.length);
+    _tokenAmounts = new uint256[](_position.positions.length);
+
     for (uint256 i = 0; i < _position.positions.length; ) {
-      // TODO: Test how much cheaper it would be to not return the token (and avoid the call to `hub.userPosition)
-      _tokenAmounts[i].amount = _hub.withdrawSwapped(_position.positions[i], _recipient);
-      _tokenAmounts[i].token = address(_hub.userPosition(_position.positions[i]).to);
+      _tokenAmounts[i] = _position.hub.withdrawSwapped(_position.positions[i], _recipient);
 
       unchecked {
         i++;
@@ -165,17 +163,14 @@ abstract contract DCAStrategiesPositionsHandler is IDCAStrategiesPositionsHandle
     uint256 _positionId,
     address _recipientUnswapped,
     address _recipientSwapped
-  ) external onlyWithPermission(_positionId, IDCAStrategies.Permission.TERMINATE) returns (uint256 _unswapped, TokenAmounts[] memory _swapped) {
+  ) external onlyWithPermission(_positionId, IDCAStrategies.Permission.TERMINATE) returns (uint256 _unswapped, uint256[] memory _swapped) {
     Position memory _position = userPosition(_positionId);
-    IDCAStrategies.ShareOfToken[] memory _tokens = _getTokenShares(_position.strategyId, _position.strategyVersion);
 
-    _swapped = new TokenAmounts[](_position.positions.length);
+    _swapped = new uint256[](_position.positions.length);
     for (uint256 i = 0; i < _position.positions.length; ) {
       (uint256 __unswapped, uint256 __swapped) = _position.hub.terminate(_position.positions[i], _recipientUnswapped, _recipientSwapped);
 
-      _swapped[i].amount = __swapped;
-      _swapped[i].token = _tokens[i].token;
-
+      _swapped[i] = __swapped;
       _unswapped += __unswapped;
 
       unchecked {

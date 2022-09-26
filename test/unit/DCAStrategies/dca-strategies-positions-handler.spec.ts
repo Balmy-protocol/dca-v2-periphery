@@ -20,7 +20,7 @@ import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers';
 
 chai.use(smock.matchers);
 
-contract('DCAStrategiesPositionsHandler', () => {
+contract.only('DCAStrategiesPositionsHandler', () => {
   let snapshotId: string;
   let DCAStrategiesPositionsHandlerMock: DCAStrategiesPositionsHandlerMock;
   let user: SignerWithAddress, random: SignerWithAddress, governor: SignerWithAddress;
@@ -274,7 +274,7 @@ contract('DCAStrategiesPositionsHandler', () => {
         const withdrawer = await readArgFromEventOrFail(tx, 'Withdrew', 'withdrawer');
         const recipient = await readArgFromEventOrFail(tx, 'Withdrew', 'recipient');
         const positionId = await readArgFromEventOrFail(tx, 'Withdrew', 'positionId');
-        const tokenAmounts: IDCAStrategiesPositionsHandler.TokenAmountsStruct[] = await readArgFromEventOrFail(tx, 'Withdrew', 'tokenAmounts');
+        const tokenAmounts: BigNumber[] = await readArgFromEventOrFail(tx, 'Withdrew', 'tokenAmounts');
 
         expect(withdrawer).to.be.equal(user.address);
         expect(recipient).to.be.equal(user.address);
@@ -282,8 +282,7 @@ contract('DCAStrategiesPositionsHandler', () => {
         expect(tokenAmounts.length).to.be.equal(tokens.length);
         expect(tokenAmounts.length).to.be.equal(amounts.length);
         tokenAmounts.forEach((ta, i) => {
-          expect(ta.amount).to.be.equal(amounts[i]);
-          expect(ta.token).to.be.equal(tokens[i]);
+          expect(ta).to.be.equal(amounts[i]);
         });
       });
     });
@@ -440,11 +439,7 @@ contract('DCAStrategiesPositionsHandler', () => {
         const recipientSwapped: string = await readArgFromEventOrFail(tx, 'Terminated', 'recipientSwapped');
         const positionId: BigNumber = await readArgFromEventOrFail(tx, 'Terminated', 'positionId');
         const returnedUnswapped: string = await readArgFromEventOrFail(tx, 'Terminated', 'returnedUnswapped');
-        const returnedSwapped: IDCAStrategiesPositionsHandler.TokenAmountsStruct[] = await readArgFromEventOrFail(
-          tx,
-          'Terminated',
-          'returnedSwapped'
-        );
+        const returnedSwapped: BigNumber[] = await readArgFromEventOrFail(tx, 'Terminated', 'returnedSwapped');
 
         expect(sender).to.be.equal(user.address);
         expect(recipientUnswapped).to.be.equal(user.address);
@@ -454,8 +449,7 @@ contract('DCAStrategiesPositionsHandler', () => {
         expect(returnedSwapped.length).to.be.equal(positions.length);
         expect(returnedSwapped.length).to.be.equal(SHARES.length);
         returnedSwapped.forEach((ta, i) => {
-          expect(ta.amount).to.be.equal(swapped);
-          expect(ta.token).to.be.equal(SHARES[i].token);
+          expect(ta).to.be.equal(swapped);
         });
       });
     });
