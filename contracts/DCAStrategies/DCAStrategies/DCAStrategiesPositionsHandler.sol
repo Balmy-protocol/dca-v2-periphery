@@ -278,7 +278,7 @@ abstract contract DCAStrategiesPositionsHandler is IDCAStrategiesPositionsHandle
     uint256 _positionId,
     uint256 _amount
   ) internal pure returns (Task memory) {
-    return Task({action: _action, amount: _positionId, positionId: _amount});
+    return Task({action: _action, positionId: _positionId, amount: _amount});
   }
 
   function _hasPermission(
