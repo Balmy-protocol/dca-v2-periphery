@@ -31,7 +31,7 @@ abstract contract DCAStrategiesPositionsHandler is IDCAStrategiesPositionsHandle
   mapping(uint256 => Position) internal _userPositions;
 
   /// @inheritdoc IDCAStrategiesPositionsHandler
-  function userPosition(uint256 _positionId) external view returns (Position memory _position) {
+  function userPosition(uint256 _positionId) public view returns (Position memory _position) {
     return _userPositions[_positionId];
   }
 
@@ -82,7 +82,7 @@ abstract contract DCAStrategiesPositionsHandler is IDCAStrategiesPositionsHandle
     onlyWithPermission(_positionId, IDCAStrategies.Permission.WITHDRAW)
     returns (TokenAmounts[] memory _tokenAmounts)
   {
-    Position memory _position = _userPositions[_positionId];
+    Position memory _position = userPosition(_positionId);
     IDCAHub _hub = IDCAHub(_position.hub);
     _tokenAmounts = new TokenAmounts[](_position.positions.length);
     for (uint256 i = 0; i < _position.positions.length; ) {
@@ -105,7 +105,7 @@ abstract contract DCAStrategiesPositionsHandler is IDCAStrategiesPositionsHandle
     uint256 _amount,
     uint32 _newSwaps
   ) external onlyWithPermission(_positionId, IDCAStrategies.Permission.INCREASE) {
-    Position memory _position = _userPositions[_positionId];
+    Position memory _position = userPosition(_positionId);
     IDCAStrategies.ShareOfToken[] memory _tokens = _getTokenShares(_position.strategyId, _position.strategyVersion);
 
     if (_amount > 0) {
@@ -140,7 +140,7 @@ abstract contract DCAStrategiesPositionsHandler is IDCAStrategiesPositionsHandle
     uint32 _newSwaps,
     address _recipient
   ) external onlyWithPermission(_positionId, IDCAStrategies.Permission.REDUCE) {
-    Position memory _position = _userPositions[_positionId];
+    Position memory _position = userPosition(_positionId);
     IDCAStrategies.ShareOfToken[] memory _tokens = _getTokenShares(_position.strategyId, _position.strategyVersion);
 
     uint16 _total = _getTotalShares();
@@ -166,7 +166,7 @@ abstract contract DCAStrategiesPositionsHandler is IDCAStrategiesPositionsHandle
     address _recipientUnswapped,
     address _recipientSwapped
   ) external onlyWithPermission(_positionId, IDCAStrategies.Permission.TERMINATE) returns (uint256 _unswapped, TokenAmounts[] memory _swapped) {
-    Position memory _position = _userPositions[_positionId];
+    Position memory _position = userPosition(_positionId);
     IDCAStrategies.ShareOfToken[] memory _tokens = _getTokenShares(_position.strategyId, _position.strategyVersion);
 
     _swapped = new TokenAmounts[](_position.positions.length);
@@ -195,7 +195,7 @@ abstract contract DCAStrategiesPositionsHandler is IDCAStrategiesPositionsHandle
     uint256 _totalAmount,
     uint32 _newAmountSwaps
   ) external onlyWithPermission(_positionId, IDCAStrategies.Permission.SYNC) {
-    Position memory _position = _userPositions[_positionId];
+    Position memory _position = userPosition(_positionId);
     IDCAStrategies.ShareOfToken[] memory _newTokenShares = _getTokenShares(_position.strategyId, _newVersion);
 
     (Data memory _data, Task[] memory _tasks) = _syncBlock(_position, _totalAmount, _newTokenShares, _newAmountSwaps, _recipientSwapped);
