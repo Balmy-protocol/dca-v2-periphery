@@ -205,11 +205,10 @@ abstract contract DCAStrategiesPositionsHandler is IDCAStrategiesPositionsHandle
 
     // If get to this place, then we just need to deposit
     while (_data.newPositionsIndex < _newTokenShares.length) {
-      uint256 _correspondingToPosition = _calculateOptimalAmount(
+      uint256 _correspondingToPosition = _calculateCorrespondingToPosition(
         _data.newPositionsIndex == _newTokenShares.length - 1,
         _totalAmount,
         _newTokenShares[_data.newPositionsIndex].share,
-        _getTotalShares(),
         _data.amountSpent
       );
       _tasks[_data.newPositionsIndex] = _createTask(Action.DEPOSIT, 0, _correspondingToPosition);
@@ -367,11 +366,10 @@ abstract contract DCAStrategiesPositionsHandler is IDCAStrategiesPositionsHandle
         _data.swapInterval = _userPosition.swapInterval;
       }
 
-      uint256 _correspondingToPosition = _calculateOptimalAmount(
+      uint256 _correspondingToPosition = _calculateCorrespondingToPosition(
         _data.newPositionsIndex == _newTokenShares.length - 1,
         _totalAmount,
         _newTokenShare.share,
-        _getTotalShares(),
         _data.amountSpent
       );
 
@@ -404,6 +402,15 @@ abstract contract DCAStrategiesPositionsHandler is IDCAStrategiesPositionsHandle
         _data.amountSpent += _correspondingToPosition;
       }
     }
+  }
+
+  function _calculateCorrespondingToPosition(
+    bool _isLastOne,
+    uint256 _amount,
+    uint256 _share,
+    uint256 _amountSpent
+  ) internal pure returns (uint256) {
+    return _calculateOptimalAmount(_isLastOne, _amount, _share, _getTotalShares(), _amountSpent);
   }
 
   function _checkPermission(uint256 _positionId, IDCAStrategies.Permission _permission) internal view {
