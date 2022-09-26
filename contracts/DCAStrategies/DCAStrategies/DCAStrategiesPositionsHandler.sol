@@ -406,8 +406,12 @@ abstract contract DCAStrategiesPositionsHandler is IDCAStrategiesPositionsHandle
     }
   }
 
-  modifier onlyWithPermission(uint256 _positionId, IDCAStrategies.Permission _permission) {
+  function _checkPermission(uint256 _positionId, IDCAStrategies.Permission _permission) internal view {
     if (!_hasPermission(_positionId, msg.sender, _permission)) revert NoPermissions();
+  }
+
+  modifier onlyWithPermission(uint256 _positionId, IDCAStrategies.Permission _permission) {
+    _checkPermission(_positionId, _permission);
     _;
   }
 }

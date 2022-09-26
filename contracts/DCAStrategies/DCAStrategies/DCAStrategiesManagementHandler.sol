@@ -31,8 +31,14 @@ abstract contract DCAStrategiesManagementHandler is IDCAStrategiesManagementHand
   /// @inheritdoc IDCAStrategiesManagementHandler
   function getStrategy(uint80 _strategyId) external view returns (Strategy memory) {
     StrategyOwnerAndVersion memory _strategy = _strategies[_strategyId];
-    IDCAStrategies.ShareOfToken[] memory _tokens = _tokenShares[_getStrategyAndVersionKey(_strategyId, _strategy.latestVersion)];
-    return Strategy({owner: _strategy.owner, name: _strategyNameById[_strategyId], currentVersion: _strategy.latestVersion, tokens: _tokens});
+
+    return
+      Strategy({
+        owner: _strategy.owner,
+        name: _strategyNameById[_strategyId],
+        currentVersion: _strategy.latestVersion,
+        tokens: _tokenShares[_getStrategyAndVersionKey(_strategyId, _strategy.latestVersion)]
+      });
   }
 
   /// @inheritdoc IDCAStrategiesManagementHandler
@@ -64,7 +70,7 @@ abstract contract DCAStrategiesManagementHandler is IDCAStrategiesManagementHand
   /// @inheritdoc IDCAStrategiesManagementHandler
   function updateStrategyTokens(uint80 _strategyId, IDCAStrategies.ShareOfToken[] memory _tokens) external {
     StrategyOwnerAndVersion memory _strategy = _strategies[_strategyId];
-    if (msg.sender != _strategy.owner) revert OnlyStratOwner();
+    _onlyStratOwner(_strategy.owner);
     _checkTokenSharesSanity(_tokens);
 
     uint16 _newVersion = _strategy.latestVersion + 1; // only updates the version number when updating tokens
@@ -83,7 +89,7 @@ abstract contract DCAStrategiesManagementHandler is IDCAStrategiesManagementHand
 
   /// @inheritdoc IDCAStrategiesManagementHandler
   function updateStrategyName(uint80 _strategyId, bytes32 _newStrategyName) external {
-    if (msg.sender != _strategies[_strategyId].owner) revert OnlyStratOwner();
+    _onlyStratOwner(_strategies[_strategyId].owner);
     if (strategyIdByName[_newStrategyName] != 0) revert NameAlreadyExists();
 
     delete strategyIdByName[_strategyNameById[_strategyId]];
@@ -95,7 +101,7 @@ abstract contract DCAStrategiesManagementHandler is IDCAStrategiesManagementHand
 
   /// @inheritdoc IDCAStrategiesManagementHandler
   function transferStrategyOwnership(uint80 _strategyId, address _newOwner) external {
-    if (msg.sender != _strategies[_strategyId].owner) revert OnlyStratOwner();
+    _onlyStratOwner(_strategies[_strategyId].owner);
 
     strategiesPendingOwners[_strategyId] = _newOwner;
 
@@ -114,7 +120,7 @@ abstract contract DCAStrategiesManagementHandler is IDCAStrategiesManagementHand
 
   /// @inheritdoc IDCAStrategiesManagementHandler
   function cancelStrategyOwnershipTransfer(uint80 _strategyId) external {
-    if (msg.sender != _strategies[_strategyId].owner) revert OnlyStratOwner();
+    _onlyStratOwner(_strategies[_strategyId].owner);
 
     delete strategiesPendingOwners[_strategyId];
 
@@ -126,7 +132,7 @@ abstract contract DCAStrategiesManagementHandler is IDCAStrategiesManagementHand
     if (_length <= 1) revert InvalidLength(); // need to have more than one item
     if (_length > MAX_TOKEN_SHARES) revert TokenSharesExceedAmount(); // need to have less than the max
 
-    uint256 _shares = 0;
+    uint256 _shares;
     for (uint256 i = 0; i < _length; ) {
       // isn't the last token
       if (i < _length - 1) {
@@ -148,5 +154,9 @@ abstract contract DCAStrategiesManagementHandler is IDCAStrategiesManagementHand
 
   function _getStrategyAndVersionKey(uint256 _strategyId, uint16 _version) internal pure returns (bytes32) {
     return keccak256(abi.encodePacked(_strategyId, _version));
+  }
+
+  function _onlyStratOwner(address _owner) internal view {
+    if (msg.sender != _owner) revert OnlyStratOwner();
   }
 }
