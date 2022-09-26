@@ -700,7 +700,6 @@ contract('DCAStrategiesPositionsHandler', () => {
         expect(i).to.not.be.equal(BigNumber.from(0));
         expect(i).to.be.equal(expectedNewPositionsIds[index]);
       });
-      expect(new Set(newPositions).size !== newPositions.length).to.be.false; // `false` if no duplicates
     }
   });
 
