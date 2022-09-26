@@ -8,6 +8,7 @@ abstract contract DCAStrategiesPositionsHandler is IDCAStrategiesPositionsHandle
   using SafeERC20 for IERC20;
 
   enum Action {
+    NOTHING,
     REDUCE,
     INCREASE,
     DEPOSIT
@@ -203,8 +204,10 @@ abstract contract DCAStrategiesPositionsHandler is IDCAStrategiesPositionsHandle
     while (_data.currentPositionsIndex < _position.positions.length) {
       (uint256 _unswapped, ) = _position.hub.terminate(_position.positions[_data.currentPositionsIndex], address(this), _recipientSwapped);
       _data.totalRemaining += _unswapped;
+      _data.currentPositionsIndex++;
     }
 
+    // If get to this place, then we just need to deposit
     while (_data.newPositionsIndex < _newTokenShares.length) {
       IDCAStrategies.ShareOfToken memory _newTokenShare = _newTokenShares[_data.newPositionsIndex];
       uint256 _correspondingToPosition = _calculateOptimalAmount(
@@ -214,8 +217,9 @@ abstract contract DCAStrategiesPositionsHandler is IDCAStrategiesPositionsHandle
         _getTotalShares(),
         _data.amountSpent
       );
-      _tasks[_data.newPositionsIndex] = Task({action: Action.DEPOSIT, amount: _correspondingToPosition, positionId: _positionId});
+      _tasks[_data.newPositionsIndex] = Task({action: Action.DEPOSIT, amount: _correspondingToPosition, positionId: 0});
       _data.amountSpent += _correspondingToPosition;
+      _data.newPositionsIndex++;
     }
 
     // extract (increase) or send (reduce)
@@ -225,6 +229,8 @@ abstract contract DCAStrategiesPositionsHandler is IDCAStrategiesPositionsHandle
       IERC20(_data.positionMetadata.from).safeTransfer(_recipientUnswapped, _data.totalRemaining - _totalAmount);
     }
 
+    uint256 _auxPositionId = _positionId;
+
     // perform deposit and increase
     for (uint256 i = 0; i < _tasks.length; ) {
       Task memory _task = _tasks[i];
@@ -232,7 +238,7 @@ abstract contract DCAStrategiesPositionsHandler is IDCAStrategiesPositionsHandle
       if (_task.action == Action.INCREASE) {
         _position.hub.increasePosition(_task.positionId, _task.amount, _newAmountSwaps);
       } else if (_task.action == Action.DEPOSIT) {
-        uint256 _newPositionId = _position.hub.deposit(
+        _task.positionId = _position.hub.deposit(
           address(_data.positionMetadata.from),
           _newTokenShares[i].token,
           _task.amount,
@@ -241,13 +247,23 @@ abstract contract DCAStrategiesPositionsHandler is IDCAStrategiesPositionsHandle
           address(this),
           new IDCAPermissionManager.PermissionSet[](0)
         );
-        // TODO: search for a way of changing `_task.positionId` for `positionId`
-        if (i < _position.positions.length) {
-          _userPositions[_task.positionId].positions[i] = _newPositionId;
-        } else {
-          _userPositions[_task.positionId].positions.push(_newPositionId);
-        }
       }
+
+      if (i < _userPositions[_auxPositionId].positions.length) {
+        if (_task.positionId != _userPositions[_auxPositionId].positions[i]) {
+          _userPositions[_auxPositionId].positions[i] = _task.positionId;
+        }
+      } else {
+        _userPositions[_auxPositionId].positions.push(_task.positionId);
+      }
+
+      unchecked {
+        i++;
+      }
+    }
+
+    for (uint256 i = _tasks.length; i < _position.positions.length; ) {
+      _userPositions[_positionId].positions.pop();
 
       unchecked {
         i++;
@@ -354,12 +370,13 @@ abstract contract DCAStrategiesPositionsHandler is IDCAStrategiesPositionsHandle
         _getTotalShares(),
         _data.amountSpent
       );
-      if (address(_userPosition.from) == _newTokenShare.token) {
+
+      if (address(_userPosition.to) == _newTokenShare.token) {
         // same token. Need to update position
         if (_userPosition.remaining > _correspondingToPosition) {
           // reduce
           _position.hub.reducePosition(_currentPositionId, _userPosition.remaining - _correspondingToPosition, _newAmountSwaps, address(this));
-          _tasks[_data.newPositionsIndex] = Task({action: Action.REDUCE, positionId: 0, amount: 0});
+          _tasks[_data.newPositionsIndex] = Task({action: Action.REDUCE, positionId: _currentPositionId, amount: 0});
         } else if (_userPosition.remaining < _correspondingToPosition) {
           // increase
           _tasks[_data.newPositionsIndex] = Task({
@@ -367,12 +384,15 @@ abstract contract DCAStrategiesPositionsHandler is IDCAStrategiesPositionsHandle
             positionId: _currentPositionId,
             amount: _correspondingToPosition - _userPosition.remaining
           });
+        } else {
+          // do nothing
+          _tasks[_data.newPositionsIndex] = Task({action: Action.NOTHING, positionId: _currentPositionId, amount: 0});
         }
         _data.totalRemaining += _userPosition.remaining;
         _data.newPositionsIndex++;
         _data.currentPositionsIndex++;
         _data.amountSpent += _correspondingToPosition;
-      } else if (_newTokenShare.token > address(_userPosition.from)) {
+      } else if (_newTokenShare.token > address(_userPosition.to)) {
         // then position needs to be deleted
         _position.hub.terminate(_currentPositionId, address(this), _recipientSwapped);
         _data.totalRemaining += _userPosition.remaining;
