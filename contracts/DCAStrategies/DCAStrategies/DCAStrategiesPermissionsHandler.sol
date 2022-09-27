@@ -66,9 +66,10 @@ abstract contract DCAStrategiesPermissionsHandler is IDCAStrategiesPermissionsHa
   /// @inheritdoc IDCAStrategiesPermissionsHandler
   function modifyMany(PositionPermissions[] calldata _permissions) external {
     for (uint256 i = 0; i < _permissions.length; ) {
-      if (msg.sender != ownerOf(_permissions[i].tokenId)) revert NotOwner();
+      PositionPermissions memory _permission = _permissions[i];
+      if (msg.sender != ownerOf(_permission.tokenId)) revert NotOwner();
 
-      _modify(_permissions[i].tokenId, _permissions[i].permissionSets);
+      _modify(_permission.tokenId, _permissions[i].permissionSets);
       unchecked {
         i++;
       }
