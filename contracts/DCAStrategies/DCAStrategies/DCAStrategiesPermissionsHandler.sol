@@ -20,11 +20,6 @@ abstract contract DCAStrategiesPermissionsHandler is IDCAStrategiesPermissionsHa
   /// @inheritdoc IDCAStrategiesPermissionsHandler
   bytes32 public constant PERMIT_TYPEHASH = keccak256('Permit(address spender,uint256 tokenId,uint256 nonce,uint256 deadline)');
   /// @inheritdoc IDCAStrategiesPermissionsHandler
-  bytes32 public constant PERMISSION_PERMIT_TYPEHASH =
-    keccak256(
-      'PermissionPermit(PermissionSet[] permissions,uint256 tokenId,uint256 nonce,uint256 deadline)PermissionSet(address operator,uint8[] permissions)'
-    );
-  /// @inheritdoc IDCAStrategiesPermissionsHandler
   bytes32 public constant MULTI_PERMISSION_PERMIT_TYPEHASH =
     keccak256(
       'MultiPermissionPermit(PositionPermissions[] positions,uint256 nonce,uint256 deadline)PermissionSet(address operator,uint8[] permissions)PositionPermissions(uint256 tokenId,PermissionSet[] permissionSets)'
@@ -69,40 +64,11 @@ abstract contract DCAStrategiesPermissionsHandler is IDCAStrategiesPermissionsHa
   }
 
   /// @inheritdoc IDCAStrategiesPermissionsHandler
-  function hasPermissions(
-    uint256 _id,
-    address _account,
-    IDCAStrategies.Permission[] calldata _permissions
-  ) external view override returns (bool[] memory _hasPermissions) {
-    _hasPermissions = new bool[](_permissions.length);
-    if (ownerOf(_id) == _account) {
-      // If the address is the owner, then they have all permissions
-      for (uint256 i = 0; i < _permissions.length; i++) {
-        _hasPermissions[i] = true;
-      }
-    } else {
-      // If it's not the owner, then check one by one
-      TokenPermission memory _tokenPermission = getTokenPermissions(_id, _account);
-      if (lastOwnershipChange[_id] < _tokenPermission.lastUpdated) {
-        for (uint256 i = 0; i < _permissions.length; i++) {
-          if (_tokenPermission.permissions.hasPermission(_permissions[i])) {
-            _hasPermissions[i] = true;
-          }
-        }
-      }
-    }
-  }
-
-  /// @inheritdoc IDCAStrategiesPermissionsHandler
-  function modify(uint256 _id, IDCAStrategies.PermissionSet[] calldata _permissions) public virtual override {
-    if (msg.sender != ownerOf(_id)) revert NotOwner();
-    _modify(_id, _permissions);
-  }
-
-  /// @inheritdoc IDCAStrategiesPermissionsHandler
   function modifyMany(PositionPermissions[] calldata _permissions) external {
     for (uint256 i = 0; i < _permissions.length; ) {
-      modify(_permissions[i].tokenId, _permissions[i].permissionSets);
+      if (msg.sender != ownerOf(_permissions[i].tokenId)) revert NotOwner();
+
+      _modify(_permissions[i].tokenId, _permissions[i].permissionSets);
       unchecked {
         i++;
       }
@@ -128,29 +94,6 @@ abstract contract DCAStrategiesPermissionsHandler is IDCAStrategiesPermissionsHa
     if (_signer != _owner) revert InvalidSignature();
 
     _approve(_spender, _tokenId);
-  }
-
-  /// @inheritdoc IDCAStrategiesPermissionsHandler
-  function permissionPermit(
-    IDCAStrategies.PermissionSet[] calldata _permissions,
-    uint256 _tokenId,
-    uint256 _deadline,
-    uint8 _v,
-    bytes32 _r,
-    bytes32 _s
-  ) external override {
-    if (block.timestamp > _deadline) revert ExpiredDeadline();
-
-    address _owner = ownerOf(_tokenId);
-    bytes32 _structHash = keccak256(
-      abi.encode(PERMISSION_PERMIT_TYPEHASH, keccak256(_encode(_permissions)), _tokenId, nonces[_owner]++, _deadline)
-    );
-    bytes32 _hash = _hashTypedDataV4(_structHash);
-
-    address _signer = ECDSA.recover(_hash, _v, _r, _s);
-    if (_signer != _owner) revert InvalidSignature();
-
-    _modify(_tokenId, _permissions);
   }
 
   /// @inheritdoc IDCAStrategiesPermissionsHandler
@@ -213,7 +156,8 @@ abstract contract DCAStrategiesPermissionsHandler is IDCAStrategiesPermissionsHa
     ++_burnCounter;
   }
 
-  function _modify(uint256 _id, IDCAStrategies.PermissionSet[] calldata _permissions) internal {
+  // Note: virtual so that it can be overriden in tests
+  function _modify(uint256 _id, IDCAStrategies.PermissionSet[] calldata _permissions) internal virtual {
     _setPermissions(_id, _permissions);
     emit Modified(_id, _permissions);
   }

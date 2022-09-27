@@ -102,14 +102,11 @@ contract('DCAStrategiesPermissionsHandler', () => {
         await DCAStrategiesPermissionsHandlerMock.mint(OWNER, []);
       });
       then('they have all permissions', async () => {
-        const result = await DCAStrategiesPermissionsHandlerMock.hasPermissions(TOKEN_ID, OWNER, [
-          Permission.INCREASE,
-          Permission.REDUCE,
-          Permission.WITHDRAW,
-          Permission.TERMINATE,
-          Permission.SYNC,
-        ]);
-        expect(result).to.eql(Array(5).fill(true));
+        expect(await DCAStrategiesPermissionsHandlerMock.hasPermission(TOKEN_ID, OWNER, Permission.INCREASE)).to.be.true;
+        expect(await DCAStrategiesPermissionsHandlerMock.hasPermission(TOKEN_ID, OWNER, Permission.REDUCE)).to.be.true;
+        expect(await DCAStrategiesPermissionsHandlerMock.hasPermission(TOKEN_ID, OWNER, Permission.TERMINATE)).to.be.true;
+        expect(await DCAStrategiesPermissionsHandlerMock.hasPermission(TOKEN_ID, OWNER, Permission.WITHDRAW)).to.be.true;
+        expect(await DCAStrategiesPermissionsHandlerMock.hasPermission(TOKEN_ID, OWNER, Permission.SYNC)).to.be.true;
       });
     });
 
@@ -165,9 +162,11 @@ contract('DCAStrategiesPermissionsHandler', () => {
           await DCAStrategiesPermissionsHandlerMock.mint(OWNER, [{ operator: OPERATOR, permissions: set }]);
         });
         then('result is returned correctly', async () => {
-          const toCheck = expected.map(({ permission }) => permission);
-          const result = await DCAStrategiesPermissionsHandlerMock.hasPermissions(TOKEN_ID, OPERATOR, toCheck);
-          expect(result).to.eql(expected.map(({ result }) => result));
+          for (let i = 0; i < expected.length; i++) {
+            const permission = expected[i].permission;
+            const result = expected[i].result;
+            expect(await DCAStrategiesPermissionsHandlerMock.hasPermission(TOKEN_ID, OPERATOR, permission)).to.be.equal(result);
+          }
         });
       });
     }
@@ -324,113 +323,6 @@ contract('DCAStrategiesPermissionsHandler', () => {
         });
       });
     });
-  });
-
-  describe('modify', () => {
-    const TOKEN_ID = 1;
-    const [OPERATOR_1, OPERATOR_2] = ['0x0000000000000000000000000000000000000001', '0x0000000000000000000000000000000000000002'];
-
-    when('caller is not the owner', () => {
-      given(async () => {
-        const owner = await wallet.generateRandom();
-        await DCAStrategiesPermissionsHandlerMock.mint(owner.address, []);
-      });
-      then('reverts with message', async () => {
-        await behaviours.txShouldRevertWithMessage({
-          contract: DCAStrategiesPermissionsHandlerMock.connect(await wallet.generateRandom()),
-          func: 'modify',
-          args: [TOKEN_ID, []],
-          message: 'NotOwner',
-        });
-      });
-    });
-
-    modifyTest({
-      when: 'permissions are added for a new operators',
-      initial: [{ operator: OPERATOR_1, permissions: [Permission.TERMINATE] }],
-      modify: [{ operator: OPERATOR_2, permissions: [Permission.REDUCE] }],
-      expected: [
-        { operator: OPERATOR_1, permissions: [Permission.TERMINATE] },
-        { operator: OPERATOR_2, permissions: [Permission.REDUCE] },
-      ],
-    });
-
-    modifyTest({
-      when: 'permissions are modified for existing operators',
-      initial: [{ operator: OPERATOR_1, permissions: [Permission.WITHDRAW] }],
-      modify: [
-        { operator: OPERATOR_1, permissions: [Permission.INCREASE] },
-        { operator: OPERATOR_2, permissions: [Permission.REDUCE] },
-      ],
-      expected: [
-        { operator: OPERATOR_1, permissions: [Permission.INCREASE] },
-        { operator: OPERATOR_2, permissions: [Permission.REDUCE] },
-      ],
-    });
-
-    modifyTest({
-      when: 'permissions are removed for existing operators',
-      initial: [{ operator: OPERATOR_1, permissions: [Permission.WITHDRAW] }],
-      modify: [{ operator: OPERATOR_1, permissions: [] }],
-      expected: [{ operator: OPERATOR_1, permissions: [] }],
-    });
-
-    type Permissions = { operator: string; permissions: Permission[] }[];
-    function modifyTest({
-      when: title,
-      initial,
-      modify,
-      expected,
-    }: {
-      when: string;
-      initial: Permissions;
-      modify: Permissions;
-      expected: Permissions;
-    }) {
-      const BLOCK_NUMBER = 500;
-      when(title, () => {
-        let tx: TransactionResponse;
-        given(async () => {
-          const owner = await wallet.generateRandom();
-          await DCAStrategiesPermissionsHandlerMock.mint(owner.address, initial);
-          await DCAStrategiesPermissionsHandlerMock.setBlockNumber(BLOCK_NUMBER);
-          tx = await DCAStrategiesPermissionsHandlerMock.connect(owner).modify(TOKEN_ID, modify);
-        });
-        then('permissions are updated correctly', async () => {
-          for (const { operator, permissions } of expected) {
-            for (const permission of [Permission.INCREASE, Permission.REDUCE, Permission.TERMINATE, Permission.WITHDRAW, Permission.SYNC]) {
-              expect(await DCAStrategiesPermissionsHandlerMock.hasPermission(TOKEN_ID, operator, permission)).to.equal(
-                permissions.includes(permission)
-              );
-            }
-          }
-        });
-        then('token permission are updated', async () => {
-          for (const { operator, permissions: expectedPermissions } of modify) {
-            const { permissions, lastUpdated } = await DCAStrategiesPermissionsHandlerMock.getTokenPermissions(TOKEN_ID, operator);
-            if (expectedPermissions.length == 0) {
-              expect(lastUpdated).to.equal(0);
-            } else {
-              expect(lastUpdated).to.equal(BLOCK_NUMBER);
-            }
-            expect(permissions).to.equal(toUint8(expectedPermissions));
-          }
-        });
-        then('event is emitted', async () => {
-          const id = await readArgFromEventOrFail(tx, 'Modified', 'tokenId');
-          const permissions: any = await readArgFromEventOrFail(tx, 'Modified', 'permissions');
-          expect(id).to.equal(TOKEN_ID);
-          expect(permissions.length).to.equal(modify.length);
-          for (let i = 0; i < modify.length; i++) {
-            expect(permissions[i].operator).to.equal(modify[i].operator);
-            expect(permissions[i].permissions).to.eql(modify[i].permissions);
-          }
-        });
-      });
-      function toUint8(permissions: Permission[]) {
-        return permissions.reduce((accum, curr) => accum + Math.pow(2, curr), 0);
-      }
-    }
   });
 
   describe('modifyMany', () => {
@@ -598,186 +490,6 @@ contract('DCAStrategiesPermissionsHandler', () => {
     type OperationData = {
       signer: Wallet;
       spender: string;
-      nonce: BigNumber;
-      deadline: BigNumber;
-      chainId: BigNumber;
-    };
-  });
-
-  describe('permissionPermit', () => {
-    const TOKEN_ID = 1;
-    const OPERATOR = wallet.generateRandomAddress();
-    let owner: Wallet, stranger: Wallet;
-
-    given(async () => {
-      owner = await wallet.generateRandom();
-      stranger = await wallet.generateRandom();
-      await DCAStrategiesPermissionsHandlerMock.mint(owner.address, []);
-    });
-
-    function permitTest({ when: title, permissions }: { when: string; permissions: Permission[] }) {
-      when(title, () => {
-        let tx: TransactionResponse;
-
-        given(async () => {
-          tx = await signAndPermit({ signer: owner, permissions: [{ operator: OPERATOR, permissions }] });
-        });
-
-        then('operator gains permissions', async () => {
-          for (const permission of permissions) {
-            expect(await DCAStrategiesPermissionsHandlerMock.hasPermission(TOKEN_ID, OPERATOR, permission)).to.be.true;
-          }
-        });
-
-        then('nonces is increased', async () => {
-          expect(await DCAStrategiesPermissionsHandlerMock.nonces(owner.address)).to.be.equal(1);
-        });
-
-        then('event is emitted', async () => {
-          const id = await readArgFromEventOrFail(tx, 'Modified', 'tokenId');
-          const emittedPermissions: any = await readArgFromEventOrFail(tx, 'Modified', 'permissions');
-          expect(id).to.equal(TOKEN_ID);
-          expect(emittedPermissions.length).to.equal(1);
-          expect(emittedPermissions[0].operator).to.equal(OPERATOR);
-          expect(emittedPermissions[0].permissions).to.eql(permissions);
-        });
-      });
-    }
-
-    permitTest({
-      when: `setting only one permission`,
-      permissions: [Permission.INCREASE],
-    });
-
-    permitTest({
-      when: `setting two permissions`,
-      permissions: [Permission.REDUCE, Permission.TERMINATE],
-    });
-
-    permitTest({
-      when: `setting three permissions`,
-      permissions: [Permission.REDUCE, Permission.WITHDRAW, Permission.INCREASE],
-    });
-
-    permitTest({
-      when: `setting four permissions`,
-      permissions: [Permission.REDUCE, Permission.WITHDRAW, Permission.INCREASE, Permission.TERMINATE],
-    });
-
-    permitTest({
-      when: `setting all permissions`,
-      permissions: [Permission.INCREASE, Permission.REDUCE, Permission.WITHDRAW, Permission.TERMINATE, Permission.SYNC],
-    });
-
-    permitFailsTest({
-      when: 'some stranger tries to permit',
-      exec: () => signAndPermit({ signer: stranger }),
-      txFailsWith: 'InvalidSignature',
-    });
-
-    permitFailsTest({
-      when: 'permit is expired',
-      exec: () => signAndPermit({ signer: owner, deadline: BigNumber.from(0) }),
-      txFailsWith: 'ExpiredDeadline',
-    });
-
-    permitFailsTest({
-      when: 'chainId is different',
-      exec: () => signAndPermit({ signer: owner, chainId: BigNumber.from(20) }),
-      txFailsWith: 'InvalidSignature',
-    });
-
-    permitFailsTest({
-      when: 'signer signed something differently',
-      exec: async () => {
-        const data = withDefaults({ signer: owner, deadline: constants.MAX_UINT_256 });
-        const signature = await getSignature(data);
-        return permissionPermit({ ...data, deadline: constants.MAX_UINT_256.sub(1) }, signature);
-      },
-      txFailsWith: 'InvalidSignature',
-    });
-
-    permitFailsTest({
-      when: 'signature is reused',
-      exec: async () => {
-        const data = withDefaults({ signer: owner });
-        const signature = await getSignature(data);
-        await permissionPermit(data, signature);
-        return permissionPermit(data, signature);
-      },
-      txFailsWith: 'InvalidSignature',
-    });
-
-    function permitFailsTest({
-      when: title,
-      exec,
-      txFailsWith: errorMessage,
-    }: {
-      when: string;
-      exec: () => Promise<TransactionResponse>;
-      txFailsWith: string;
-    }) {
-      when(title, () => {
-        let tx: Promise<TransactionResponse>;
-        given(() => {
-          tx = exec();
-        });
-        then('tx reverts with message', async () => {
-          await behaviours.checkTxRevertedWithMessage({ tx, message: errorMessage });
-        });
-      });
-    }
-
-    async function signAndPermit(options: Pick<OperationData, 'signer'> & Partial<OperationData>) {
-      const data = withDefaults(options);
-      const signature = await getSignature(data);
-      return permissionPermit(data, signature);
-    }
-
-    async function permissionPermit(data: OperationData, { v, r, s }: { v: number; r: Buffer; s: Buffer }) {
-      return DCAStrategiesPermissionsHandlerMock.permissionPermit(data.permissions, TOKEN_ID, data.deadline, v, r, s);
-    }
-
-    function withDefaults(options: Pick<OperationData, 'signer'> & Partial<OperationData>): OperationData {
-      return {
-        nonce: BigNumber.from(0),
-        deadline: constants.MAX_UINT_256,
-        permissions: [],
-        chainId,
-        ...options,
-      };
-    }
-
-    const PermissionSet = [
-      { name: 'operator', type: 'address' },
-      { name: 'permissions', type: 'uint8[]' },
-    ];
-
-    const PermissionPermit = [
-      { name: 'permissions', type: 'PermissionSet[]' },
-      { name: 'tokenId', type: 'uint256' },
-      { name: 'nonce', type: 'uint256' },
-      { name: 'deadline', type: 'uint256' },
-    ];
-
-    async function getSignature(options: OperationData) {
-      const { domain, types, value } = buildPermitData(options);
-      const signature = await options.signer._signTypedData(domain, types, value);
-      return fromRpcSig(signature);
-    }
-
-    function buildPermitData(options: OperationData) {
-      return {
-        primaryType: 'PermissionPermit',
-        types: { PermissionSet, PermissionPermit },
-        domain: { name: NFT_NAME, version: '1', chainId: options.chainId, verifyingContract: DCAStrategiesPermissionsHandlerMock.address },
-        value: { tokenId: TOKEN_ID, ...options },
-      };
-    }
-
-    type OperationData = {
-      signer: Wallet;
-      permissions: { operator: string; permissions: Permission[] }[];
       nonce: BigNumber;
       deadline: BigNumber;
       chainId: BigNumber;
