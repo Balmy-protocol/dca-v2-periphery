@@ -216,14 +216,16 @@ abstract contract DCAStrategiesPositionsHandler is IDCAStrategiesPositionsHandle
       _data.newPositionsIndex++;
     }
 
-    // extract (increase) or send (reduce)
-    if (_totalAmount > _data.totalRemaining) {
-      IERC20(_data.from).safeTransferFrom(msg.sender, address(this), _totalAmount - _data.totalRemaining);
-    } else if (_totalAmount < _data.totalRemaining) {
-      IERC20(_data.from).safeTransfer(_recipientUnswapped, _data.totalRemaining - _totalAmount);
+    unchecked {
+      // extract (increase) or send (reduce)
+      if (_totalAmount > _data.totalRemaining) {
+        IERC20(_data.from).safeTransferFrom(msg.sender, address(this), _totalAmount - _data.totalRemaining);
+      } else if (_totalAmount < _data.totalRemaining) {
+        IERC20(_data.from).safeTransfer(_recipientUnswapped, _data.totalRemaining - _totalAmount);
+      }
     }
 
-    uint256 _auxPositionId = _positionId;
+    uint256[] storage _storagePositions = _userPositions[_positionId].positions;
 
     // perform deposit and increase
     for (uint256 i = 0; i < _tasks.length; ) {
@@ -244,11 +246,11 @@ abstract contract DCAStrategiesPositionsHandler is IDCAStrategiesPositionsHandle
         );
       }
 
-      if (i < _userPositions[_auxPositionId].positions.length) {
+      if (i < _position.positions.length) {
         // if different, write
-        if (_task.positionId != _userPositions[_auxPositionId].positions[i]) _userPositions[_auxPositionId].positions[i] = _task.positionId;
+        if (_task.positionId != _position.positions[i]) _storagePositions[i] = _task.positionId;
       } else {
-        _userPositions[_auxPositionId].positions.push(_task.positionId);
+        _storagePositions.push(_task.positionId);
       }
 
       unchecked {
@@ -257,7 +259,7 @@ abstract contract DCAStrategiesPositionsHandler is IDCAStrategiesPositionsHandle
     }
 
     for (uint256 i = _tasks.length; i < _position.positions.length; ) {
-      _userPositions[_positionId].positions.pop();
+      _storagePositions.pop();
 
       unchecked {
         i++;
