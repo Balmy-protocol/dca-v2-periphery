@@ -115,10 +115,9 @@ abstract contract DCAStrategiesPositionsHandler is IDCAStrategiesPositionsHandle
       _approveHub(_fromToken, _position.hub, _amount);
     }
 
-    uint16 _total = _getTotalShares();
     uint256 _amountSpent;
     for (uint256 i = 0; i < _position.positions.length; ) {
-      uint256 _toIncrease = _calculateOptimalAmount(i == _position.positions.length - 1, _amount, _tokens[i].share, _total, _amountSpent);
+      uint256 _toIncrease = _calculateOptimalAmount(i == _position.positions.length - 1, _amount, _tokens[i].share, _amountSpent);
 
       _position.hub.increasePosition(_position.positions[i], _toIncrease, _newSwaps);
 
@@ -142,10 +141,9 @@ abstract contract DCAStrategiesPositionsHandler is IDCAStrategiesPositionsHandle
     Position memory _position = userPosition(_positionId);
     IDCAStrategies.ShareOfToken[] memory _tokens = _getTokenShares(_position.strategyId, _position.strategyVersion);
 
-    uint16 _total = _getTotalShares();
     uint256 _amountSpent;
     for (uint256 i = 0; i < _position.positions.length; ) {
-      uint256 _toReduce = _calculateOptimalAmount(i == _position.positions.length - 1, _amount, _tokens[i].share, _total, _amountSpent);
+      uint256 _toReduce = _calculateOptimalAmount(i == _position.positions.length - 1, _amount, _tokens[i].share, _amountSpent);
 
       _position.hub.reducePosition(_position.positions[i], _toReduce, _newSwaps, _recipient);
 
@@ -205,7 +203,7 @@ abstract contract DCAStrategiesPositionsHandler is IDCAStrategiesPositionsHandle
 
     // If get to this place, then we just need to deposit
     while (_data.newPositionsIndex < _newTokenShares.length) {
-      uint256 _correspondingToPosition = _calculateCorrespondingToPosition(
+      uint256 _correspondingToPosition = _calculateOptimalAmount(
         _data.newPositionsIndex == _newTokenShares.length - 1,
         _totalAmount,
         _newTokenShares[_data.newPositionsIndex].share,
@@ -307,13 +305,12 @@ abstract contract DCAStrategiesPositionsHandler is IDCAStrategiesPositionsHandle
     internal
     returns (uint256[] memory _positions)
   {
-    uint16 _total = _getTotalShares();
     uint256 _amountSpent;
     _positions = new uint256[](_tokens.length);
 
     for (uint256 i = 0; i < _tokens.length; ) {
       IDCAStrategies.ShareOfToken memory _token = _tokens[i];
-      uint256 _toDeposit = _calculateOptimalAmount(i == _tokens.length - 1, _parameters.amount, _token.share, _total, _amountSpent);
+      uint256 _toDeposit = _calculateOptimalAmount(i == _tokens.length - 1, _parameters.amount, _token.share, _amountSpent);
 
       _positions[i] = _parameters.hub.deposit(
         _parameters.from,
@@ -337,12 +334,11 @@ abstract contract DCAStrategiesPositionsHandler is IDCAStrategiesPositionsHandle
     bool _isLastOne,
     uint256 _amount,
     uint256 _share,
-    uint256 _total,
     uint256 _amountSpent
   ) internal pure returns (uint256 _optimal) {
     if (_amount == 0) return 0;
     // if isn't the last one, assign the share of amount. If it's the last one, assign the leftover
-    return !_isLastOne ? (_amount * _share) / _total : _amount - _amountSpent;
+    return !_isLastOne ? (_amount * _share) / _getTotalShares() : _amount - _amountSpent;
   }
 
   function _sync(
@@ -368,7 +364,7 @@ abstract contract DCAStrategiesPositionsHandler is IDCAStrategiesPositionsHandle
         _data.swapInterval = _userPosition.swapInterval;
       }
 
-      uint256 _correspondingToPosition = _calculateCorrespondingToPosition(
+      uint256 _correspondingToPosition = _calculateOptimalAmount(
         _data.newPositionsIndex == _newTokenShares.length - 1,
         _totalAmount,
         _newTokenShare.share,
@@ -404,15 +400,6 @@ abstract contract DCAStrategiesPositionsHandler is IDCAStrategiesPositionsHandle
         _data.amountSpent += _correspondingToPosition;
       }
     }
-  }
-
-  function _calculateCorrespondingToPosition(
-    bool _isLastOne,
-    uint256 _amount,
-    uint256 _share,
-    uint256 _amountSpent
-  ) internal pure returns (uint256) {
-    return _calculateOptimalAmount(_isLastOne, _amount, _share, _getTotalShares(), _amountSpent);
   }
 
   function _checkPermission(uint256 _positionId, IDCAStrategies.Permission _permission) internal view {

@@ -61,13 +61,13 @@ contract DCAStrategiesPermissionsHandlerMock is DCAStrategiesPermissionsHandler 
     _burn(_id);
   }
 
-  function modify(uint256 _id, IDCAStrategies.PermissionSet[] calldata _permissions) public override {
+  function _modify(uint256 _id, IDCAStrategies.PermissionSet[] calldata _permissions) internal override {
     _modifyCalls.push();
     _modifyCalls[_modifyCalls.length - 1].tokenId = _id;
     for (uint256 i = 0; i < _permissions.length; i++) {
       _modifyCalls[_modifyCalls.length - 1].permissionSets.push(_permissions[i]);
     }
-    super.modify(_id, _permissions);
+    super._modify(_id, _permissions);
   }
 
   function setPermissions(uint256 _id, IDCAStrategies.PermissionSet[] calldata _permissions) external {

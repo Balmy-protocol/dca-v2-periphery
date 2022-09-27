@@ -215,13 +215,6 @@ interface IDCAStrategiesPermissionsHandler is IERC721, IERC721BasicEnumerable {
   function PERMIT_TYPEHASH() external pure returns (bytes32);
 
   /**
-   * @notice The permit typehash used in the permission permit signature
-   * @return The typehash for the permission permit
-   */
-  // solhint-disable-next-line func-name-mixedcase
-  function PERMISSION_PERMIT_TYPEHASH() external pure returns (bytes32);
-
-  /**
    * @notice The permit typehash used in the multi permission permit signature
    * @return The typehash for the multi permission permit
    */
@@ -276,29 +269,6 @@ interface IDCAStrategiesPermissionsHandler is IERC721, IERC721BasicEnumerable {
   ) external view returns (bool);
 
   /**
-   * @notice Returns whether the given address has the permissions for the given token
-   * @param id The id of the token to check
-   * @param account The address of the user to check
-   * @param permissions The permissions to check
-   * @return hasPermissions Whether the user has each permission or not
-   */
-  function hasPermissions(
-    uint256 id,
-    address account,
-    IDCAStrategies.Permission[] calldata permissions
-  ) external view returns (bool[] memory hasPermissions);
-
-  /**
-   * @notice Sets new permissions for the given tokens
-   * @dev Will revert with NotOwner if the caller is not the token's owner.
-   *      Operators that are not part of the given permission sets do not see their permissions modified.
-   *      In order to remove permissions to an operator, provide an empty list of permissions for them
-   * @param id The token's id
-   * @param permissions A list of permission sets
-   */
-  function modify(uint256 id, IDCAStrategies.PermissionSet[] calldata permissions) external;
-
-  /**
    * @notice Sets new permissions for the given positions
    * @dev This is basically the same as executing multiple `modify`
    * @param permissions A list of position permissions to set
@@ -334,25 +304,6 @@ interface IDCAStrategiesPermissionsHandler is IERC721, IERC721BasicEnumerable {
    */
   function multiPermissionPermit(
     PositionPermissions[] calldata permissions,
-    uint256 deadline,
-    uint8 v,
-    bytes32 r,
-    bytes32 s
-  ) external;
-
-  /**
-   * @notice Sets permissions via signature
-   * @dev This method works similarly to `modify`, but instead of being executed by the owner, it can be set my signature
-   * @param permissions The permissions to set
-   * @param tokenId The token's id
-   * @param deadline The deadline timestamp by which the call must be mined for the approve to work
-   * @param v Must produce valid secp256k1 signature from the holder along with `r` and `s`
-   * @param r Must produce valid secp256k1 signature from the holder along with `v` and `s`
-   * @param s Must produce valid secp256k1 signature from the holder along with `r` and `v`
-   */
-  function permissionPermit(
-    IDCAStrategies.PermissionSet[] calldata permissions,
-    uint256 tokenId,
     uint256 deadline,
     uint8 v,
     bytes32 r,
