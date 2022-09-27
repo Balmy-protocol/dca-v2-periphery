@@ -23,9 +23,10 @@ abstract contract DCAStrategiesPositionsHandler is IDCAStrategiesPositionsHandle
   struct Data {
     uint8 currentPositionsIndex;
     uint8 newPositionsIndex;
+    uint32 swapInterval;
     uint256 totalRemaining;
     uint256 amountSpent;
-    IDCAHub.UserPosition positionMetadata;
+    address from;
   }
 
   mapping(uint256 => Position) internal _userPositions;
@@ -80,15 +81,13 @@ abstract contract DCAStrategiesPositionsHandler is IDCAStrategiesPositionsHandle
   function withdrawSwapped(uint256 _positionId, address _recipient)
     external
     onlyWithPermission(_positionId, IDCAStrategies.Permission.WITHDRAW)
-    returns (TokenAmounts[] memory _tokenAmounts)
+    returns (uint256[] memory _tokenAmounts)
   {
     Position memory _position = userPosition(_positionId);
-    IDCAHub _hub = IDCAHub(_position.hub);
-    _tokenAmounts = new TokenAmounts[](_position.positions.length);
+    _tokenAmounts = new uint256[](_position.positions.length);
+
     for (uint256 i = 0; i < _position.positions.length; ) {
-      // TODO: Test how much cheaper it would be to not return the token (and avoid the call to `hub.userPosition)
-      _tokenAmounts[i].amount = _hub.withdrawSwapped(_position.positions[i], _recipient);
-      _tokenAmounts[i].token = address(_hub.userPosition(_position.positions[i]).to);
+      _tokenAmounts[i] = _position.hub.withdrawSwapped(_position.positions[i], _recipient);
 
       unchecked {
         i++;
@@ -165,17 +164,14 @@ abstract contract DCAStrategiesPositionsHandler is IDCAStrategiesPositionsHandle
     uint256 _positionId,
     address _recipientUnswapped,
     address _recipientSwapped
-  ) external onlyWithPermission(_positionId, IDCAStrategies.Permission.TERMINATE) returns (uint256 _unswapped, TokenAmounts[] memory _swapped) {
+  ) external onlyWithPermission(_positionId, IDCAStrategies.Permission.TERMINATE) returns (uint256 _unswapped, uint256[] memory _swapped) {
     Position memory _position = userPosition(_positionId);
-    IDCAStrategies.ShareOfToken[] memory _tokens = _getTokenShares(_position.strategyId, _position.strategyVersion);
 
-    _swapped = new TokenAmounts[](_position.positions.length);
+    _swapped = new uint256[](_position.positions.length);
     for (uint256 i = 0; i < _position.positions.length; ) {
       (uint256 __unswapped, uint256 __swapped) = _position.hub.terminate(_position.positions[i], _recipientUnswapped, _recipientSwapped);
 
-      _swapped[i].amount = __swapped;
-      _swapped[i].token = _tokens[i].token;
-
+      _swapped[i] = __swapped;
       _unswapped += __unswapped;
 
       unchecked {
@@ -198,7 +194,7 @@ abstract contract DCAStrategiesPositionsHandler is IDCAStrategiesPositionsHandle
     Position memory _position = userPosition(_positionId);
     IDCAStrategies.ShareOfToken[] memory _newTokenShares = _getTokenShares(_position.strategyId, _newVersion);
 
-    (Data memory _data, Task[] memory _tasks) = _syncBlock(_position, _totalAmount, _newTokenShares, _newAmountSwaps, _recipientSwapped);
+    (Data memory _data, Task[] memory _tasks) = _sync(_position, _totalAmount, _newTokenShares, _newAmountSwaps, _recipientSwapped);
 
     // If get to this place, then we just need to terminate existing positions
     while (_data.currentPositionsIndex < _position.positions.length) {
@@ -209,24 +205,22 @@ abstract contract DCAStrategiesPositionsHandler is IDCAStrategiesPositionsHandle
 
     // If get to this place, then we just need to deposit
     while (_data.newPositionsIndex < _newTokenShares.length) {
-      IDCAStrategies.ShareOfToken memory _newTokenShare = _newTokenShares[_data.newPositionsIndex];
-      uint256 _correspondingToPosition = _calculateOptimalAmount(
+      uint256 _correspondingToPosition = _calculateCorrespondingToPosition(
         _data.newPositionsIndex == _newTokenShares.length - 1,
         _totalAmount,
-        _newTokenShare.share,
-        _getTotalShares(),
+        _newTokenShares[_data.newPositionsIndex].share,
         _data.amountSpent
       );
-      _tasks[_data.newPositionsIndex] = Task({action: Action.DEPOSIT, amount: _correspondingToPosition, positionId: 0});
+      _tasks[_data.newPositionsIndex] = _createTask(Action.DEPOSIT, 0, _correspondingToPosition);
       _data.amountSpent += _correspondingToPosition;
       _data.newPositionsIndex++;
     }
 
     // extract (increase) or send (reduce)
     if (_totalAmount > _data.totalRemaining) {
-      IERC20(_data.positionMetadata.from).safeTransferFrom(msg.sender, address(this), _totalAmount - _data.totalRemaining);
+      IERC20(_data.from).safeTransferFrom(msg.sender, address(this), _totalAmount - _data.totalRemaining);
     } else if (_totalAmount < _data.totalRemaining) {
-      IERC20(_data.positionMetadata.from).safeTransfer(_recipientUnswapped, _data.totalRemaining - _totalAmount);
+      IERC20(_data.from).safeTransfer(_recipientUnswapped, _data.totalRemaining - _totalAmount);
     }
 
     uint256 _auxPositionId = _positionId;
@@ -234,25 +228,25 @@ abstract contract DCAStrategiesPositionsHandler is IDCAStrategiesPositionsHandle
     // perform deposit and increase
     for (uint256 i = 0; i < _tasks.length; ) {
       Task memory _task = _tasks[i];
+      address _to = _newTokenShares[i].token;
 
       if (_task.action == Action.INCREASE) {
         _position.hub.increasePosition(_task.positionId, _task.amount, _newAmountSwaps);
       } else if (_task.action == Action.DEPOSIT) {
         _task.positionId = _position.hub.deposit(
-          address(_data.positionMetadata.from),
-          _newTokenShares[i].token,
+          _data.from,
+          _to,
           _task.amount,
           _newAmountSwaps,
-          _data.positionMetadata.swapInterval,
+          _data.swapInterval,
           address(this),
           new IDCAPermissionManager.PermissionSet[](0)
         );
       }
 
       if (i < _userPositions[_auxPositionId].positions.length) {
-        if (_task.positionId != _userPositions[_auxPositionId].positions[i]) {
-          _userPositions[_auxPositionId].positions[i] = _task.positionId;
-        }
+        // if different, write
+        if (_task.positionId != _userPositions[_auxPositionId].positions[i]) _userPositions[_auxPositionId].positions[i] = _task.positionId;
       } else {
         _userPositions[_auxPositionId].positions.push(_task.positionId);
       }
@@ -278,6 +272,14 @@ abstract contract DCAStrategiesPositionsHandler is IDCAStrategiesPositionsHandle
   function _create(address _owner, IDCAStrategies.PermissionSet[] calldata _permissions) internal virtual returns (uint256 _mintId) {}
 
   function _getTotalShares() internal pure virtual returns (uint16 _total) {}
+
+  function _createTask(
+    Action _action,
+    uint256 _positionId,
+    uint256 _amount
+  ) internal pure returns (Task memory) {
+    return Task({action: _action, positionId: _positionId, amount: _amount});
+  }
 
   function _hasPermission(
     uint256 _id,
@@ -341,7 +343,7 @@ abstract contract DCAStrategiesPositionsHandler is IDCAStrategiesPositionsHandle
     return !_isLastOne ? (_amount * _share) / _total : _amount - _amountSpent;
   }
 
-  function _syncBlock(
+  function _sync(
     Position memory _position,
     uint256 _totalAmount,
     IDCAStrategies.ShareOfToken[] memory _newTokenShares,
@@ -359,15 +361,15 @@ abstract contract DCAStrategiesPositionsHandler is IDCAStrategiesPositionsHandle
       IDCAStrategies.ShareOfToken memory _newTokenShare = _newTokenShares[_data.newPositionsIndex];
       IDCAHub.UserPosition memory _userPosition = _position.hub.userPosition(_currentPositionId);
 
-      if (address(_data.positionMetadata.from) == address(0)) {
-        _data.positionMetadata = _userPosition;
+      if (_data.from == address(0)) {
+        _data.from = address(_userPosition.from);
+        _data.swapInterval = _userPosition.swapInterval;
       }
 
-      uint256 _correspondingToPosition = _calculateOptimalAmount(
+      uint256 _correspondingToPosition = _calculateCorrespondingToPosition(
         _data.newPositionsIndex == _newTokenShares.length - 1,
         _totalAmount,
         _newTokenShare.share,
-        _getTotalShares(),
         _data.amountSpent
       );
 
@@ -376,17 +378,13 @@ abstract contract DCAStrategiesPositionsHandler is IDCAStrategiesPositionsHandle
         if (_userPosition.remaining > _correspondingToPosition) {
           // reduce
           _position.hub.reducePosition(_currentPositionId, _userPosition.remaining - _correspondingToPosition, _newAmountSwaps, address(this));
-          _tasks[_data.newPositionsIndex] = Task({action: Action.REDUCE, positionId: _currentPositionId, amount: 0});
+          _tasks[_data.newPositionsIndex] = _createTask(Action.REDUCE, _currentPositionId, 0);
         } else if (_userPosition.remaining < _correspondingToPosition) {
           // increase
-          _tasks[_data.newPositionsIndex] = Task({
-            action: Action.INCREASE,
-            positionId: _currentPositionId,
-            amount: _correspondingToPosition - _userPosition.remaining
-          });
+          _tasks[_data.newPositionsIndex] = _createTask(Action.INCREASE, _currentPositionId, _correspondingToPosition - _userPosition.remaining);
         } else {
           // do nothing
-          _tasks[_data.newPositionsIndex] = Task({action: Action.NOTHING, positionId: _currentPositionId, amount: 0});
+          _tasks[_data.newPositionsIndex] = _createTask(Action.NOTHING, _currentPositionId, 0);
         }
         _data.totalRemaining += _userPosition.remaining;
         _data.newPositionsIndex++;
@@ -399,11 +397,20 @@ abstract contract DCAStrategiesPositionsHandler is IDCAStrategiesPositionsHandle
         _data.currentPositionsIndex++;
       } else {
         // then just create a new position
-        _tasks[_data.newPositionsIndex] = Task({action: Action.DEPOSIT, positionId: 0, amount: _correspondingToPosition});
+        _tasks[_data.newPositionsIndex] = _createTask(Action.DEPOSIT, 0, _correspondingToPosition);
         _data.newPositionsIndex++;
         _data.amountSpent += _correspondingToPosition;
       }
     }
+  }
+
+  function _calculateCorrespondingToPosition(
+    bool _isLastOne,
+    uint256 _amount,
+    uint256 _share,
+    uint256 _amountSpent
+  ) internal pure returns (uint256) {
+    return _calculateOptimalAmount(_isLastOne, _amount, _share, _getTotalShares(), _amountSpent);
   }
 
   function _checkPermission(uint256 _positionId, IDCAStrategies.Permission _permission) internal view {
