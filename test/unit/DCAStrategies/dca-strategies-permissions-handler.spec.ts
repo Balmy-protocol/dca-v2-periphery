@@ -18,7 +18,7 @@ import { getInstancesOfEvent, readArgFromEventOrFail } from '@test-utils/event-u
 import { fromRpcSig } from 'ethereumjs-util';
 import { BigNumberish } from 'ethers';
 
-contract('DCAStrategiesPermissionsHandler', () => {
+contract.only('DCAStrategiesPermissionsHandler', () => {
   const NFT_NAME = 'Mean Finance - DCA Strategy Position';
   const NFT_SYMBOL = 'MF-DCA-P';
   const NFT_DESCRIPTOR = wallet.generateRandomAddress();

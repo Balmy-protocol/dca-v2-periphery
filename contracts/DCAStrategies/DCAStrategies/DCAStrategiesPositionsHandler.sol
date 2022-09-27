@@ -216,11 +216,13 @@ abstract contract DCAStrategiesPositionsHandler is IDCAStrategiesPositionsHandle
       _data.newPositionsIndex++;
     }
 
-    // extract (increase) or send (reduce)
-    if (_totalAmount > _data.totalRemaining) {
-      IERC20(_data.from).safeTransferFrom(msg.sender, address(this), _totalAmount - _data.totalRemaining);
-    } else if (_totalAmount < _data.totalRemaining) {
-      IERC20(_data.from).safeTransfer(_recipientUnswapped, _data.totalRemaining - _totalAmount);
+    unchecked {
+      // extract (increase) or send (reduce)
+      if (_totalAmount > _data.totalRemaining) {
+        IERC20(_data.from).safeTransferFrom(msg.sender, address(this), _totalAmount - _data.totalRemaining);
+      } else if (_totalAmount < _data.totalRemaining) {
+        IERC20(_data.from).safeTransfer(_recipientUnswapped, _data.totalRemaining - _totalAmount);
+      }
     }
 
     uint256 _auxPositionId = _positionId;
