@@ -20,7 +20,7 @@ import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers';
 
 chai.use(smock.matchers);
 
-contract.only('DCAStrategiesPositionsHandler', () => {
+contract('DCAStrategiesPositionsHandler', () => {
   let snapshotId: string;
   let DCAStrategiesPositionsHandlerMock: DCAStrategiesPositionsHandlerMock;
   let user: SignerWithAddress, random: SignerWithAddress, governor: SignerWithAddress;
