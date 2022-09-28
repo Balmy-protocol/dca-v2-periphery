@@ -449,10 +449,29 @@ interface IDCAStrategiesPositionsHandler {
    */
   function userPosition(uint256 positionId) external view returns (Position memory position);
 
+  /**
+   * @notice Perform a deposit
+   * @param parameters The struct containing all neccesary data to perform the deposit
+   * @return position The position id of the position deposited
+   */
   function deposit(DepositParams calldata parameters) external returns (uint256);
 
+  /**
+   * @notice Withdraws all swapped tokens from a position to a recipient
+   * @param positionId The position's id
+   * @param recipient The address to withdraw swapped tokens to
+   * @return tokenAmounts How much was withdrawn
+   */
   function withdrawSwapped(uint256 positionId, address recipient) external returns (uint256[] memory tokenAmounts);
 
+  /**
+   * @notice Takes the unswapped balance, adds the new deposited funds and modifies the position so that
+   * it is executed in newSwaps swaps
+   * @param positionId The position's id
+   * @param fromToken The `from` token
+   * @param amount Amount of funds to add to the position
+   * @param newSwaps The new amount of swaps
+   */
   function increasePosition(
     uint256 positionId,
     address fromToken,
@@ -460,6 +479,14 @@ interface IDCAStrategiesPositionsHandler {
     uint32 newSwaps
   ) external;
 
+  /**
+   * @notice Withdraws the specified amount from the unswapped balance and modifies the position so that
+   * it is executed in newSwaps swaps
+   * @param positionId The position's id
+   * @param amount Amount of funds to withdraw from the position
+   * @param newSwaps The new amount of swaps
+   * @param recipient The address to send tokens to
+   */
   function reducePosition(
     uint256 positionId,
     uint256 amount,
@@ -467,12 +494,29 @@ interface IDCAStrategiesPositionsHandler {
     address recipient
   ) external;
 
+  /**
+   * @notice Terminates the position and sends all unswapped and swapped balance to the specified recipients
+   * @param positionId The position's id
+   * @param recipientUnswapped The address to withdraw unswapped tokens to
+   * @param recipientSwapped The address to withdraw swapped tokens to
+   * @return unswapped The unswapped balance sent to `recipientUnswapped`
+   * @return swapped The swapped balance sent to `recipientSwapped`
+   */
   function terminate(
     uint256 positionId,
     address recipientUnswapped,
     address recipientSwapped
   ) external returns (uint256 unswapped, uint256[] memory swapped);
 
+  /**
+   * @notice Adjust a position a new version (newer or older version). May perform an increase or reduce at the same time
+   * @param positionId The position's id
+   * @param newVersion The new version of the position
+   * @param recipientUnswapped The address to withdraw unswapped tokens to
+   * @param recipientSwapped The address to withdraw swapped tokens to
+   * @param totalAmount The amount of tokens expected in the new version (if less than actual will perform a reduce, if more will perform an increase)
+   * @param newAmountSwaps The new amounts of swaps
+   */
   function syncPositionToNewVersion(
     uint256 positionId,
     uint16 newVersion,
