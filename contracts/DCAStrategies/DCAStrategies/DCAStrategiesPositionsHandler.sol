@@ -49,7 +49,7 @@ abstract contract DCAStrategiesPositionsHandler is IDCAStrategiesPositionsHandle
     _approveHub(_parameters.from, _parameters.hub, _parameters.amount);
 
     // deposit in loop
-    uint256[] memory _positions = _depositLoop(_parameters, _tokens);
+    uint256[] memory _positions = _deposit(_parameters, _tokens);
 
     // mint NFT
     uint256 _positionId = _create(_parameters.owner, _parameters.permissions);
@@ -301,7 +301,7 @@ abstract contract DCAStrategiesPositionsHandler is IDCAStrategiesPositionsHandle
     }
   }
 
-  function _depositLoop(IDCAStrategies.DepositParams calldata _parameters, IDCAStrategies.ShareOfToken[] memory _tokens)
+  function _deposit(IDCAStrategies.DepositParams calldata _parameters, IDCAStrategies.ShareOfToken[] memory _tokens)
     internal
     returns (uint256[] memory _positions)
   {

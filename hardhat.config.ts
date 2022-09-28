@@ -115,6 +115,17 @@ const config: HardhatUserConfig = {
         },
       },
     ],
+    overrides: {
+      'contracts/DCAStrategies/DCAStrategies/DCAStrategies.sol': {
+        version: '0.8.16',
+        settings: {
+          optimizer: {
+            enabled: true,
+            runs: 300,
+          },
+        },
+      },
+    },
   },
   gasReporter: {
     currency: process.env.COINMARKETCAP_DEFAULT_CURRENCY || 'USD',
