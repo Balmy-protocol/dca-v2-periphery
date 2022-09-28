@@ -3,6 +3,7 @@ pragma solidity >=0.8.7 <0.9.0;
 
 import '@mean-finance/dca-v2-core/contracts/interfaces/IDCAHub.sol';
 import '@mean-finance/dca-v2-core/contracts/interfaces/IDCAPermissionManager.sol';
+import './ILegacyDCAHub.sol';
 import './ISharedTypes.sol';
 
 /**
@@ -15,18 +16,41 @@ interface IDCAHubCompanionLibrariesHandler {
    * @dev Please note that this function is very expensive. Ideally, it would be used for off-chain purposes
    * @param hub The address of the DCAHub
    * @param pairs The pairs to be involved in the swap
+   * @param calculatePrivilegedAvailability Some accounts get privileged availability and can execute swaps before others. This flag provides
+   *        the possibility to calculate the next swap information for privileged and non-privileged accounts
+   * @param oracleData Bytes to send to the oracle when executing a quote
    * @return How executing a swap for all the given pairs would look like
    */
-  function getNextSwapInfo(IDCAHub hub, Pair[] calldata pairs) external view returns (IDCAHub.SwapInfo memory);
+  function getNextSwapInfo(
+    IDCAHub hub,
+    Pair[] calldata pairs,
+    bool calculatePrivilegedAvailability,
+    bytes calldata oracleData
+  ) external view returns (IDCAHub.SwapInfo memory);
+
+  /**
+   * @notice Takes a list of pairs and returns how it would look like to execute a swap for all of them
+   * @dev Please note that this function is very expensive. Ideally, it would be used for off-chain purposes
+   * @param hub The address of the DCAHub
+   * @param pairs The pairs to be involved in the swap
+   * @return How executing a swap for all the given pairs would look like
+   */
+  function legacyGetNextSwapInfo(ILegacyDCAHub hub, Pair[] calldata pairs) external view returns (ILegacyDCAHub.SwapInfo memory);
 
   /**
    * @notice Returns how many seconds left until the next swap is available for a list of pairs
    * @dev Tokens in pairs may be passed in either tokenA/tokenB or tokenB/tokenA order
    * @param hub The address of the DCAHub
    * @param pairs Pairs to check
+   * @param calculatePrivilegedAvailability Some accounts get privileged availability and can execute swaps before others. This flag provides
+   *        the possibility to calculate the seconds until next swap for privileged and non-privileged accounts
    * @return The amount of seconds until next swap for each of the pairs
    */
-  function secondsUntilNextSwap(IDCAHub hub, Pair[] calldata pairs) external view returns (uint256[] memory);
+  function secondsUntilNextSwap(
+    IDCAHub hub,
+    Pair[] calldata pairs,
+    bool calculatePrivilegedAvailability
+  ) external view returns (uint256[] memory);
 }
 
 interface IDCAHubCompanionHubProxyHandler {

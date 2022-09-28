@@ -1,87 +1,89 @@
 import { expect } from 'chai';
-import { deployments, ethers, getNamedAccounts } from 'hardhat';
+import { ethers } from 'hardhat';
 import { TransactionResponse } from '@ethersproject/providers';
 import { constants, wallet } from '@test-utils';
 import { contract, given, then, when } from '@test-utils/bdd';
 import evm, { snapshot } from '@test-utils/evm';
 import { DCAHubCompanion, DCAHubSwapper, IERC20 } from '@typechained';
-import { DCAHub, DCAPermissionsManager } from '@mean-finance/dca-v2-core/typechained';
+import { DCAHub, DCAPermissionsManager } from '@mean-finance/dca-v2-core';
+import { TransformerRegistry } from '@mean-finance/transformers';
+import { SwapperRegistry } from '@mean-finance/swappers';
+import { TransformerOracle, StatefulChainlinkOracle } from '@mean-finance/oracles';
 import { abi as DCA_HUB_ABI } from '@mean-finance/dca-v2-core/artifacts/contracts/DCAHub/DCAHub.sol/DCAHub.json';
 import { abi as IERC20_ABI } from '@openzeppelin/contracts/build/contracts/IERC20.json';
-import { BigNumber, utils } from 'ethers';
+import { BigNumber, BigNumberish, BytesLike, utils, Wallet } from 'ethers';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers';
 import { SwapInterval } from '@test-utils/interval-utils';
-import forkBlockNumber from '@integration/fork-block-numbers';
 import { fromRpcSig } from 'ethereumjs-util';
-import { DeterministicFactory, DeterministicFactory__factory } from '@mean-finance/deterministic-factory/typechained';
+import { deploy } from '@integration/utils';
+import zrx from '@test-utils/dexes/zrx';
 
 const WETH_ADDRESS = '0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2';
 const USDC_ADDRESS = '0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48';
+const WBTC_ADDRESS = '0x2260fac5e5542a773aa44fbcfedf7c193bc2c599';
 const WETH_WHALE_ADDRESS = '0xf04a5cc80b1e94c69b48f5ee68a08cd2f09a7c3e';
 const USDC_WHALE_ADDRESS = '0xcffad3200574698b78f32232aa9d63eabd290703';
+const WBTC_WHALE_ADDRESS = '0x9ff58f4ffb29fa2266ab25e75e2a8b3503311656';
+const ZRX = '0xdef1c0ded9bec7f1a1670819833240f027b25eff';
+const USDC_1000 = utils.parseUnits('1000', 6);
+const ETH_1 = utils.parseEther('1');
 
 contract('Multicall', () => {
-  let WETH: IERC20, USDC: IERC20;
+  let WETH: IERC20, USDC: IERC20, WBTC: IERC20;
+  let recipientInitialETHBalance: BigNumber;
   let positionOwner: SignerWithAddress, swapper: SignerWithAddress, recipient: SignerWithAddress;
   let DCAHubCompanion: DCAHubCompanion;
   let DCAPermissionManager: DCAPermissionsManager;
   let DCAHub: DCAHub;
   let DCAHubSwapper: DCAHubSwapper;
-  let initialRecipientProtocolBalance: BigNumber;
+  let transformerRegistry: TransformerRegistry;
   let chainId: BigNumber;
   let snapshotId: string;
 
-  const RATE = BigNumber.from(100000000);
   const AMOUNT_OF_SWAPS = 10;
 
   before(async () => {
-    await evm.reset({
-      network: 'mainnet',
-      blockNumber: forkBlockNumber['multicall'],
-      skipHardhatDeployFork: true,
-    });
+    await evm.reset({ network: 'ethereum' });
     [positionOwner, swapper, recipient] = await ethers.getSigners();
 
-    const namedAccounts = await getNamedAccounts();
-    const governorAddress = namedAccounts.governor;
-    const governor = await wallet.impersonate(governorAddress);
-    await ethers.provider.send('hardhat_setBalance', [governorAddress, '0xffffffffffffffff']);
-
-    const deterministicFactory = await ethers.getContractAt<DeterministicFactory>(
-      DeterministicFactory__factory.abi,
-      '0xbb681d77506df5CA21D2214ab3923b4C056aa3e2'
-    );
-
-    await deterministicFactory.connect(governor).grantRole(await deterministicFactory.DEPLOYER_ROLE(), namedAccounts.deployer);
-
-    await deployments.run(['DCAHub', 'DCAHubCompanion', 'SwapperRegistry', 'DCAHubSwapper'], {
-      resetMemory: true,
-      deletePreviousDeployments: false,
-      writeDeploymentsToFiles: false,
-    });
+    const { msig: admin } = await deploy('DCAHubCompanion');
 
     DCAHub = await ethers.getContract('DCAHub');
     DCAHubCompanion = await ethers.getContract('DCAHubCompanion');
     DCAHubSwapper = await ethers.getContract('DCAHubSwapper');
     DCAPermissionManager = await ethers.getContract('PermissionsManager');
+    transformerRegistry = await ethers.getContract('TransformerRegistry');
 
-    await ethers.provider.send('hardhat_setBalance', [DCAHubSwapper.address, '0x0']);
-
-    // Allow one minute interval
-    await DCAHub.connect(governor).addSwapIntervalsToAllowedList([SwapInterval.ONE_MINUTE.seconds]);
+    const swapperRegistry = await ethers.getContract<SwapperRegistry>('SwapperRegistry');
+    const transformerOracle = await ethers.getContract<TransformerOracle>('TransformerOracle');
+    const protocolTokenTransformer = await ethers.getContract('ProtocolTokenWrapperTransformer');
+    const chainlinkOracle = await ethers.getContract<StatefulChainlinkOracle>('StatefulChainlinkOracle');
 
     WETH = await ethers.getContractAt(IERC20_ABI, WETH_ADDRESS);
     USDC = await ethers.getContractAt(IERC20_ABI, USDC_ADDRESS);
+    WBTC = await ethers.getContractAt(IERC20_ABI, WBTC_ADDRESS);
 
     // Allow tokens and swapper
-    await DCAHub.connect(governor).setAllowedTokens([WETH_ADDRESS, USDC_ADDRESS], [true, true]);
-    await DCAHubSwapper.connect(governor).grantRole(await DCAHubSwapper.SWAP_EXECUTION_ROLE(), swapper.address);
+    await DCAHub.connect(admin).setAllowedTokens([WETH_ADDRESS, USDC_ADDRESS, WBTC_ADDRESS], [true, true, true]);
+    await DCAHubSwapper.connect(admin).grantRole(await DCAHubSwapper.SWAP_EXECUTION_ROLE(), swapper.address);
+    await chainlinkOracle
+      .connect(admin)
+      .addMappings(
+        [WETH.address, WBTC.address],
+        [await protocolTokenTransformer.PROTOCOL_TOKEN(), '0xbBbBBBBbbBBBbbbBbbBbbbbBBbBbbbbBbBbbBBbB']
+      );
 
     // Send tokens from whales, to our users
     await distributeTokensToUsers();
 
-    initialRecipientProtocolBalance = await ethers.provider.getBalance(recipient.address);
+    await swapperRegistry.connect(admin).allowSwappers([transformerRegistry.address, ZRX]);
+    await transformerRegistry
+      .connect(admin)
+      .registerTransformers([{ transformer: protocolTokenTransformer.address, dependents: [WETH.address] }]);
+    await transformerOracle.connect(admin).avoidMappingToUnderlying([WETH.address]);
+
     chainId = BigNumber.from((await ethers.provider.getNetwork()).chainId);
+    recipientInitialETHBalance = await ethers.provider.getBalance(recipient.address);
     snapshotId = await snapshot.take();
   });
 
@@ -89,274 +91,330 @@ contract('Multicall', () => {
     await snapshot.revert(snapshotId);
   });
 
-  // describe('protocol token as "from"', () => {
-  //   when('increasing a position with protocol token', () => {
-  //     const AMOUNT_TO_INCREASE = RATE.mul(AMOUNT_OF_SWAPS);
-  //     let positionId: BigNumber;
-  //     let hubWTokenBalanceAfterDeposit: BigNumber;
-  //     given(async () => {
-  //       positionId = await depositWithWTokenAsFrom();
-  //       hubWTokenBalanceAfterDeposit = await WETH.balanceOf(DCAHub.address);
-
-  //       const permissionData = await addPermissionToCompanionData(positionOwner, positionId, Permission.INCREASE);
-  //       const { data: increaseData } = await DCAHubCompanion.populateTransaction.increasePositionUsingProtocolToken(
-  //         positionId,
-  //         AMOUNT_TO_INCREASE,
-  //         AMOUNT_OF_SWAPS
-  //       );
-  //       await DCAHubCompanion.multicall([permissionData, increaseData!], { value: AMOUNT_TO_INCREASE });
-  //     });
-  //     then('position is increased', async () => {
-  //       const userPosition = await DCAHub.userPosition(positionId);
-  //       expect(userPosition.from).to.equal(WETH_ADDRESS);
-  //       expect(userPosition.rate).to.equal(RATE.mul(2));
-  //       expect(userPosition.swapsLeft).to.equal(AMOUNT_OF_SWAPS);
-  //     });
-  //     then(`hub's wToken balance is increased`, async () => {
-  //       const balance = await WETH.balanceOf(DCAHub.address);
-  //       expect(balance).to.equal(hubWTokenBalanceAfterDeposit.add(AMOUNT_TO_INCREASE));
-  //     });
-  //     thenCompanionRemainsWithoutAnyBalance();
-  //   });
-  //   when('reducing a position with protocol token', () => {
-  //     const AMOUNT_TO_REDUCE = RATE.mul(AMOUNT_OF_SWAPS).div(2);
-  //     let positionId: BigNumber;
-  //     let hubWTokenBalanceAfterDeposit: BigNumber;
-  //     given(async () => {
-  //       positionId = await depositWithWTokenAsFrom();
-  //       hubWTokenBalanceAfterDeposit = await WETH.balanceOf(DCAHub.address);
-
-  //       const permissionData = await addPermissionToCompanionData(positionOwner, positionId, Permission.REDUCE);
-  //       const { data: reduceData } = await DCAHubCompanion.populateTransaction.reducePositionUsingProtocolToken(
-  //         positionId,
-  //         AMOUNT_TO_REDUCE,
-  //         AMOUNT_OF_SWAPS,
-  //         recipient.address
-  //       );
-  //       await DCAHubCompanion.multicall([permissionData, reduceData!]);
-  //     });
-  //     then('position is reduced', async () => {
-  //       const userPosition = await DCAHub.userPosition(positionId);
-  //       expect(userPosition.from).to.equal(WETH_ADDRESS);
-  //       expect(userPosition.rate).to.equal(RATE.div(2));
-  //       expect(userPosition.swapsLeft).to.equal(AMOUNT_OF_SWAPS);
-  //     });
-  //     then(`hub's wToken balance is reduced`, async () => {
-  //       const balance = await WETH.balanceOf(DCAHub.address);
-  //       expect(balance).to.equal(hubWTokenBalanceAfterDeposit.sub(AMOUNT_TO_REDUCE));
-  //     });
-  //     then(`recipients's protocol balance increases`, async () => {
-  //       const balance = await ethers.provider.getBalance(recipient.address);
-  //       expect(balance).to.equal(initialRecipientProtocolBalance.add(AMOUNT_TO_REDUCE));
-  //     });
-  //     thenCompanionRemainsWithoutAnyBalance();
-  //   });
-
-  //   when(`terminating a position with protocol token as 'from'`, () => {
-  //     const AMOUNT_RETURNED = RATE.mul(AMOUNT_OF_SWAPS);
-  //     let positionId: BigNumber;
-  //     let hubWTokenBalanceAfterDeposit: BigNumber;
-  //     given(async () => {
-  //       positionId = await depositWithWTokenAsFrom();
-  //       hubWTokenBalanceAfterDeposit = await WETH.balanceOf(DCAHub.address);
-  //       const permissionData = await addPermissionToCompanionData(positionOwner, positionId, Permission.TERMINATE);
-  //       const { data: terminateData } = await DCAHubCompanion.populateTransaction.terminateUsingProtocolTokenAsFrom(
-  //         positionId,
-  //         recipient.address,
-  //         recipient.address
-  //       );
-  //       await DCAHubCompanion.multicall([permissionData, terminateData!]);
-  //     });
-  //     then('position is terminated', async () => {
-  //       const userPosition = await DCAHub.userPosition(positionId);
-  //       expect(userPosition.swapInterval).to.equal(0);
-  //     });
-  //     then(`hub's wToken balance is reduced`, async () => {
-  //       const balance = await WETH.balanceOf(DCAHub.address);
-  //       expect(balance).to.equal(hubWTokenBalanceAfterDeposit.sub(AMOUNT_RETURNED));
-  //     });
-  //     then(`recipients's protocol balance increases`, async () => {
-  //       const balance = await ethers.provider.getBalance(recipient.address);
-  //       expect(balance).to.equal(initialRecipientProtocolBalance.add(AMOUNT_RETURNED));
-  //     });
-  //     thenCompanionRemainsWithoutAnyBalance();
-  //   });
-  // });
-
-  // describe('protocol token as "to"', () => {
-  //   when('withdrawing from a position', () => {
-  //     let positionId: BigNumber;
-  //     let swappedBalance: BigNumber;
-  //     let hubWTokenBalanceAfterSwap: BigNumber;
-  //     given(async () => {
-  //       ({ positionId, swappedBalance } = await depositWithWTokenAsToAndSwap());
-  //       hubWTokenBalanceAfterSwap = await WETH.balanceOf(DCAHub.address);
-  //       const permissionData = await addPermissionToCompanionData(positionOwner, positionId, Permission.WITHDRAW);
-  //       const { data: withdrawData } = await DCAHubCompanion.populateTransaction.withdrawSwappedUsingProtocolToken(
-  //         positionId,
-  //         recipient.address
-  //       );
-  //       await DCAHubCompanion.multicall([permissionData, withdrawData!]);
-  //     });
-  //     then('position has no more swapped balance', async () => {
-  //       const userPosition = await DCAHub.userPosition(positionId);
-  //       expect(userPosition.swapped).to.equal(0);
-  //     });
-  //     then(`hub's wToken balance is reduced`, async () => {
-  //       const balance = await WETH.balanceOf(DCAHub.address);
-  //       expect(balance).to.equal(hubWTokenBalanceAfterSwap.sub(swappedBalance));
-  //     });
-  //     then(`recipients's protocol balance increases`, async () => {
-  //       const balance = await ethers.provider.getBalance(recipient.address);
-  //       expect(balance).to.equal(initialRecipientProtocolBalance.add(swappedBalance));
-  //     });
-  //     thenCompanionRemainsWithoutAnyBalance();
-  //   });
-
-  //   when('withdrawing many from a position', () => {
-  //     let positionId: BigNumber;
-  //     let swappedBalance: BigNumber;
-  //     let hubWTokenBalanceAfterSwap: BigNumber;
-  //     given(async () => {
-  //       ({ positionId, swappedBalance } = await depositWithWTokenAsToAndSwap());
-  //       hubWTokenBalanceAfterSwap = await WETH.balanceOf(DCAHub.address);
-  //       const permissionData = await addPermissionToCompanionData(positionOwner, positionId, Permission.WITHDRAW);
-  //       const { data: withdrawData } = await DCAHubCompanion.populateTransaction.withdrawSwappedManyUsingProtocolToken(
-  //         [positionId],
-  //         recipient.address
-  //       );
-  //       await DCAHubCompanion.multicall([permissionData, withdrawData!]);
-  //     });
-  //     then('position has no more swapped balance', async () => {
-  //       const userPosition = await DCAHub.userPosition(positionId);
-  //       expect(userPosition.swapped).to.equal(0);
-  //     });
-  //     then(`hub's wToken balance is reduced`, async () => {
-  //       const balance = await WETH.balanceOf(DCAHub.address);
-  //       expect(balance).to.equal(hubWTokenBalanceAfterSwap.sub(swappedBalance));
-  //     });
-  //     then(`recipients's protocol balance increases`, async () => {
-  //       const balance = await ethers.provider.getBalance(recipient.address);
-  //       expect(balance).to.equal(initialRecipientProtocolBalance.add(swappedBalance));
-  //     });
-  //     thenCompanionRemainsWithoutAnyBalance();
-  //   });
-
-  //   when(`terminating a position with protocol token as 'to'`, () => {
-  //     let positionId: BigNumber;
-  //     let swappedBalance: BigNumber;
-  //     let hubWTokenBalanceAfterSwap: BigNumber;
-  //     given(async () => {
-  //       ({ positionId, swappedBalance } = await depositWithWTokenAsToAndSwap());
-  //       hubWTokenBalanceAfterSwap = await WETH.balanceOf(DCAHub.address);
-  //       const permissionData = await addPermissionToCompanionData(positionOwner, positionId, Permission.TERMINATE);
-  //       const { data: terminateData } = await DCAHubCompanion.populateTransaction.terminateUsingProtocolTokenAsTo(
-  //         positionId,
-  //         recipient.address,
-  //         recipient.address
-  //       );
-  //       await DCAHubCompanion.multicall([permissionData, terminateData!]);
-  //     });
-  //     then('position is terminated', async () => {
-  //       const userPosition = await DCAHub.userPosition(positionId);
-  //       expect(userPosition.swapInterval).to.equal(0);
-  //     });
-  //     then(`hub's wToken balance is reduced`, async () => {
-  //       const balance = await WETH.balanceOf(DCAHub.address);
-  //       expect(balance).to.equal(hubWTokenBalanceAfterSwap.sub(swappedBalance));
-  //     });
-  //     then(`recipients's protocol balance increases`, async () => {
-  //       const balance = await ethers.provider.getBalance(recipient.address);
-  //       expect(balance).to.equal(initialRecipientProtocolBalance.add(swappedBalance));
-  //     });
-  //     thenCompanionRemainsWithoutAnyBalance();
-  //   });
-  // });
-
-  when('trying to withdraw swapped and unswapped balance in one tx', () => {
-    let positionId: BigNumber;
-    let swappedBalance: BigNumber, unswappedBalance: BigNumber;
-    let hubFromTokenBalanceAfterSwap: BigNumber, hubToTokenBalanceAfterSwap: BigNumber;
-    given(async () => {
-      ({ positionId, swappedBalance, unswappedBalance } = await depositWithWTokenAsToAndSwap());
-      hubFromTokenBalanceAfterSwap = await USDC.balanceOf(DCAHub.address);
-      hubToTokenBalanceAfterSwap = await WETH.balanceOf(DCAHub.address);
-      const permissionData = await addPermissionToCompanionData(positionOwner, positionId, Permission.REDUCE, Permission.WITHDRAW);
-      const { data: reduceData } = await DCAHubCompanion.populateTransaction.reducePosition(
-        DCAHub.address,
-        positionId,
-        unswappedBalance,
-        0,
-        recipient.address
-      );
-      const { data: withdrawData } = await DCAHubCompanion.populateTransaction.withdrawSwapped(DCAHub.address, positionId, recipient.address);
-      await DCAHubCompanion.multicall([permissionData, reduceData!, withdrawData!]);
+  describe('swap multi calls', () => {
+    describe('swap and deposit', () => {
+      swapAndDepositTest({
+        from: 'ETH',
+        swap: ({ amountIn }) => transformETHToWETH(amountIn),
+      });
+      swapAndDepositTest({
+        from: 'USDC',
+        swap: ({ amountIn }) => swapIn0x({ from: USDC, to: WETH, amountIn }),
+      });
+      function swapAndDepositTest({ from, swap }: { from: 'USDC' | 'ETH'; swap: Swap }) {
+        const AMOUNT_IN = USDC_1000;
+        when(`swapping ${from} to WETH and depositing`, () => {
+          let minExpected: BigNumber;
+          given(async () => {
+            const takeData = await takeFromCallerDataIfUSDC({ from, amount: USDC_1000 });
+            const { swapExecutionData, expectedAmountOut } = await runSwapData({ tokenIn: await getAddress(from), amountIn: AMOUNT_IN, swap });
+            const depositData = await depositAllInCompanionData({ from: WETH, to: WBTC });
+            await DCAHubCompanion.multicall(filterMulticalls([takeData, swapExecutionData, depositData]), {
+              value: from === 'ETH' ? AMOUNT_IN : 0,
+            });
+            minExpected = expectedAmountOut;
+          });
+          then('hub has expected amount of WETH balance', async () => {
+            const balance = await WETH.balanceOf(DCAHub.address);
+            expect(balance.gte(minExpected)).to.be.true;
+          });
+          then('new position is created', async () => {
+            await expectPositionToHaveBeenCreated({ positionId: 1, from: WETH, to: WBTC, minRemaining: minExpected });
+          });
+          thenCompanionRemainsWithoutAnyBalance();
+        });
+      }
     });
-    then(`hub's FROM balance is reduced`, async () => {
-      const balance = await USDC.balanceOf(DCAHub.address);
-      expect(balance).to.equal(hubFromTokenBalanceAfterSwap.sub(unswappedBalance));
+
+    describe('swap and increase', () => {
+      swapAndIncreaseTest({
+        from: 'ETH',
+        swap: ({ amountIn }) => transformETHToWETH(amountIn),
+      });
+      swapAndIncreaseTest({
+        from: 'USDC',
+        swap: ({ amountIn }) => swapIn0x({ from: USDC, to: WETH, amountIn }),
+      });
+      function swapAndIncreaseTest({ from, swap }: { from: 'USDC' | 'ETH'; swap: Swap }) {
+        const AMOUNT_IN = USDC_1000;
+        when(`swapping ${from} to WETH and increasing a position`, () => {
+          let positionId: BigNumber, minExpectedBalance: BigNumber;
+          given(async () => {
+            const { positionId: createdPositionId, unswappedBalance } = await depositAndSwap({ from: WETH, to: USDC, amount: ETH_1 });
+            const takeData = await takeFromCallerDataIfUSDC({ from, amount: USDC_1000 });
+            const { swapExecutionData, expectedAmountOut } = await runSwapData({ tokenIn: await getAddress(from), amountIn: AMOUNT_IN, swap });
+            const permissionData = await givePermissionToCompanionData({
+              signer: positionOwner,
+              positionId: createdPositionId,
+              permissions: [Permission.INCREASE],
+            });
+            const increaseData = await increaseAllInCompanionData({ positionId: createdPositionId });
+            await DCAHubCompanion.multicall(filterMulticalls([takeData, swapExecutionData, permissionData, increaseData]), {
+              value: from === 'ETH' ? AMOUNT_IN : 0,
+            });
+            minExpectedBalance = unswappedBalance.add(expectedAmountOut);
+            positionId = createdPositionId;
+          });
+          then('hub has expected amount of WETH balance', async () => {
+            const balance = await WETH.balanceOf(DCAHub.address);
+            expect(balance.gte(minExpectedBalance)).to.be.true;
+          });
+          then('position was increased', async () => {
+            const { remaining } = await DCAHub.userPosition(positionId);
+            expect(remaining.gte(minExpectedBalance)).to.be.true;
+          });
+          thenCompanionRemainsWithoutAnyBalance();
+        });
+      }
     });
-    then(`hub's TO balance is reduced`, async () => {
-      const balance = await WETH.balanceOf(DCAHub.address);
-      expect(balance).to.equal(hubToTokenBalanceAfterSwap.sub(swappedBalance));
+
+    describe('withdraw and swap', () => {
+      withdrawAndSwapTest({
+        to: 'ETH',
+        swap: ({ amountIn }) => transformWETHToETH(amountIn),
+      });
+      withdrawAndSwapTest({
+        to: 'USDC',
+        swap: ({ amountIn }) => swapIn0x({ from: WETH, to: USDC, amountIn }),
+      });
+      function withdrawAndSwapTest({ to, swap }: { to: 'USDC' | 'ETH'; swap: Swap }) {
+        when(`withdrawing and swapping from WETH to ${to}`, () => {
+          let minExpected: BigNumber;
+          given(async () => {
+            const { positionId, swappedBalance } = await depositAndSwap({ from: USDC, to: WETH, amount: USDC_1000 });
+            const permissionData = await givePermissionToCompanionData({
+              signer: positionOwner,
+              positionId,
+              permissions: [Permission.WITHDRAW],
+            });
+            const withdrawData = await withdrawSwappedData({ positionId, recipient: DCAHubCompanion });
+            const { swapExecutionData, expectedAmountOut } = await runSwapData({ tokenIn: WETH.address, amountIn: swappedBalance, swap });
+            const sendData = await sendAllInCompanionToRecipientData({ token: await getAddress(to), recipient });
+            await DCAHubCompanion.multicall([permissionData, withdrawData, swapExecutionData, sendData]);
+            minExpected = expectedAmountOut;
+          });
+          if (to === 'USDC') {
+            then('recipient has expected amount of USDC balance', async () => {
+              const balance = await USDC.balanceOf(recipient.address);
+              expect(balance.gte(minExpected)).to.be.true;
+            });
+          } else {
+            then('recipient has expected amount of ETH balance', async () => {
+              const balance = await ethers.provider.getBalance(recipient.address);
+              expect(balance.gte(recipientInitialETHBalance.add(minExpected))).to.be.true;
+            });
+          }
+          thenCompanionRemainsWithoutAnyBalance();
+        });
+      }
     });
-    then(`recipients's FROM increases`, async () => {
-      const balance = await USDC.balanceOf(recipient.address);
-      expect(balance).to.equal(unswappedBalance);
+
+    describe('reduce and swap', () => {
+      reduceAndSwapTest({
+        to: 'ETH',
+        swap: ({ amountIn }) => transformWETHToETH(amountIn),
+      });
+      reduceAndSwapTest({
+        to: 'USDC',
+        swap: ({ amountIn }) => swapIn0x({ from: WETH, to: USDC, amountIn }),
+      });
+      function reduceAndSwapTest({ to, swap }: { to: 'USDC' | 'ETH'; swap: Swap }) {
+        when(`reducing position and swapping from WETH to ${to}`, () => {
+          let minExpected: BigNumber;
+          given(async () => {
+            const { positionId, unswappedBalance } = await depositAndSwap({ from: WETH, to: USDC, amount: ETH_1 });
+            const permissionData = await givePermissionToCompanionData({ signer: positionOwner, positionId, permissions: [Permission.REDUCE] });
+            const reduceData = await reduceAllPositionData({ positionId, recipient: DCAHubCompanion });
+            const { swapExecutionData, expectedAmountOut } = await runSwapData({ tokenIn: WETH.address, amountIn: unswappedBalance, swap });
+            const sendData = await sendAllInCompanionToRecipientData({ token: await getAddress(to), recipient });
+            await DCAHubCompanion.multicall([permissionData, reduceData, swapExecutionData, sendData]);
+            minExpected = expectedAmountOut;
+          });
+          if (to === 'USDC') {
+            then('recipient has expected amount of USDC balance', async () => {
+              const balance = await USDC.balanceOf(recipient.address);
+              expect(balance.gte(minExpected)).to.be.true;
+            });
+          } else {
+            then('recipient has expected amount of ETH balance', async () => {
+              const balance = await ethers.provider.getBalance(recipient.address);
+              expect(balance.gte(recipientInitialETHBalance.add(minExpected))).to.be.true;
+            });
+          }
+          thenCompanionRemainsWithoutAnyBalance();
+        });
+      }
     });
-    then(`recipients's TO increases`, async () => {
-      const balance = await WETH.balanceOf(recipient.address);
-      expect(balance).to.equal(swappedBalance);
+
+    describe('terminate and swap', () => {
+      when('terminating a position and swapping WETH to ETH, and USDC to wBTC', () => {
+        let expectedAmountOutETH: BigNumber, expectedAmountOutBTC: BigNumber;
+        given(async () => {
+          const { positionId, swappedBalance, unswappedBalance } = await depositAndSwap({ from: WETH, to: USDC, amount: ETH_1 });
+          const permissionData = await givePermissionToCompanionData({ signer: positionOwner, positionId, permissions: [Permission.TERMINATE] });
+          const terminateData = await terminateAndSendToCompanionData({ positionId });
+          const { swapExecutionData: executionDataETH, expectedAmountOut: _expectedAmountOutETH } = await runSwapData({
+            tokenIn: WETH.address,
+            amountIn: unswappedBalance,
+            swap: ({ amountIn }) => transformWETHToETH(amountIn),
+          });
+          const { swapExecutionData: executionDataWBTC, expectedAmountOut: _expectedAmountOutBTC } = await runSwapData({
+            tokenIn: USDC.address,
+            amountIn: swappedBalance,
+            swap: ({ amountIn }) => swapIn0x({ from: USDC, to: WBTC, amountIn }),
+          });
+          const sendETHData = await sendAllInCompanionToRecipientData({ token: await DCAHubCompanion.PROTOCOL_TOKEN(), recipient });
+          const sendWBTCData = await sendAllERC20InCompanionToRecipientData({ token: WBTC, recipient });
+          await DCAHubCompanion.multicall([permissionData, terminateData, executionDataETH, sendETHData, executionDataWBTC, sendWBTCData]);
+          expectedAmountOutETH = _expectedAmountOutETH;
+          expectedAmountOutBTC = _expectedAmountOutBTC;
+        });
+        then('recipient has expected amount of wBTC balance', async () => {
+          const balance = await WBTC.balanceOf(recipient.address);
+          expect(balance.gte(expectedAmountOutBTC)).to.be.true;
+        });
+        then('recipient has expected amount of ETH balance', async () => {
+          const balance = await ethers.provider.getBalance(recipient.address);
+          expect(balance.gte(recipientInitialETHBalance.add(expectedAmountOutETH))).to.be.true;
+        });
+        thenCompanionRemainsWithoutAnyBalance();
+      });
     });
-    thenCompanionRemainsWithoutAnyBalance();
+
+    async function takeFromCallerDataIfUSDC({ from, amount }: { from: 'USDC' | 'ETH'; amount: BigNumberish }) {
+      if (from === 'USDC') {
+        await USDC.connect(positionOwner).approve(DCAHubCompanion.address, amount);
+        const takeData = await takeFromCallerData({ token: USDC, amount });
+        return takeData;
+      }
+    }
+
+    function filterMulticalls(multicalls: (undefined | BytesLike)[]): BytesLike[] {
+      return multicalls.filter((call): call is BytesLike => !!call);
+    }
+
+    async function getAddress(token: 'USDC' | 'ETH') {
+      return token === 'USDC' ? USDC.address : await DCAHubCompanion.PROTOCOL_TOKEN();
+    }
   });
 
-  when('trying to withdraw swapped and create a new position with it', () => {
-    let positionId: BigNumber;
-    let swappedBalance: BigNumber;
-    let hubWETHBalanceAfterSwap: BigNumber;
-    given(async () => {
-      ({ positionId, swappedBalance } = await depositWithWTokenAsToAndSwap());
-      hubWETHBalanceAfterSwap = await WETH.balanceOf(DCAHub.address);
-      const permissionData = await addPermissionToCompanionData(positionOwner, positionId, Permission.WITHDRAW);
-      const { data: withdrawData } = await DCAHubCompanion.populateTransaction.withdrawSwapped(
-        DCAHub.address,
-        positionId,
-        DCAHubCompanion.address
-      );
-      const { data: depositData } = await DCAHubCompanion.populateTransaction.deposit(
-        DCAHub.address,
-        WETH.address,
-        USDC.address,
-        swappedBalance,
-        1,
-        SwapInterval.ONE_MINUTE.seconds,
-        positionOwner.address,
-        [],
-        ethers.utils.randomBytes(0)
-      );
+  describe('non-swap multi calls', () => {
+    when('withdrawing swapped balance and creating a new position with it', () => {
+      let positionId: BigNumber, newPositionId: BigNumber;
+      let swappedBalance: BigNumber;
+      let hubToBalance: BigNumber;
+      given(async () => {
+        ({ positionId, swappedBalance, hubToBalance } = await depositAndSwap({ from: USDC, to: WETH, amount: USDC_1000 }));
+        newPositionId = positionId.add(1);
+        const permissionData = await givePermissionToCompanionData({ signer: positionOwner, positionId, permissions: [Permission.WITHDRAW] });
+        const withdrawData = await withdrawSwappedData({ positionId, recipient: DCAHubCompanion });
+        const depositData = await depositAllInCompanionData({ from: WETH, to: USDC });
+        await DCAHubCompanion.multicall([permissionData, withdrawData, depositData]);
+      });
+      then(`hub's WETH balance stays the same`, async () => {
+        await expectBalanceToBe(WETH, DCAHub, hubToBalance);
+      });
+      then('original position has nothing left to withdraw', async () => {
+        const { swapped } = await DCAHub.userPosition(positionId);
+        expect(swapped).to.equal(0);
+      });
+      then('new position is created', async () => {
+        await expectPositionToHaveBeenCreated({ positionId: newPositionId, from: WETH, to: USDC, remaining: swappedBalance });
+      });
+      then(`owner is correctly assigned`, async () => {
+        expect(await DCAPermissionManager.ownerOf(newPositionId)).to.equal(positionOwner.address);
+      });
+      thenCompanionRemainsWithoutAnyBalance();
+    });
 
-      await DCAHubCompanion.multicall([permissionData, withdrawData!, depositData!]);
+    when('trying to withdraw swapped and unswapped balance in one tx', () => {
+      let positionId: BigNumber;
+      let swappedBalance: BigNumber, unswappedBalance: BigNumber;
+      let hubFromBalance: BigNumber, hubToBalance: BigNumber;
+      given(async () => {
+        ({ positionId, swappedBalance, unswappedBalance, hubFromBalance, hubToBalance } = await depositAndSwap({
+          from: USDC,
+          to: WETH,
+          amount: USDC_1000,
+        }));
+        const permissionData = await givePermissionToCompanionData({
+          signer: positionOwner,
+          positionId,
+          permissions: [Permission.REDUCE, Permission.WITHDRAW],
+        });
+        const reduceData = await reduceAllPositionData({ positionId, recipient });
+        const withdrawData = await withdrawSwappedData({ positionId, recipient });
+        await DCAHubCompanion.multicall([permissionData, reduceData, withdrawData]);
+      });
+      then(`hub's USDC balance is reduced`, async () => {
+        await expectBalanceToBe(USDC, DCAHub, hubFromBalance.sub(unswappedBalance));
+      });
+      then(`hub's WETH balance is reduced`, async () => {
+        await expectBalanceToBe(WETH, DCAHub, hubToBalance.sub(swappedBalance));
+      });
+      then(`recipients's USDC increases`, async () => {
+        await expectBalanceToBe(USDC, recipient, unswappedBalance);
+      });
+      then(`recipients's WETH increases`, async () => {
+        await expectBalanceToBe(WETH, recipient, swappedBalance);
+      });
+      thenCompanionRemainsWithoutAnyBalance();
     });
-    then(`hub's WETH balance stays the same`, async () => {
-      const balance = await WETH.balanceOf(DCAHub.address);
-      expect(balance).to.equal(hubWETHBalanceAfterSwap);
+
+    when('creating many positions in one tx', () => {
+      const TOTAL = USDC_1000;
+      const QUARTER = TOTAL.div(4);
+      given(async () => {
+        await USDC.connect(positionOwner).approve(DCAHubCompanion.address, constants.MAX_UINT_256);
+        const takeData = await takeFromCallerData({ token: USDC, amount: TOTAL });
+        const depositData1 = await depositFromCompanionData({ from: USDC, to: WETH, amount: QUARTER });
+        const depositData2 = await depositFromCompanionData({ from: USDC, to: WBTC, amount: QUARTER });
+        const depositData3 = await depositAllInCompanionData({ from: USDC, to: WETH });
+        await DCAHubCompanion.multicall([takeData, depositData1, depositData2, depositData3]);
+      });
+      then(`hub's USDC balance to be correct`, async () => {
+        await expectBalanceToBe(USDC, DCAHub, TOTAL);
+      });
+      then('new positions are created', async () => {
+        await expectPositionToHaveBeenCreated({ positionId: 1, from: USDC, to: WETH, remaining: QUARTER });
+        await expectPositionToHaveBeenCreated({ positionId: 2, from: USDC, to: WBTC, remaining: QUARTER });
+        await expectPositionToHaveBeenCreated({ positionId: 3, from: USDC, to: WETH, remaining: TOTAL.sub(QUARTER).sub(QUARTER) });
+      });
+      thenCompanionRemainsWithoutAnyBalance();
     });
-    then(`original position has nothing left to withdraw`, async () => {
-      const { swapped } = await DCAHub.userPosition(positionId);
-      expect(swapped).to.equal(0);
+
+    when('withdrawing to many recipients', () => {
+      let positionId: BigNumber;
+      let swappedBalance: BigNumber, hubToBalance: BigNumber;
+      let otherRecipient: Wallet;
+      given(async () => {
+        otherRecipient = await wallet.generateRandom();
+        ({ positionId, swappedBalance, hubToBalance } = await depositAndSwap({
+          from: USDC,
+          to: WETH,
+          amount: utils.parseUnits('1000', 6),
+        }));
+        const permissionData = await givePermissionToCompanionData({
+          signer: positionOwner,
+          positionId,
+          permissions: [Permission.WITHDRAW],
+        });
+        const withdrawToCompanionData = await withdrawSwappedData({ positionId, recipient: DCAHubCompanion });
+        const sendHalfData = await sendToRecipientData({ token: WETH, amount: swappedBalance.div(2), recipient });
+        const sendOtherHalfData = await sendAllERC20InCompanionToRecipientData({ token: WETH, recipient: otherRecipient });
+        await DCAHubCompanion.multicall([permissionData, withdrawToCompanionData, sendHalfData, sendOtherHalfData]);
+      });
+      then(`hub's WETH balance is reduced`, async () => {
+        await expectBalanceToBe(WETH, DCAHub, hubToBalance.sub(swappedBalance));
+      });
+      then(`first recipients's WETH increases`, async () => {
+        await expectBalanceToBe(WETH, recipient, swappedBalance.div(2));
+      });
+      then(`second recipients's WETH increases`, async () => {
+        await expectBalanceToBe(WETH, otherRecipient, swappedBalance.sub(swappedBalance.div(2)));
+      });
+      thenCompanionRemainsWithoutAnyBalance();
     });
-    then(`new position is created`, async () => {
-      const { from, to, swapsExecuted, remaining } = await DCAHub.userPosition(positionId.add(1));
-      expect(from.toLowerCase()).to.eql(WETH.address.toLowerCase());
-      expect(to.toLowerCase()).to.equal(USDC.address.toLowerCase());
-      expect(swapsExecuted).to.equal(0);
-      expect(remaining).to.equal(swappedBalance);
-    });
-    then(`owner is correctly assigned`, async () => {
-      expect(await DCAPermissionManager.ownerOf(positionId.add(1))).to.equal(positionOwner.address);
-    });
-    thenCompanionRemainsWithoutAnyBalance();
   });
 
   when('trying to use an invalid permit through multicall', () => {
@@ -364,8 +422,8 @@ contract('Multicall', () => {
     let permissionData: string;
 
     given(async () => {
-      const positionId = await depositWithWTokenAsFrom();
-      permissionData = await addPermissionToCompanionData(recipient, positionId, Permission.REDUCE);
+      const { positionId } = await depositAndSwap({ from: WETH, to: USDC, amount: ETH_1 });
+      permissionData = await givePermissionToCompanionData({ signer: recipient, positionId, permissions: [Permission.REDUCE] });
       tx = DCAHubCompanion.multicall([permissionData]);
     });
     then('reverts with message', async () => {
@@ -375,68 +433,110 @@ contract('Multicall', () => {
 
   function thenCompanionRemainsWithoutAnyBalance() {
     then('companion continues without wToken balance', async () => {
-      const balance = await WETH.balanceOf(DCAHubCompanion.address);
-      expect(balance).to.equal(0);
+      await expectToHaveNoBalance(WETH, DCAHubCompanion);
     });
-    then('companion continues without platform balance', async () => {
-      const balance = await ethers.provider.getBalance(DCAHubCompanion.address);
-      expect(balance).to.equal(0);
+    then('companion continues without USDC balance', async () => {
+      await expectToHaveNoBalance(USDC, DCAHubCompanion);
     });
+    then('companion continues without WBTC balance', async () => {
+      await expectToHaveNoBalance(WBTC, DCAHubCompanion);
+    });
+    then('companion continues without native balance', async () => {
+      await expectToHaveNoNativeBalance(DCAHubCompanion);
+    });
+  }
+
+  async function expectToHaveNoBalance(token: IERC20, hasAddress: HasAddress) {
+    await expectBalanceToBe(token, hasAddress, 0);
+  }
+
+  async function expectToHaveNoNativeBalance(hasAddress: HasAddress) {
+    await expectNativeBalanceToBe(hasAddress, 0);
+  }
+
+  async function expectBalanceToBe(token: IERC20, hasAddress: HasAddress, expectedBalance: BigNumberish) {
+    const balance = await token.balanceOf(hasAddress.address);
+    expect(balance).to.equal(expectedBalance);
+  }
+
+  async function expectNativeBalanceToBe(hasAddress: HasAddress, expectedBalance: BigNumberish) {
+    const balance = await ethers.provider.getBalance(hasAddress.address);
+    expect(balance).to.equal(expectedBalance);
+  }
+
+  async function expectPositionToHaveBeenCreated({
+    positionId,
+    ...expected
+  }: {
+    positionId: BigNumberish;
+    from: IERC20;
+    to: IERC20;
+    remaining?: BigNumberish;
+    minRemaining?: BigNumberish;
+  }) {
+    const { from, to, swapsExecuted, remaining } = await DCAHub.userPosition(positionId);
+    expect(from.toLowerCase()).to.eql(expected.from.address.toLowerCase());
+    expect(to.toLowerCase()).to.equal(expected.to.address.toLowerCase());
+    expect(swapsExecuted).to.equal(0);
+    if (expected.remaining) {
+      expect(remaining).to.equal(expected.remaining);
+    }
+    if (expected.minRemaining) {
+      expect(remaining.gte(expected.minRemaining)).to.be.true;
+    }
   }
 
   async function distributeTokensToUsers() {
     const wethWhale = await wallet.impersonate(WETH_WHALE_ADDRESS);
     const usdcWhale = await wallet.impersonate(USDC_WHALE_ADDRESS);
+    const wbtcWhale = await wallet.impersonate(WBTC_WHALE_ADDRESS);
+    await ethers.provider.send('hardhat_setBalance', [WBTC_WHALE_ADDRESS, '0xffffffffffffffff']);
     await ethers.provider.send('hardhat_setBalance', [WETH_WHALE_ADDRESS, '0xffffffffffffffff']);
     await ethers.provider.send('hardhat_setBalance', [USDC_WHALE_ADDRESS, '0xffffffffffffffff']);
-    await WETH.connect(wethWhale).transfer(swapper.address, BigNumber.from(10).pow(19));
-    await WETH.connect(wethWhale).transfer(positionOwner.address, BigNumber.from(10).pow(19));
-    await USDC.connect(usdcWhale).transfer(positionOwner.address, BigNumber.from(10).pow(12));
-    await USDC.connect(usdcWhale).transfer(swapper.address, BigNumber.from(10).pow(12));
+    await WETH.connect(wethWhale).transfer(positionOwner.address, ETH_1);
+    await USDC.connect(usdcWhale).transfer(positionOwner.address, utils.parseUnits('100000', 6));
+    await WBTC.connect(wbtcWhale).transfer(positionOwner.address, utils.parseUnits('1', 6));
+    await WETH.connect(wethWhale).transfer(swapper.address, ETH_1);
+    await USDC.connect(usdcWhale).transfer(swapper.address, utils.parseUnits('100000', 6));
+    await WBTC.connect(wbtcWhale).transfer(swapper.address, utils.parseUnits('1', 6));
   }
 
-  async function depositWithWTokenAsFrom() {
-    await WETH.connect(positionOwner).approve(DCAHub.address, RATE.mul(AMOUNT_OF_SWAPS));
+  async function depositAndSwap({ from, to, amount }: { from: IERC20; to: IERC20; amount: BigNumber }) {
+    await from.connect(positionOwner).approve(DCAHub.address, constants.MAX_UINT_256);
     const tx = await DCAHub.connect(positionOwner)['deposit(address,address,uint256,uint32,uint32,address,(address,uint8[])[])'](
-      WETH.address,
-      USDC.address,
-      RATE.mul(AMOUNT_OF_SWAPS),
+      from.address,
+      to.address,
+      amount,
       AMOUNT_OF_SWAPS,
-      SwapInterval.ONE_MINUTE.seconds,
-      positionOwner.address,
-      []
-    );
-    const event = await getHubEvent(tx, 'Deposited');
-    return event.args.positionId;
-  }
-
-  async function depositWithWTokenAsToAndSwap() {
-    await USDC.connect(positionOwner).approve(DCAHub.address, constants.MAX_UINT_256);
-    const tx = await DCAHub.connect(positionOwner)['deposit(address,address,uint256,uint32,uint32,address,(address,uint8[])[])'](
-      USDC.address,
-      WETH.address,
-      RATE.mul(AMOUNT_OF_SWAPS),
-      AMOUNT_OF_SWAPS,
-      SwapInterval.ONE_MINUTE.seconds,
+      SwapInterval.ONE_DAY.seconds,
       positionOwner.address,
       []
     );
     const event = await getHubEvent(tx, 'Deposited');
     const positionId = event.args.positionId;
 
-    await WETH.connect(swapper).approve(DCAHubSwapper.address, constants.MAX_UINT_256);
-    await DCAHubSwapper.connect(swapper).swapForCaller(
-      DCAHub.address,
-      [USDC_ADDRESS, WETH_ADDRESS],
-      [{ indexTokenA: 0, indexTokenB: 1 }],
-      [0, 0],
-      [constants.MAX_UINT_256, constants.MAX_UINT_256],
-      swapper.address,
-      constants.MAX_UINT_256
-    );
+    await to.connect(swapper).approve(DCAHubSwapper.address, constants.MAX_UINT_256);
+    await DCAHubSwapper.connect(swapper).swapForCaller({
+      hub: DCAHub.address,
+      tokens: [USDC_ADDRESS, WETH_ADDRESS],
+      pairsToSwap: [{ indexTokenA: 0, indexTokenB: 1 }],
+      oracleData: [],
+      minimumOutput: [0, 0],
+      maximumInput: [constants.MAX_UINT_256, constants.MAX_UINT_256],
+      recipient: swapper.address,
+      deadline: constants.MAX_UINT_256,
+    });
 
-    const { swapped } = await DCAHub.userPosition(positionId);
-    return { positionId, swappedBalance: swapped, unswappedBalance: RATE.mul(AMOUNT_OF_SWAPS - 1) };
+    const { swapped, remaining } = await DCAHub.userPosition(positionId);
+    const hubFromBalance = await from.balanceOf(DCAHub.address);
+    const hubToBalance = await to.balanceOf(DCAHub.address);
+    return {
+      positionId,
+      swappedBalance: swapped,
+      unswappedBalance: remaining,
+      hubFromBalance,
+      hubToBalance,
+    };
   }
 
   function getHubEvent(tx: TransactionResponse, name: string): Promise<utils.LogDescription> {
@@ -464,19 +564,161 @@ contract('Multicall', () => {
     return Promise.reject();
   }
 
-  async function addPermissionToCompanionData(signer: SignerWithAddress, tokenId: BigNumber, ...permissions: Permission[]) {
+  async function givePermissionToCompanionData({
+    signer,
+    positionId,
+    permissions,
+  }: {
+    signer: SignerWithAddress;
+    positionId: BigNumberish;
+    permissions: Permission[];
+  }) {
     const permissionsStruct = [{ operator: DCAHubCompanion.address, permissions }];
-    const { v, r, s } = await getSignature(signer, tokenId, permissionsStruct);
+    const { v, r, s } = await getSignature(signer, positionId, permissionsStruct);
     const { data } = await DCAHubCompanion.populateTransaction.permissionPermit(
       DCAPermissionManager.address,
       permissionsStruct,
-      tokenId,
+      positionId,
       constants.MAX_UINT_256,
       v,
       r,
       s
     );
     return data!;
+  }
+
+  type Swap = (_: { amountIn: BigNumber }) => Promise<{ swapper: string; swapData: BytesLike; expectedAmountOut: BigNumber }>;
+  async function runSwapData({ tokenIn, amountIn, swap }: { tokenIn: string; amountIn: BigNumber; swap: Swap }) {
+    const { swapper, swapData, expectedAmountOut } = await swap({ amountIn });
+    const { data } = await DCAHubCompanion.populateTransaction.runSwap({
+      swapper,
+      allowanceTarget: swapper,
+      swapData,
+      tokenIn,
+      amountIn,
+    });
+    return { swapExecutionData: data!, expectedAmountOut };
+  }
+
+  async function withdrawSwappedData({ positionId, recipient }: { positionId: BigNumberish; recipient: HasAddress }) {
+    const { data } = await DCAHubCompanion.populateTransaction.withdrawSwapped(DCAHub.address, positionId, recipient.address);
+    return data!;
+  }
+
+  async function reduceAllPositionData({ positionId, recipient }: { positionId: BigNumberish; recipient: HasAddress }) {
+    const { remaining } = await DCAHub.userPosition(positionId);
+    const { data } = await DCAHubCompanion.populateTransaction.reducePosition(DCAHub.address, positionId, remaining, 0, recipient.address);
+    return data!;
+  }
+
+  async function terminateAndSendToCompanionData({ positionId }: { positionId: BigNumberish }) {
+    const { data } = await DCAHubCompanion.populateTransaction.terminate(
+      DCAHub.address,
+      positionId,
+      DCAHubCompanion.address,
+      DCAHubCompanion.address
+    );
+    return data!;
+  }
+
+  async function depositAllInCompanionData({ from, to }: { from: IERC20; to: IERC20 }) {
+    const { data } = await DCAHubCompanion.populateTransaction.depositWithBalanceOnContract(
+      DCAHub.address,
+      from.address,
+      to.address,
+      1,
+      SwapInterval.ONE_DAY.seconds,
+      positionOwner.address,
+      [],
+      []
+    );
+    return data!;
+  }
+
+  async function depositFromCompanionData({ from, to, amount }: { from: IERC20; to: IERC20; amount: BigNumberish }) {
+    const { data } = await DCAHubCompanion.populateTransaction.deposit(
+      DCAHub.address,
+      from.address,
+      to.address,
+      amount,
+      1,
+      SwapInterval.ONE_DAY.seconds,
+      positionOwner.address,
+      [],
+      []
+    );
+    return data!;
+  }
+
+  async function increaseAllInCompanionData({ positionId }: { positionId: BigNumber }) {
+    const { data } = await DCAHubCompanion.populateTransaction.increasePositionWithBalanceOnContract(DCAHub.address, positionId, 1);
+    return data!;
+  }
+
+  async function takeFromCallerData({ token, amount }: { token: IERC20; amount: BigNumberish }) {
+    const { data } = await DCAHubCompanion.populateTransaction.takeFromCaller(token.address, amount);
+    return data!;
+  }
+
+  async function sendToRecipientData({ token, amount, recipient }: { token: IERC20; amount: BigNumberish; recipient: HasAddress }) {
+    const { data } = await DCAHubCompanion.populateTransaction.sendToRecipient(token.address, amount, recipient.address);
+    return data!;
+  }
+
+  function sendAllERC20InCompanionToRecipientData({ token, recipient }: { token: IERC20; recipient: HasAddress }) {
+    return sendAllInCompanionToRecipientData({ token: token.address, recipient });
+  }
+
+  async function sendAllInCompanionToRecipientData({ token, recipient }: { token: string; recipient: HasAddress }) {
+    const { data } = await DCAHubCompanion.populateTransaction.sendBalanceOnContractToRecipient(token, recipient.address);
+    return data!;
+  }
+
+  async function transformWETHToETH(amount: BigNumber) {
+    const { data } = await transformerRegistry.populateTransaction.transformToUnderlying(
+      WETH.address,
+      amount,
+      DCAHubCompanion.address,
+      [{ underlying: await DCAHubCompanion.PROTOCOL_TOKEN(), amount }],
+      constants.MAX_UINT_256
+    );
+    return {
+      swapData: data!,
+      swapper: transformerRegistry.address,
+      expectedAmountOut: amount,
+    };
+  }
+
+  async function transformETHToWETH(amount: BigNumber) {
+    const { data } = await transformerRegistry.populateTransaction.transformToDependent(
+      WETH.address,
+      [{ underlying: await DCAHubCompanion.PROTOCOL_TOKEN(), amount }],
+      DCAHubCompanion.address,
+      amount,
+      constants.MAX_UINT_256
+    );
+    return {
+      swapData: data!,
+      swapper: transformerRegistry.address,
+      expectedAmountOut: amount,
+    };
+  }
+
+  async function swapIn0x({ from, to, amountIn }: { from: IERC20; to: IERC20; amountIn: BigNumber }) {
+    const dexQuote = await zrx.quote({
+      chainId: 1,
+      sellToken: from.address,
+      buyToken: to.address,
+      sellAmount: amountIn,
+      slippagePercentage: 0.05, // 5%
+      takerAddress: DCAHubCompanion.address,
+      skipValidation: true,
+    });
+    return {
+      swapData: dexQuote.data,
+      swapper: dexQuote.to,
+      expectedAmountOut: BigNumber.from(dexQuote.buyAmount).mul(95).div(100), // Take 5% due to slippage
+    };
   }
 
   const PermissionSet = [
@@ -491,17 +733,17 @@ contract('Multicall', () => {
     { name: 'deadline', type: 'uint256' },
   ];
 
-  async function getSignature(signer: SignerWithAddress, tokenId: BigNumber, permissions: { operator: string; permissions: Permission[] }[]) {
+  async function getSignature(signer: SignerWithAddress, tokenId: BigNumberish, permissions: { operator: string; permissions: Permission[] }[]) {
     const { domain, types, value } = buildPermitData(tokenId, permissions);
     const signature = await signer._signTypedData(domain, types, value);
     return fromRpcSig(signature);
   }
 
-  function buildPermitData(tokenId: BigNumber, permissions: { operator: string; permissions: Permission[] }[]) {
+  function buildPermitData(tokenId: BigNumberish, permissions: { operator: string; permissions: Permission[] }[]) {
     return {
       primaryType: 'PermissionPermit',
       types: { PermissionSet, PermissionPermit },
-      domain: { name: 'Mean Finance - DCA Position', version: '1', chainId, verifyingContract: DCAPermissionManager.address },
+      domain: { name: 'Mean Finance - DCA Position', version: '2', chainId, verifyingContract: DCAPermissionManager.address },
       value: { tokenId, permissions, nonce: 0, deadline: constants.MAX_UINT_256 },
     };
   }
@@ -512,4 +754,6 @@ contract('Multicall', () => {
     WITHDRAW,
     TERMINATE,
   }
+
+  type HasAddress = { address: string };
 });

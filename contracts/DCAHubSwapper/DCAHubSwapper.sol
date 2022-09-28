@@ -26,6 +26,8 @@ contract DCAHubSwapper is DeadlineValidation, AccessControl, GetBalances, IDCAHu
     address[] swappers;
     // The different swaps to execute
     SwapExecution[] executions;
+    // A list of tokens to check for unspent balance
+    address[] intermediateTokensToCheck;
     // The address that will receive the unspent tokens
     address leftoverRecipient;
     // This flag is just a way to make transactions cheaper. If Mean Finance is executing the swap, then it's the same for us
@@ -57,45 +59,46 @@ contract DCAHubSwapper is DeadlineValidation, AccessControl, GetBalances, IDCAHu
     _setRoleAdmin(ADMIN_ROLE, SUPER_ADMIN_ROLE);
     _setRoleAdmin(SWAP_EXECUTION_ROLE, SUPER_ADMIN_ROLE);
     _setupRole(SUPER_ADMIN_ROLE, _superAdmin);
-    for (uint256 i; i < _initialAdmins.length; i++) {
+    for (uint256 i = 0; i < _initialAdmins.length; i++) {
       _setupRole(ADMIN_ROLE, _initialAdmins[i]);
     }
-    for (uint256 i; i < _initialSwapExecutors.length; i++) {
+    for (uint256 i = 0; i < _initialSwapExecutors.length; i++) {
       _setupRole(SWAP_EXECUTION_ROLE, _initialSwapExecutors[i]);
     }
   }
 
   /// @inheritdoc IDCAHubSwapper
-  function swapForCaller(
-    IDCAHub _hub,
-    address[] calldata _tokens,
-    IDCAHub.PairIndexes[] calldata _pairsToSwap,
-    uint256[] calldata _minimumOutput,
-    uint256[] calldata _maximumInput,
-    address _recipient,
-    uint256 _deadline
-  ) external payable checkDeadline(_deadline) onlyRole(SWAP_EXECUTION_ROLE) returns (IDCAHub.SwapInfo memory _swapInfo) {
+  function swapForCaller(SwapForCallerParams calldata _parameters)
+    external
+    payable
+    checkDeadline(_parameters.deadline)
+    onlyRole(SWAP_EXECUTION_ROLE)
+    returns (IDCAHub.SwapInfo memory _swapInfo)
+  {
     // Set the swap's executor
     _swapExecutor = msg.sender;
 
     // Execute swap
-    uint256[] memory _borrow = new uint256[](_tokens.length);
-    _swapInfo = _hub.swap(
-      _tokens,
-      _pairsToSwap,
-      _recipient,
+    _swapInfo = _parameters.hub.swap(
+      _parameters.tokens,
+      _parameters.pairsToSwap,
+      _parameters.recipient,
       address(this),
-      _borrow,
-      abi.encode(SwapData({plan: SwapPlan.SWAP_FOR_CALLER, data: ''}))
+      new uint256[](_parameters.tokens.length),
+      abi.encode(SwapData({plan: SwapPlan.SWAP_FOR_CALLER, data: ''})),
+      _parameters.oracleData
     );
 
     // Check that limits were met
-    for (uint256 i; i < _swapInfo.tokens.length; i++) {
+    for (uint256 i = 0; i < _swapInfo.tokens.length; ) {
       IDCAHub.TokenInSwap memory _tokenInSwap = _swapInfo.tokens[i];
-      if (_tokenInSwap.reward < _minimumOutput[i]) {
+      if (_tokenInSwap.reward < _parameters.minimumOutput[i]) {
         revert RewardNotEnough();
-      } else if (_tokenInSwap.toProvide > _maximumInput[i]) {
+      } else if (_tokenInSwap.toProvide > _parameters.maximumInput[i]) {
         revert ToProvideIsTooMuch();
+      }
+      unchecked {
+        i++;
       }
     }
 
@@ -124,6 +127,30 @@ contract DCAHubSwapper is DeadlineValidation, AccessControl, GetBalances, IDCAHu
   }
 
   /// @inheritdoc IDCAHubSwapper
+  function optimizedSwap(OptimizedSwapParams calldata _parameters)
+    external
+    payable
+    checkDeadline(_parameters.deadline)
+    onlyRole(SWAP_EXECUTION_ROLE)
+    returns (IDCAHub.SwapInfo memory)
+  {
+    // Approve whatever is necessary
+    _approveAllowances(_parameters.allowanceTargets);
+
+    // Execute swap
+    return
+      _parameters.hub.swap(
+        _parameters.tokens,
+        _parameters.pairsToSwap,
+        address(this),
+        address(this),
+        new uint256[](_parameters.tokens.length),
+        _parameters.callbackData,
+        _parameters.oracleData
+      );
+  }
+
+  /// @inheritdoc IDCAHubSwapper
   function revokeAllowances(RevokeAction[] calldata _revokeActions) external onlyRole(ADMIN_ROLE) {
     _revokeAllowances(_revokeActions);
   }
@@ -143,17 +170,15 @@ contract DCAHubSwapper is DeadlineValidation, AccessControl, GetBalances, IDCAHu
     returns (IDCAHub.SwapInfo memory)
   {
     // Approve whatever is necessary
-    for (uint256 i; i < _parameters.allowanceTargets.length; i++) {
-      Allowance memory _allowance = _parameters.allowanceTargets[i];
-      _maxApproveSpenderIfNeeded(_allowance.token, _allowance.allowanceTarget, false, _allowance.minAllowance);
-    }
+    _approveAllowances(_parameters.allowanceTargets);
 
     // Prepare data for callback
     SwapWithDexesCallbackData memory _callbackData = SwapWithDexesCallbackData({
       swappers: _parameters.swappers,
       executions: _parameters.executions,
       leftoverRecipient: _parameters.leftoverRecipient,
-      sendToProvideLeftoverToHub: _sendToProvideLeftoverToHub
+      sendToProvideLeftoverToHub: _sendToProvideLeftoverToHub,
+      intermediateTokensToCheck: _parameters.intermediateTokensToCheck
     });
 
     // Execute swap
@@ -164,7 +189,8 @@ contract DCAHubSwapper is DeadlineValidation, AccessControl, GetBalances, IDCAHu
         address(this),
         address(this),
         new uint256[](_parameters.tokens.length),
-        abi.encode(SwapData({plan: SwapPlan.SWAP_WITH_DEXES, data: abi.encode(_callbackData)}))
+        abi.encode(SwapData({plan: SwapPlan.SWAP_WITH_DEXES, data: abi.encode(_callbackData)})),
+        _parameters.oracleData
       );
   }
 
@@ -189,18 +215,24 @@ contract DCAHubSwapper is DeadlineValidation, AccessControl, GetBalances, IDCAHu
     SwapWithDexesCallbackData memory _callbackData = abi.decode(_data, (SwapWithDexesCallbackData));
 
     // Validate that all swappers are allowlisted
-    for (uint256 i; i < _callbackData.swappers.length; i++) {
+    for (uint256 i = 0; i < _callbackData.swappers.length; ) {
       _assertSwapperIsAllowlisted(_callbackData.swappers[i]);
+      unchecked {
+        i++;
+      }
     }
 
     // Execute swaps
-    for (uint256 i; i < _callbackData.executions.length; i++) {
+    for (uint256 i = 0; i < _callbackData.executions.length; ) {
       SwapExecution memory _execution = _callbackData.executions[i];
       _callbackData.swappers[_execution.swapperIndex].functionCall(_execution.swapData, 'Call to swapper failed');
+      unchecked {
+        i++;
+      }
     }
 
     // Send remaining tokens to either hub, or leftover recipient
-    for (uint256 i; i < _tokens.length; i++) {
+    for (uint256 i = 0; i < _tokens.length; ) {
       IERC20 _token = IERC20(_tokens[i].token);
       uint256 _balance = _token.balanceOf(address(this));
       if (_balance > 0) {
@@ -222,17 +254,41 @@ contract DCAHubSwapper is DeadlineValidation, AccessControl, GetBalances, IDCAHu
           _token.safeTransfer(_callbackData.leftoverRecipient, _balance);
         }
       }
+      unchecked {
+        i++;
+      }
+    }
+
+    // Check intermediate tokens
+    for (uint256 i = 0; i < _callbackData.intermediateTokensToCheck.length; ) {
+      _sendBalanceOnContractToRecipient(_callbackData.intermediateTokensToCheck[i], _callbackData.leftoverRecipient);
+      unchecked {
+        i++;
+      }
     }
   }
 
   function _handleSwapForCallerCallback(IDCAHub.TokenInSwap[] calldata _tokens) internal {
     // Load to mem to avoid reading storage multiple times
-    address _swapExecutorMen = _swapExecutor;
-    for (uint256 i; i < _tokens.length; i++) {
+    address _swapExecutorMem = _swapExecutor;
+    for (uint256 i = 0; i < _tokens.length; ) {
       IDCAHub.TokenInSwap memory _token = _tokens[i];
       if (_token.toProvide > 0) {
         // We assume that msg.sender is the DCAHub
-        IERC20(_token.token).safeTransferFrom(_swapExecutorMen, msg.sender, _token.toProvide);
+        IERC20(_token.token).safeTransferFrom(_swapExecutorMem, msg.sender, _token.toProvide);
+      }
+      unchecked {
+        i++;
+      }
+    }
+  }
+
+  function _approveAllowances(Allowance[] calldata _allowanceTargets) internal {
+    for (uint256 i = 0; i < _allowanceTargets.length; ) {
+      Allowance memory _allowance = _allowanceTargets[i];
+      _maxApproveSpenderIfNeeded(_allowance.token, _allowance.allowanceTarget, false, _allowance.minAllowance);
+      unchecked {
+        i++;
       }
     }
   }

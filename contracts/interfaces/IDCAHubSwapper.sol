@@ -5,6 +5,7 @@ import '@mean-finance/dca-v2-core/contracts/interfaces/IDCAHub.sol';
 import '@mean-finance/dca-v2-core/contracts/interfaces/IDCAHubSwapCallee.sol';
 import '@mean-finance/swappers/solidity/interfaces/ISwapAdapter.sol';
 import '@mean-finance/swappers/solidity/contracts/extensions/Shared.sol';
+import './ILegacyDCAHub.sol';
 
 interface IDCAHubSwapper is IDCAHubSwapCallee {
   /// @notice Parameters to execute a swap with dexes
@@ -15,6 +16,8 @@ interface IDCAHubSwapper is IDCAHubSwapCallee {
     address[] tokens;
     // The pairs to swap
     IDCAHub.PairIndexes[] pairsToSwap;
+    // Bytes to send to the oracle when executing a quote
+    bytes oracleData;
     // The accounts that should be approved for spending
     Allowance[] allowanceTargets;
     // The different swappers involved in the swap
@@ -23,6 +26,9 @@ interface IDCAHubSwapper is IDCAHubSwapCallee {
     SwapExecution[] executions;
     // Address that will receive all unspent tokens
     address leftoverRecipient;
+    // A list of tokens to check for unspent balance. These should be tokens that were
+    // not `toProvide` nor `reward` tokens
+    address[] intermediateTokensToCheck;
     // Deadline when the swap becomes invalid
     uint256 deadline;
   }
@@ -33,6 +39,44 @@ interface IDCAHubSwapper is IDCAHubSwapCallee {
     uint8 swapperIndex;
     // The swap's execution
     bytes swapData;
+  }
+
+  /// @notice Parameters to execute an optimized swap
+  struct OptimizedSwapParams {
+    // The address of the DCAHub
+    IDCAHub hub;
+    // The tokens involved in the swap
+    address[] tokens;
+    // The pairs to swap
+    IDCAHub.PairIndexes[] pairsToSwap;
+    // Bytes to send to the oracle when executing a quote
+    bytes oracleData;
+    // The accounts that should be approved for spending
+    Allowance[] allowanceTargets;
+    // The data for the callback, already encoded
+    bytes callbackData;
+    // Deadline when the swap becomes invalid
+    uint256 deadline;
+  }
+
+  /// @notice Parameters to execute a swap for caller
+  struct SwapForCallerParams {
+    // The address of the DCAHub
+    IDCAHub hub;
+    // The tokens involved in the swap
+    address[] tokens;
+    // The pairs to swap
+    IDCAHub.PairIndexes[] pairsToSwap;
+    // Bytes to send to the oracle when executing a quote
+    bytes oracleData;
+    // The minimum amount of tokens to receive as part of the swap
+    uint256[] minimumOutput;
+    // The maximum amount of tokens to provide as part of the swap
+    uint256[] maximumInput;
+    // Address that will receive all the tokens from the swap
+    address recipient;
+    // Deadline when the swap becomes invalid
+    uint256 deadline;
   }
 
   /// @notice Thrown when the reward is less that the specified minimum
@@ -50,24 +94,9 @@ interface IDCAHubSwapper is IDCAHubSwapCallee {
    *      Will revert:
    *      - With RewardNotEnough if the minimum output is not met
    *      - With ToProvideIsTooMuch if the hub swap requires more than the given maximum input
-   * @param hub The address of the DCAHub
-   * @param tokens The tokens involved in the swap
-   * @param pairsToSwap The pairs to swap
-   * @param minimumOutput The minimum amount of tokens to receive as part of the swap
-   * @param maximumInput The maximum amount of tokens to provide as part of the swap
-   * @param recipient Address that will receive all the tokens from the swap
-   * @param deadline Deadline when the swap becomes invalid
    * @return The information about the executed swap
    */
-  function swapForCaller(
-    IDCAHub hub,
-    address[] calldata tokens,
-    IDCAHub.PairIndexes[] calldata pairsToSwap,
-    uint256[] calldata minimumOutput,
-    uint256[] calldata maximumInput,
-    address recipient,
-    uint256 deadline
-  ) external payable returns (IDCAHub.SwapInfo memory);
+  function swapForCaller(SwapForCallerParams calldata parameters) external payable returns (IDCAHub.SwapInfo memory);
 
   /**
    * @notice Executes a swap with the given swappers, and sends all unspent tokens to the given recipient
@@ -85,6 +114,13 @@ interface IDCAHubSwapper is IDCAHubSwapCallee {
    * @return The information about the executed swap
    */
   function swapWithDexesForMean(SwapWithDexesParams calldata parameters) external payable returns (IDCAHub.SwapInfo memory);
+
+  /**
+   * @notice Executes an optimized swap, by providing parameters already encoded
+   * @dev Can only be called by user with appropriate role
+   * @return The information about the executed swap
+   */
+  function optimizedSwap(OptimizedSwapParams calldata parameters) external payable returns (IDCAHub.SwapInfo memory);
 
   /**
    * @notice Revokes ERC20 allowances for the given spenders

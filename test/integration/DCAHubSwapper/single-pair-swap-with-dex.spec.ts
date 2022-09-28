@@ -1,18 +1,18 @@
 import { expect } from 'chai';
-import { deployments, ethers, getNamedAccounts } from 'hardhat';
+import { ethers } from 'hardhat';
 import { JsonRpcSigner, TransactionResponse } from '@ethersproject/providers';
 import { constants, wallet } from '@test-utils';
 import { contract, given, then, when } from '@test-utils/bdd';
 import evm, { snapshot } from '@test-utils/evm';
 import { DCAHubCompanion, DCAHubSwapper, IERC20, ISwapperRegistry } from '@typechained';
-import { DCAHub } from '@mean-finance/dca-v2-core/typechained';
+import { DCAHub } from '@mean-finance/dca-v2-core';
 import { abi as DCA_HUB_ABI } from '@mean-finance/dca-v2-core/artifacts/contracts/DCAHub/DCAHub.sol/DCAHub.json';
 import { abi as IERC20_ABI } from '@openzeppelin/contracts/build/contracts/IERC20.json';
 import { BigNumber, utils } from 'ethers';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers';
 import { SwapInterval } from '@test-utils/interval-utils';
 import zrx from '@test-utils/dexes/zrx';
-import { DeterministicFactory, DeterministicFactory__factory } from '@mean-finance/deterministic-factory/typechained';
+import { deploy } from '@integration/utils';
 
 const WETH_ADDRESS = '0xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2';
 const USDC_ADDRESS = '0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48';
@@ -36,29 +36,12 @@ contract('Single pair swap with DEX', () => {
 
   before(async () => {
     await evm.reset({
-      network: 'mainnet',
-      skipHardhatDeployFork: true,
+      network: 'ethereum',
     });
 
     [cindy, recipient] = await ethers.getSigners();
 
-    const namedAccounts = await getNamedAccounts();
-    const governorAddress = namedAccounts.governor;
-    governor = await wallet.impersonate(governorAddress);
-    await ethers.provider.send('hardhat_setBalance', [governorAddress, '0xffffffffffffffff']);
-
-    const deterministicFactory = await ethers.getContractAt<DeterministicFactory>(
-      DeterministicFactory__factory.abi,
-      '0xbb681d77506df5CA21D2214ab3923b4C056aa3e2'
-    );
-
-    await deterministicFactory.connect(governor).grantRole(await deterministicFactory.DEPLOYER_ROLE(), namedAccounts.deployer);
-
-    await deployments.run(['DCAHub', 'DCAHubCompanion', 'SwapperRegistry', 'DCAHubSwapper'], {
-      resetMemory: true,
-      deletePreviousDeployments: false,
-      writeDeploymentsToFiles: false,
-    });
+    ({ msig: governor } = await deploy('DCAHubCompanion'));
     DCAHub = await ethers.getContract('DCAHub');
     DCAHubCompanion = await ethers.getContract('DCAHubCompanion');
     swapperRegistry = await ethers.getContract('SwapperRegistry');
@@ -75,6 +58,7 @@ contract('Single pair swap with DEX', () => {
     //We are setting a very high fee, so that there is a surplus in both reward and toProvide tokens
     await DCAHub.connect(timelock).setSwapFee(20000); // 2%
     // Allow swapper
+    await DCAHub.connect(governor).grantRole(await DCAHub.PRIVILEGED_SWAPPER_ROLE(), DCAHubSwapper.address);
     await DCAHubSwapper.connect(governor).grantRole(await DCAHubSwapper.SWAP_EXECUTION_ROLE(), cindy.address);
 
     WETH = await ethers.getContractAt(IERC20_ABI, WETH_ADDRESS);
@@ -136,7 +120,7 @@ contract('Single pair swap with DEX', () => {
         initialRecipientUSDCBalance = await USDC.balanceOf(recipient.address);
         const {
           tokens: [, weth],
-        } = await DCAHubCompanion.getNextSwapInfo(DCAHub.address, [{ tokenA: WETH_ADDRESS, tokenB: USDC_ADDRESS }]);
+        } = await DCAHubCompanion.getNextSwapInfo(DCAHub.address, [{ tokenA: WETH_ADDRESS, tokenB: USDC_ADDRESS }], true, []);
         const dexQuote = await zrx.quote({
           chainId: 1,
           sellToken: WETH_ADDRESS,
@@ -154,10 +138,12 @@ contract('Single pair swap with DEX', () => {
           hub: DCAHub.address,
           tokens: tokensInSwap,
           pairsToSwap: indexesInSwap,
+          oracleData: [],
           allowanceTargets: [{ token: dexQuote.sellTokenAddress, allowanceTarget: dexQuote.allowanceTarget, minAllowance: dexQuote.sellAmount }],
           swappers: [dexQuote.to],
           executions: [{ swapperIndex: 0, swapData: dexQuote.data }],
           leftoverRecipient: recipient.address,
+          intermediateTokensToCheck: [],
           deadline: constants.MAX_UINT_256,
         });
         ({ reward, toProvide, receivedFromAgg, sentToAgg } = await getTransfers(swapTx));

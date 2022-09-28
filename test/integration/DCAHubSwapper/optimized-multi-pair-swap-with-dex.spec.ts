@@ -8,7 +8,7 @@ import { DCAHubCompanion, DCAHubSwapper, IERC20, ISwapperRegistry } from '@typec
 import { DCAHub } from '@mean-finance/dca-v2-core';
 import { abi as DCA_HUB_ABI } from '@mean-finance/dca-v2-core/artifacts/contracts/DCAHub/DCAHub.sol/DCAHub.json';
 import { abi as IERC20_ABI } from '@openzeppelin/contracts/build/contracts/IERC20.json';
-import { BigNumber, utils } from 'ethers';
+import { BigNumber, BytesLike, utils } from 'ethers';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers';
 import { SwapInterval } from '@test-utils/interval-utils';
 import zrx from '@test-utils/dexes/zrx';
@@ -20,7 +20,7 @@ const WETH_ADDRESS = '0xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2';
 // LINK < USDC < WETH
 const WETH_WHALE_ADDRESS = '0xf04a5cc80b1e94c69b48f5ee68a08cd2f09a7c3e';
 
-contract('Multi pair swap with DEX', () => {
+contract('Optimized multi pair swap with DEX', () => {
   let WETH: IERC20, USDC: IERC20, LINK: IERC20;
   let governor: JsonRpcSigner;
   let cindy: SignerWithAddress, recipient: SignerWithAddress;
@@ -153,7 +153,17 @@ contract('Multi pair swap with DEX', () => {
           { indexTokenA: 0, indexTokenB: 2 },
           { indexTokenA: 1, indexTokenB: 2 },
         ];
-        const swapTx = await DCAHubSwapper.swapWithDexes({
+        const bytes = encode({
+          swappers: [dexAddress],
+          executions: [
+            { index: 0, data: dexQuotes[0].data },
+            { index: 0, data: dexQuotes[1].data },
+          ],
+          leftoverRecipient: recipient,
+          extraTokens: [],
+          sendToProvideLeftoverToHub: false,
+        });
+        const swapTx = await DCAHubSwapper.optimizedSwap({
           hub: DCAHub.address,
           tokens: tokensInSwap,
           pairsToSwap: indexesInSwap,
@@ -162,13 +172,7 @@ contract('Multi pair swap with DEX', () => {
             { token: dexQuotes[0].sellTokenAddress, allowanceTarget: dexQuotes[0].allowanceTarget, minAllowance: dexQuotes[0].sellAmount },
             { token: dexQuotes[1].sellTokenAddress, allowanceTarget: dexQuotes[1].allowanceTarget, minAllowance: dexQuotes[1].sellAmount },
           ],
-          swappers: [dexAddress],
-          executions: [
-            { swapperIndex: 0, swapData: dexQuotes[0].data },
-            { swapperIndex: 0, swapData: dexQuotes[1].data },
-          ],
-          intermediateTokensToCheck: [],
-          leftoverRecipient: recipient.address,
+          callbackData: bytes,
           deadline: constants.MAX_UINT_256,
         });
         ({ rewardWETH, toProvideUSDC, toProvideLINK, receivedUSDCFromAgg, receivedLINKFromAgg, sentWETHToAgg, receivedWETHFromAgg } =
@@ -272,5 +276,29 @@ contract('Multi pair swap with DEX', () => {
       }
     }
     return result;
+  }
+
+  type SwapWithDexes = {
+    swappers: string[];
+    executions: { data: BytesLike; index: number }[];
+    sendToProvideLeftoverToHub: boolean;
+    extraTokens: string[];
+    leftoverRecipient: { address: string };
+  };
+  function encode(swap: SwapWithDexes) {
+    const abiCoder = new utils.AbiCoder();
+    const swapData = abiCoder.encode(
+      ['tuple(address[], tuple(uint8, bytes)[], address[], address, bool)'],
+      [
+        [
+          swap.swappers,
+          swap.executions.map(({ index, data }) => [index, data]),
+          swap.extraTokens,
+          swap.leftoverRecipient.address,
+          swap.sendToProvideLeftoverToHub,
+        ],
+      ]
+    );
+    return abiCoder.encode(['tuple(uint256, bytes)'], [[2, swapData]]);
   }
 });

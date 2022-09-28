@@ -234,11 +234,11 @@ contract('DCAHubCompanionHubProxyHandler', () => {
     permission: Permission.WITHDRAW,
     params: [[{ token: constants.NOT_ZERO_ADDRESS, positionIds: [1] }], constants.NOT_ZERO_ADDRESS],
     compare: (result, [positions, recipient]) =>
-      result._positions.length === positions.length &&
-      result._positions[0].token === positions[0].token &&
-      result._positions[0].positionIds.length === positions[0].positionIds.length &&
-      result._positions[0].positionIds[0].toNumber() === positions[0].positionIds[0] &&
-      result._recipient === recipient,
+      result.positions.length === positions.length &&
+      result.positions[0].token === positions[0].token &&
+      result.positions[0].positionIds.length === positions[0].positionIds.length &&
+      result.positions[0].positionIds[0].toNumber() === positions[0].positionIds[0] &&
+      result.recipient === recipient,
   });
 
   proxyTest({
@@ -368,7 +368,9 @@ contract('DCAHubCompanionHubProxyHandler', () => {
     describe(method, () => {
       when('method is executed', () => {
         given(async () => {
-          DCAPermissionManager.hasPermission.returns(({ _permission }: { _permission: Permission }) => permission === _permission);
+          DCAPermissionManager.hasPermission.returns(
+            ({ permission: permissionAsked }: { permission: Permission }) => permissionAsked === permission
+          );
           await (DCAHubCompanionHubProxyHandler[method] as any)(DCAHub.address, ...params);
         });
         then('hub is called', () => {

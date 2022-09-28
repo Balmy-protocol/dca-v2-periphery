@@ -61,7 +61,6 @@ contract('BaseCompanion', () => {
   });
 
   describe('sendBalanceOnContractToRecipient', () => {
-    const RECIPIENT = Wallet.createRandom();
     when('sending balance on contract to a recipient', () => {
       given(async () => {
         await baseCompanion.sendBalanceOnContractToRecipient(token.address, RECIPIENT.address);

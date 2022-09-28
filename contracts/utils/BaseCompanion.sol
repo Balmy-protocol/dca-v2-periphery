@@ -4,14 +4,15 @@ pragma solidity >=0.8.7 <0.9.0;
 import '@mean-finance/swappers/solidity/contracts/extensions/GetBalances.sol';
 import '@mean-finance/swappers/solidity/contracts/extensions/RevokableWithGovernor.sol';
 import '@mean-finance/swappers/solidity/contracts/extensions/RunSwap.sol';
-import './Multicall.sol';
+import '@mean-finance/swappers/solidity/contracts/extensions/PayableMulticall.sol';
+import '@mean-finance/swappers/solidity/contracts/extensions/TokenPermit.sol';
 
 /**
  * @notice This contract will work as base companion for all our contracts. It will extend the capabilities of our companion
  *         contracts so that they can execute multicalls, swaps, revokes and more
  * @dev All public functions are payable, so that they can be multicalled together with other payable functions when msg.value > 0
  */
-abstract contract BaseCompanion is RunSwap, RevokableWithGovernor, GetBalances, Multicall {
+abstract contract BaseCompanion is RunSwap, RevokableWithGovernor, GetBalances, PayableMulticall, TokenPermit {
   constructor(address _swapperRegistry, address _governor) SwapAdapter(_swapperRegistry) Governable(_governor) {}
 
   /**
