@@ -368,7 +368,7 @@ contract('DCAStrategiesManagementHandler', () => {
   }
 
   function sortTokens(array: IDCAStrategies.ShareOfTokenStruct[]) {
-    function hexToNumber(hexaNumber: string) {
+    function hexToNumber(hexaNumber: any) {
       return parseInt(hexaNumber, 16);
     }
 

@@ -17,6 +17,7 @@ import { TransactionResponse } from '@ethersproject/abstract-provider';
 import { BigNumber, BigNumberish } from '@ethersproject/bignumber';
 import { readArgFromEventOrFail } from '@test-utils/event-utils';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers';
+import { PromiseOrValue } from '@typechained/common';
 
 chai.use(smock.matchers);
 
@@ -717,7 +718,7 @@ contract('DCAStrategiesPositionsHandler', () => {
     return toReturn;
   }
 
-  function calculateAmount(total: BigNumber, share: BigNumber | BigNumberish) {
+  function calculateAmount(total: BigNumber, share: BigNumber | BigNumberish | PromiseOrValue<BigNumberish>) {
     return total.mul(BigNumber.from(share)).div(100e2);
   }
 

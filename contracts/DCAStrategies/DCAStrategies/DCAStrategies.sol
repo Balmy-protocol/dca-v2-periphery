@@ -4,10 +4,9 @@ pragma solidity >=0.8.7 <0.9.0;
 import './DCAStrategiesManagementHandler.sol';
 import './DCAStrategiesPermissionsHandler.sol';
 import './DCAStrategiesPositionsHandler.sol';
+import '../../interfaces/IDCAStrategies.sol';
 
-// TODO: add -> import '../../interfaces/IDCAStrategies.sol';
-
-contract DCAStrategies is DCAStrategiesManagementHandler, DCAStrategiesPermissionsHandler, DCAStrategiesPositionsHandler {
+contract DCAStrategies is DCAStrategiesManagementHandler, IDCAStrategies, DCAStrategiesPermissionsHandler, DCAStrategiesPositionsHandler {
   constructor(
     address _governor,
     IDCAHubPositionDescriptor _descriptor,
