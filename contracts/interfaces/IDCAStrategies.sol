@@ -466,7 +466,7 @@ interface IDCAStrategiesPositionsHandler {
 
   /**
    * @notice Takes the unswapped balance, adds the new deposited funds and modifies the position so that
-   * it is executed in newSwaps swaps
+   *         it is executed in newSwaps swaps
    * @param positionId The position's id
    * @param fromToken The `from` token
    * @param amount Amount of funds to add to the position
@@ -481,7 +481,7 @@ interface IDCAStrategiesPositionsHandler {
 
   /**
    * @notice Withdraws the specified amount from the unswapped balance and modifies the position so that
-   * it is executed in newSwaps swaps
+   *         it is executed in newSwaps swaps
    * @param positionId The position's id
    * @param amount Amount of funds to withdraw from the position
    * @param newSwaps The new amount of swaps
