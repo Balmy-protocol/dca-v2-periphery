@@ -5,6 +5,7 @@ import { constants, wallet } from '@test-utils';
 import { contract, given, then, when } from '@test-utils/bdd';
 import evm, { snapshot } from '@test-utils/evm';
 import { DCAHubCompanion, DCAHubSwapper, IERC20, ISwapperRegistry } from '@typechained';
+import { StatefulChainlinkOracle } from '@mean-finance/oracles';
 import { DCAHub } from '@mean-finance/dca-v2-core';
 import { abi as DCA_HUB_ABI } from '@mean-finance/dca-v2-core/artifacts/contracts/DCAHub/DCAHub.sol/DCAHub.json';
 import { abi as IERC20_ABI } from '@openzeppelin/contracts/build/contracts/IERC20.json';
@@ -46,6 +47,7 @@ contract('Single pair swap with DEX', () => {
     DCAHubCompanion = await ethers.getContract('DCAHubCompanion');
     swapperRegistry = await ethers.getContract('SwapperRegistry');
     DCAHubSwapper = await ethers.getContract('DCAHubSwapper');
+    const chainlinkOracle = await ethers.getContract<StatefulChainlinkOracle>('StatefulChainlinkOracle');
 
     const timelockContract = await ethers.getContract('Timelock');
     const timelock = await wallet.impersonate(timelockContract.address);
@@ -60,6 +62,8 @@ contract('Single pair swap with DEX', () => {
     // Allow swapper
     await DCAHub.connect(governor).grantRole(await DCAHub.PRIVILEGED_SWAPPER_ROLE(), DCAHubSwapper.address);
     await DCAHubSwapper.connect(governor).grantRole(await DCAHubSwapper.SWAP_EXECUTION_ROLE(), cindy.address);
+
+    await chainlinkOracle.connect(governor).addMappings([WETH_ADDRESS], ['0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE']);
 
     WETH = await ethers.getContractAt(IERC20_ABI, WETH_ADDRESS);
     USDC = await ethers.getContractAt(IERC20_ABI, USDC_ADDRESS);
@@ -118,14 +122,11 @@ contract('Single pair swap with DEX', () => {
         initialHubWETHBalance = await WETH.balanceOf(DCAHub.address);
         initialHubUSDCBalance = await USDC.balanceOf(DCAHub.address);
         initialRecipientUSDCBalance = await USDC.balanceOf(recipient.address);
-        const {
-          tokens: [, weth],
-        } = await DCAHubCompanion.getNextSwapInfo(DCAHub.address, [{ tokenA: WETH_ADDRESS, tokenB: USDC_ADDRESS }], true, []);
         const dexQuote = await zrx.quote({
           chainId: 1,
           sellToken: WETH_ADDRESS,
           buyToken: USDC_ADDRESS,
-          sellAmount: weth.reward,
+          sellAmount: RATE,
           slippagePercentage: 0.01, // 1%
           takerAddress: DCAHubSwapper.address,
           skipValidation: true,

@@ -11,6 +11,7 @@ import { abi as IERC20_ABI } from '@openzeppelin/contracts/build/contracts/IERC2
 import { BigNumber, BytesLike, utils } from 'ethers';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers';
 import { SwapInterval } from '@test-utils/interval-utils';
+import { StatefulChainlinkOracle } from '@mean-finance/oracles';
 import zrx from '@test-utils/dexes/zrx';
 import { deploy } from '@integration/utils';
 
@@ -46,6 +47,7 @@ contract('Optimized multi pair swap with DEX', () => {
     DCAHubCompanion = await ethers.getContract('DCAHubCompanion');
     swapperRegistry = await ethers.getContract('SwapperRegistry');
     DCAHubSwapper = await ethers.getContract('DCAHubSwapper');
+    const chainlinkOracle = await ethers.getContract<StatefulChainlinkOracle>('StatefulChainlinkOracle');
 
     const timelockContract = await ethers.getContract('Timelock');
     const timelock = await wallet.impersonate(timelockContract.address);
@@ -60,6 +62,8 @@ contract('Optimized multi pair swap with DEX', () => {
     // Allow swapper
     await DCAHub.connect(governor).grantRole(await DCAHub.PRIVILEGED_SWAPPER_ROLE(), DCAHubSwapper.address);
     await DCAHubSwapper.connect(governor).grantRole(await DCAHubSwapper.SWAP_EXECUTION_ROLE(), cindy.address);
+
+    await chainlinkOracle.connect(governor).addMappings([WETH_ADDRESS], ['0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE']);
 
     WETH = await ethers.getContractAt(IERC20_ABI, WETH_ADDRESS);
     USDC = await ethers.getContractAt(IERC20_ABI, USDC_ADDRESS);
