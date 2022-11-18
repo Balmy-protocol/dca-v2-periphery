@@ -44,4 +44,11 @@ contract DCAKeep3rJob is AccessControl, EIP712, IDCAKeep3rJob {
       }
     }
   }
+
+  /// @inheritdoc IDCAKeep3rJob
+  function setSwapper(address _swapper) external onlyRole(SUPER_ADMIN_ROLE) {
+    if (address(_swapper) == address(0)) revert ZeroAddress();
+    swapperAndNonce.swapper = _swapper;
+    emit NewSwapperSet(_swapper);
+  }
 }
