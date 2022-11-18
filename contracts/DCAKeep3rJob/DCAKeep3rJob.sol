@@ -17,7 +17,7 @@ contract DCAKeep3rJob is AccessControl, EIP712, IDCAKeep3rJob {
   /// @inheritdoc IDCAKeep3rJob
   IKeep3r public immutable keep3r;
   /// @inheritdoc IDCAKeep3rJob
-  SwapperAndNonce public swapperAndNonce;
+  SwapperAndNonce public swapperAndNonce; // Note: data grouped in struct to reduce SLOADs
 
   constructor(
     IKeep3r _keep3r,
