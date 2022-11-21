@@ -26,6 +26,12 @@ interface IDCAKeep3rJob {
   event NewSwapperSet(address newSwapper);
 
   /**
+   * @notice The domain separator used for the work signature
+   * @return The domain separator used for the work signature
+   */
+  function DOMAIN_SEPARATOR() external view returns (bytes32);
+
+  /**
    * @notice Returns the swapper address
    * @return swapper The swapper's address
    * @return nonce The next nonce to use
@@ -45,4 +51,21 @@ interface IDCAKeep3rJob {
    * @param swapper The new swapper address
    */
   function setSwapper(address swapper) external;
+
+  /**
+   * @notice Takes an encoded call and executes it against the swapper
+   * @dev Will revert with:
+   *      - NotAKeeper if the caller is not a keep3r
+   *      - SignerCannotSignWork if the address who signed the message cannot sign work
+   * @param call The call to execut against the swapper
+   * @param v Must produce valid secp256k1 signature from the holder along with `r` and `s`
+   * @param r Must produce valid secp256k1 signature from the holder along with `v` and `s`
+   * @param s Must produce valid secp256k1 signature from the holder along with `r` and `v`
+   */
+  function work(
+    bytes calldata call,
+    uint8 v,
+    bytes32 r,
+    bytes32 s
+  ) external;
 }
