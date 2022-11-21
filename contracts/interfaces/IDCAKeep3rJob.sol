@@ -29,6 +29,7 @@ interface IDCAKeep3rJob {
    * @notice The domain separator used for the work signature
    * @return The domain separator used for the work signature
    */
+  // solhint-disable-next-line func-name-mixedcase
   function DOMAIN_SEPARATOR() external view returns (bytes32);
 
   /**

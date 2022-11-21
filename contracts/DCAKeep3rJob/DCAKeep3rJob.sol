@@ -46,6 +46,7 @@ contract DCAKeep3rJob is AccessControl, EIP712, IDCAKeep3rJob {
   }
 
   /// @inheritdoc IDCAKeep3rJob
+  // solhint-disable-next-line func-name-mixedcase
   function DOMAIN_SEPARATOR() external view returns (bytes32) {
     return _domainSeparatorV4();
   }
