@@ -4,7 +4,7 @@ import { wallet } from '@test-utils';
 import { getNamedAccounts, deployments, ethers } from 'hardhat';
 import { JsonRpcSigner } from '@ethersproject/providers';
 
-export async function deploy(...contracts: string[]): Promise<{ msig: JsonRpcSigner; eoaAdmin: JsonRpcSigner }> {
+export async function deploy(...contracts: string[]): Promise<{ msig: JsonRpcSigner; eoaAdmin: JsonRpcSigner; timelock: JsonRpcSigner }> {
   const { msig } = await getNamedAccounts();
   return deployWithAddress(msig, ...contracts);
 }
@@ -12,7 +12,7 @@ export async function deploy(...contracts: string[]): Promise<{ msig: JsonRpcSig
 export async function deployWithAddress(
   deployerAddress: string,
   ...contracts: string[]
-): Promise<{ msig: JsonRpcSigner; eoaAdmin: JsonRpcSigner }> {
+): Promise<{ msig: JsonRpcSigner; eoaAdmin: JsonRpcSigner; timelock: JsonRpcSigner }> {
   const { eoaAdmin: eoaAdminAddress, deployer, msig: msigAddress } = await getNamedAccounts();
   const eoaAdmin = await wallet.impersonate(eoaAdminAddress);
   const msig = await wallet.impersonate(msigAddress);
@@ -45,5 +45,9 @@ export async function deployWithAddress(
       writeDeploymentsToFiles: false,
     }
   );
-  return { msig, eoaAdmin };
+
+  const timelockContract = await ethers.getContract('Timelock');
+  const timelock = await wallet.impersonate(timelockContract.address);
+  await ethers.provider.send('hardhat_setBalance', [timelockContract.address, '0xffffffffffffffff']);
+  return { msig, eoaAdmin, timelock };
 }

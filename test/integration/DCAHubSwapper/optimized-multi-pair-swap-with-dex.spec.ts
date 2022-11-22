@@ -1,5 +1,5 @@
 import { expect } from 'chai';
-import { deployments, ethers } from 'hardhat';
+import { ethers } from 'hardhat';
 import { JsonRpcSigner, TransactionResponse } from '@ethersproject/providers';
 import { constants, wallet } from '@test-utils';
 import { contract, given, then, when } from '@test-utils/bdd';
@@ -23,7 +23,7 @@ const WETH_WHALE_ADDRESS = '0xf04a5cc80b1e94c69b48f5ee68a08cd2f09a7c3e';
 
 contract('Optimized multi pair swap with DEX', () => {
   let WETH: IERC20, USDC: IERC20, LINK: IERC20;
-  let governor: JsonRpcSigner;
+  let governor: JsonRpcSigner, timelock: JsonRpcSigner;
   let cindy: SignerWithAddress, recipient: SignerWithAddress;
   let DCAHubCompanion: DCAHubCompanion;
   let DCAHub: DCAHub;
@@ -41,17 +41,13 @@ contract('Optimized multi pair swap with DEX', () => {
     });
     [cindy, recipient] = await ethers.getSigners();
 
-    ({ msig: governor } = await deploy('DCAHubCompanion'));
+    ({ msig: governor, timelock } = await deploy('DCAHubCompanion'));
 
     DCAHub = await ethers.getContract('DCAHub');
     DCAHubCompanion = await ethers.getContract('DCAHubCompanion');
     swapperRegistry = await ethers.getContract('SwapperRegistry');
     DCAHubSwapper = await ethers.getContract('DCAHubSwapper');
     const chainlinkOracle = await ethers.getContract<StatefulChainlinkOracle>('StatefulChainlinkOracle');
-
-    const timelockContract = await ethers.getContract('Timelock');
-    const timelock = await wallet.impersonate(timelockContract.address);
-    await ethers.provider.send('hardhat_setBalance', [timelockContract.address, '0xffffffffffffffff']);
 
     // Allow tokens
     await DCAHub.connect(governor).setAllowedTokens([WETH_ADDRESS, USDC_ADDRESS, LINK_ADDRESS], [true, true, true]);

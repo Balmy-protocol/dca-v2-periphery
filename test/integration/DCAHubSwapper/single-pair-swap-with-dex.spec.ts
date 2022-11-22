@@ -23,7 +23,7 @@ const WETH_WHALE_ADDRESS = '0xf04a5cc80b1e94c69b48f5ee68a08cd2f09a7c3e';
 contract('Single pair swap with DEX', () => {
   let WETH: IERC20;
   let USDC: IERC20;
-  let governor: JsonRpcSigner;
+  let governor: JsonRpcSigner, timelock: JsonRpcSigner;
   let cindy: SignerWithAddress, recipient: SignerWithAddress;
   let DCAHubSwapper: DCAHubSwapper;
   let DCAHubCompanion: DCAHubCompanion;
@@ -42,16 +42,12 @@ contract('Single pair swap with DEX', () => {
 
     [cindy, recipient] = await ethers.getSigners();
 
-    ({ msig: governor } = await deploy('DCAHubCompanion'));
+    ({ msig: governor, timelock } = await deploy('DCAHubCompanion'));
     DCAHub = await ethers.getContract('DCAHub');
     DCAHubCompanion = await ethers.getContract('DCAHubCompanion');
     swapperRegistry = await ethers.getContract('SwapperRegistry');
     DCAHubSwapper = await ethers.getContract('DCAHubSwapper');
     const chainlinkOracle = await ethers.getContract<StatefulChainlinkOracle>('StatefulChainlinkOracle');
-
-    const timelockContract = await ethers.getContract('Timelock');
-    const timelock = await wallet.impersonate(timelockContract.address);
-    await ethers.provider.send('hardhat_setBalance', [timelockContract.address, '0xffffffffffffffff']);
 
     // Allow tokens
     await DCAHub.connect(governor).setAllowedTokens([WETH_ADDRESS, USDC_ADDRESS], [true, true]);
