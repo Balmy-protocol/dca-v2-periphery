@@ -110,7 +110,7 @@ contract('DCAKeep3rJob', () => {
       });
     });
 
-    when.only('job has credits and is worked by a keeper', () => {
+    when('job has credits and is worked by a keeper', () => {
       let initialBonds: BigNumber, initialCredits: BigNumber;
       given(async () => {
         await keep3rV2.connect(keep3rGovernance).forceLiquidityCreditsToJob(DCAKeep3rJob.address, utils.parseEther('10'));
