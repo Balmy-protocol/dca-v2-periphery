@@ -64,7 +64,8 @@
     "@mean-finance/dca-v2-core": "3.1.0",
     "@mean-finance/deterministic-factory": "1.6.0",
     "@mean-finance/swappers": "1.1.0",
-    "@openzeppelin/contracts": "4.7.3"
+    "@openzeppelin/contracts": "4.8.0",
+    "keep3r-v2": "1.0.0"
   },
   "devDependencies": {
     "@codechecks/client": "0.1.12",
