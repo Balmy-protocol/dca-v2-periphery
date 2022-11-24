@@ -17,7 +17,7 @@ const deployFunction: DeployFunction = async function (hre: HardhatRuntimeEnviro
   await deployThroughDeterministicFactory({
     deployer,
     name: 'DCAKeep3rJob',
-    salt: 'MF-DCAV2-Keep3rJob-V1',
+    salt: 'MF-DCAV2-Keep3rJob-V2',
     contract: 'contracts/DCAKeep3rJob/DCAKeep3rJob.sol:DCAKeep3rJob',
     bytecode,
     constructorArgs: {
