@@ -37,4 +37,12 @@ interface IDCAKeep3rJob {
    * @return The Keep3r address address
    */
   function keep3r() external returns (IKeep3r);
+
+  /**
+   * @notice Sets a new swapper address
+   * @dev Will revert with ZeroAddress if the zero address is passed
+   *      Can only be called by an admin
+   * @param swapper The new swapper address
+   */
+  function setSwapper(address swapper) external;
 }

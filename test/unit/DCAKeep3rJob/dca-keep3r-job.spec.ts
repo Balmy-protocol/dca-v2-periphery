@@ -1,10 +1,11 @@
 import chai, { expect } from 'chai';
 import { ethers } from 'hardhat';
 import { behaviours, constants } from '@test-utils';
-import { contract, then, when } from '@test-utils/bdd';
+import { contract, given, then, when } from '@test-utils/bdd';
 import { snapshot } from '@test-utils/evm';
 import { DCAKeep3rJob, DCAKeep3rJob__factory, IDCAHubSwapper, IKeep3r } from '@typechained';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers';
+import { TransactionResponse } from '@ethersproject/providers';
 import { FakeContract, smock } from '@defi-wonderland/smock';
 import { BigNumber } from 'ethers';
 
@@ -95,6 +96,43 @@ contract('DCAKeep3rJob', () => {
         const { nonce } = await DCAKeep3rJob.swapperAndNonce();
         expect(nonce).to.equal(constants.ZERO);
       });
+    });
+  });
+  describe('setSwapper', () => {
+    when('zero address is sent', () => {
+      then('reverts with message', async () => {
+        await behaviours.txShouldRevertWithMessage({
+          contract: DCAKeep3rJob.connect(superAdmin),
+          func: 'setSwapper',
+          args: [constants.ZERO_ADDRESS],
+          message: 'ZeroAddress',
+        });
+      });
+    });
+    when('a valid address is sent', () => {
+      const NEW_SWAPPER = constants.NOT_ZERO_ADDRESS;
+      let tx: TransactionResponse;
+      given(async () => {
+        tx = await DCAKeep3rJob.connect(superAdmin).setSwapper(NEW_SWAPPER);
+      });
+      then('it is set correctly', async () => {
+        const { swapper } = await DCAKeep3rJob.swapperAndNonce();
+        expect(swapper).to.equal(NEW_SWAPPER);
+      });
+      then('nonce is not modified', async () => {
+        const { nonce } = await DCAKeep3rJob.swapperAndNonce();
+        expect(nonce).to.equal(constants.ZERO);
+      });
+      then('event is emitted', async () => {
+        await expect(tx).to.emit(DCAKeep3rJob, 'NewSwapperSet').withArgs(NEW_SWAPPER);
+      });
+    });
+    behaviours.shouldBeExecutableOnlyByRole({
+      contract: () => DCAKeep3rJob,
+      funcAndSignature: 'setSwapper',
+      params: () => [constants.NOT_ZERO_ADDRESS],
+      role: () => superAdminRole,
+      addressWithRole: () => superAdmin,
     });
   });
 });
