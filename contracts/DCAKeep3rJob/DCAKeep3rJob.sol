@@ -37,7 +37,7 @@ contract DCAKeep3rJob is AccessControl, EIP712, IDCAKeep3rJob {
     _setRoleAdmin(CAN_SIGN_ROLE, SUPER_ADMIN_ROLE);
     _setupRole(SUPER_ADMIN_ROLE, _superAdmin);
 
-    for (uint256 i = 0; i < _initialCanSign.length;) {
+    for (uint256 i = 0; i < _initialCanSign.length; ) {
       _setupRole(CAN_SIGN_ROLE, _initialCanSign[i]);
       unchecked {
         i++;
