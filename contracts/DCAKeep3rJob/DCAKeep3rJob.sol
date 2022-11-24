@@ -46,9 +46,36 @@ contract DCAKeep3rJob is AccessControl, EIP712, IDCAKeep3rJob {
   }
 
   /// @inheritdoc IDCAKeep3rJob
+  // solhint-disable-next-line func-name-mixedcase
+  function DOMAIN_SEPARATOR() external view returns (bytes32) {
+    return _domainSeparatorV4();
+  }
+
+  /// @inheritdoc IDCAKeep3rJob
   function setSwapper(address _swapper) external onlyRole(SUPER_ADMIN_ROLE) {
     if (address(_swapper) == address(0)) revert ZeroAddress();
     swapperAndNonce.swapper = _swapper;
     emit NewSwapperSet(_swapper);
+  }
+
+  /// @inheritdoc IDCAKeep3rJob
+  function work(
+    bytes calldata _call,
+    uint8 _v,
+    bytes32 _r,
+    bytes32 _s
+  ) external {
+    if (!keep3r.isKeeper(msg.sender)) revert NotAKeeper();
+
+    SwapperAndNonce memory _swapperAndNonce = swapperAndNonce;
+    bytes32 _structHash = keccak256(abi.encode(WORK_TYPEHASH, _swapperAndNonce.swapper, keccak256(_call), _swapperAndNonce.nonce));
+    bytes32 _hash = _hashTypedDataV4(_structHash);
+    address _signer = ECDSA.recover(_hash, _v, _r, _s);
+    if (!hasRole(CAN_SIGN_ROLE, _signer)) revert SignerCannotSignWork();
+
+    swapperAndNonce.nonce = _swapperAndNonce.nonce + 1;
+    _swapperAndNonce.swapper.functionCall(_call);
+
+    keep3r.worked(msg.sender);
   }
 }
