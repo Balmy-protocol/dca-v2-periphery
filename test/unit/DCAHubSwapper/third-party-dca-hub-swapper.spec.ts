@@ -13,7 +13,7 @@ import { utils } from 'ethers';
 
 chai.use(smock.matchers);
 
-contract.only('ThirdPartyDCAHubSwapper', () => {
+contract('ThirdPartyDCAHubSwapper', () => {
   const ABI_CODER = new utils.AbiCoder();
   let recipient: SignerWithAddress, hub: SignerWithAddress;
   let DCAHubSwapper: ThirdPartyDCAHubSwapper;
