@@ -51,7 +51,7 @@
     "test": "TEST=true npx hardhat compile && TS_NODE_SKIP_IGNORE=true TEST=true npx hardhat test",
     "test:all": "yarn test ./test/e2e/**/*.spec.ts test/integration/**/*.spec.ts test/unit/**/*.spec.ts",
     "test:all:parallel": "yarn test:parallel './test/e2e/**/*.spec.ts' 'test/unit/**/*.spec.ts'",
-    "test:gas": "TS_NODE_SKIP_IGNORE=true yarn test",
+    "test:gas": "TS_NODE_SKIP_IGNORE=true USE_RANDOM_SALT=true yarn test",
     "test:integration": "TS_NODE_SKIP_IGNORE=true USE_RANDOM_SALT=true yarn test ./test/integration/**/*.spec.ts",
     "test:integration:parallel": "TS_NODE_SKIP_IGNORE=true yarn test:parallel ./test/integration/**/*.spec.ts",
     "test:parallel": "TEST=true hardhat compile && TEST=true mocha --parallel",
