@@ -4,7 +4,7 @@ import { TransactionResponse } from '@ethersproject/providers';
 import { constants, wallet } from '@test-utils';
 import { contract, given, then, when } from '@test-utils/bdd';
 import evm, { snapshot } from '@test-utils/evm';
-import { DCAHubCompanion, DCAHubSwapper, IERC20 } from '@typechained';
+import { DCAHubCompanion, CallerOnlyDCAHubSwapper, IERC20 } from '@typechained';
 import { DCAHub, DCAPermissionsManager } from '@mean-finance/dca-v2-core';
 import { TransformerRegistry } from '@mean-finance/transformers';
 import { SwapperRegistry } from '@mean-finance/swappers';
@@ -35,7 +35,7 @@ contract('Multicall', () => {
   let DCAHubCompanion: DCAHubCompanion;
   let DCAPermissionManager: DCAPermissionsManager;
   let DCAHub: DCAHub;
-  let DCAHubSwapper: DCAHubSwapper;
+  let DCAHubSwapper: CallerOnlyDCAHubSwapper;
   let transformerRegistry: TransformerRegistry;
   let chainId: BigNumber;
   let snapshotId: string;
