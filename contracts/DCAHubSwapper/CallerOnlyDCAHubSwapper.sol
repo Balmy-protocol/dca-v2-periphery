@@ -7,7 +7,7 @@ import '@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol';
 import '../interfaces/IDCAHubSwapper.sol';
 import './utils/DeadlineValidation.sol';
 
-contract DCAHubSwapper is DeadlineValidation, AccessControl, GetBalances, IDCAHubSwapper {
+contract CallerOnlyDCAHubSwapper is DeadlineValidation, AccessControl, GetBalances, IDCAHubSwapper {
   using SafeERC20 for IERC20;
   using Address for address;
 

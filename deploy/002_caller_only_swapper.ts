@@ -1,6 +1,6 @@
 import { HardhatRuntimeEnvironment } from 'hardhat/types';
 import { DeployFunction } from '@0xged/hardhat-deploy/types';
-import { bytecode } from '../artifacts/contracts/DCAHubSwapper/DCAHubSwapper.sol/DCAHubSwapper.json';
+import { bytecode } from '../artifacts/contracts/DCAHubSwapper/CallerOnlyDCAHubSwapper.sol/CallerOnlyDCAHubSwapper.json';
 import { deployThroughDeterministicFactory } from '@mean-finance/deterministic-factory/utils/deployment';
 
 const deployFunction: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
@@ -10,9 +10,9 @@ const deployFunction: DeployFunction = async function (hre: HardhatRuntimeEnviro
 
   await deployThroughDeterministicFactory({
     deployer,
-    name: 'DCAHubSwapper',
-    salt: 'MF-DCAV2-DCAHubSwapper-V1',
-    contract: 'contracts/DCAHubSwapper/DCAHubSwapper.sol:DCAHubSwapper',
+    name: 'DCAHubSwapper', // We will use the old name to avoid re-deploying
+    salt: 'MF-DCAV2-CallerDCAHubSwapper-V1',
+    contract: 'contracts/DCAHubSwapper/CallerOnlyDCAHubSwapper.sol:CallerOnlyDCAHubSwapper',
     bytecode,
     constructorArgs: {
       types: ['address', 'address', 'address[]', 'address[]'],
@@ -28,5 +28,5 @@ const deployFunction: DeployFunction = async function (hre: HardhatRuntimeEnviro
 };
 
 deployFunction.dependencies = [];
-deployFunction.tags = ['DCAHubSwapper'];
+deployFunction.tags = ['DCAHubSwapper']; // We will use the old name to avoid re-deploying
 export default deployFunction;

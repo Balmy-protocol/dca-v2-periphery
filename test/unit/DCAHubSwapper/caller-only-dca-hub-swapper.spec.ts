@@ -4,7 +4,7 @@ import { behaviours, constants, wallet } from '@test-utils';
 import { contract, given, then, when } from '@test-utils/bdd';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers';
 import { snapshot } from '@test-utils/evm';
-import { DCAHubSwapperMock, DCAHubSwapperMock__factory, IDCAHub, IERC20, ISwapperRegistry } from '@typechained';
+import { CallerOnlyDCAHubSwapperMock, CallerOnlyDCAHubSwapperMock__factory, IDCAHub, IERC20, ISwapperRegistry } from '@typechained';
 import { FakeContract, smock } from '@defi-wonderland/smock';
 import { BigNumberish } from '@ethersproject/bignumber';
 import { BytesLike } from '@ethersproject/bytes';
@@ -12,12 +12,12 @@ import { utils } from 'ethers';
 
 chai.use(smock.matchers);
 
-contract('DCAHubSwapper', () => {
+contract('CallerOnlyDCAHubSwapper', () => {
   const BYTES = utils.hexlify(utils.randomBytes(10));
   let swapExecutioner: SignerWithAddress, recipient: SignerWithAddress, admin: SignerWithAddress, superAdmin: SignerWithAddress;
   let DCAHub: FakeContract<IDCAHub>;
-  let DCAHubSwapperFactory: DCAHubSwapperMock__factory;
-  let DCAHubSwapper: DCAHubSwapperMock;
+  let DCAHubSwapperFactory: CallerOnlyDCAHubSwapperMock__factory;
+  let DCAHubSwapper: CallerOnlyDCAHubSwapperMock;
   let swapperRegistry: FakeContract<ISwapperRegistry>;
   let tokenA: FakeContract<IERC20>, tokenB: FakeContract<IERC20>, intermediateToken: FakeContract<IERC20>;
   let swapExecutionRole: string, adminRole: string, superAdminRole: string;
@@ -28,7 +28,9 @@ contract('DCAHubSwapper', () => {
 
   before('Setup accounts and contracts', async () => {
     [, swapExecutioner, admin, recipient, superAdmin] = await ethers.getSigners();
-    DCAHubSwapperFactory = await ethers.getContractFactory('contracts/mocks/DCAHubSwapper/DCAHubSwapper.sol:DCAHubSwapperMock');
+    DCAHubSwapperFactory = await ethers.getContractFactory(
+      'contracts/mocks/DCAHubSwapper/CallerOnlyDCAHubSwapper.sol:CallerOnlyDCAHubSwapperMock'
+    );
     DCAHub = await smock.fake('IDCAHub');
     swapperRegistry = await smock.fake('ISwapperRegistry');
     DCAHubSwapper = await DCAHubSwapperFactory.deploy(swapperRegistry.address, superAdmin.address, [admin.address], [swapExecutioner.address]);
@@ -311,7 +313,7 @@ contract('DCAHubSwapper', () => {
     }
     throw new Error('Unknown address');
   }
-  function whenDeadlineHasExpiredThenTxReverts({ func, args }: { func: keyof DCAHubSwapperMock['functions']; args: () => any[] }) {
+  function whenDeadlineHasExpiredThenTxReverts({ func, args }: { func: keyof CallerOnlyDCAHubSwapperMock['functions']; args: () => any[] }) {
     when('deadline has expired', () => {
       then('reverts with message', async () => {
         await behaviours.txShouldRevertWithMessage({
