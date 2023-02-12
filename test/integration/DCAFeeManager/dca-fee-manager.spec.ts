@@ -4,7 +4,7 @@ import { JsonRpcSigner } from '@ethersproject/providers';
 import { constants, wallet } from '@test-utils';
 import { contract } from '@test-utils/bdd';
 import evm from '@test-utils/evm';
-import { DCAHubSwapper, IERC20, DCAFeeManager, ISwapperRegistry } from '@typechained';
+import { CallerOnlyDCAHubSwapper, IERC20, DCAFeeManager, ISwapperRegistry } from '@typechained';
 import { DCAHub } from '@mean-finance/dca-v2-core';
 import { abi as IERC20_ABI } from '@openzeppelin/contracts/build/contracts/IERC20.json';
 import { BigNumber, utils } from 'ethers';
@@ -29,7 +29,7 @@ contract('DCAFeeManager', () => {
   let superAdmin: JsonRpcSigner;
   let cindy: SignerWithAddress, allowed: SignerWithAddress, swapper: SignerWithAddress;
   let DCAFeeManager: DCAFeeManager;
-  let DCAHubSwapper: DCAHubSwapper;
+  let DCAHubSwapper: CallerOnlyDCAHubSwapper;
   let DCAHub: DCAHub;
   let transformerRegistry: TransformerRegistry;
   let swapperRegistry: ISwapperRegistry;
