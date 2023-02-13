@@ -4,12 +4,12 @@ import { JsonRpcSigner, TransactionResponse } from '@ethersproject/providers';
 import { constants, wallet } from '@test-utils';
 import { contract, given, then, when } from '@test-utils/bdd';
 import evm, { snapshot } from '@test-utils/evm';
-import { DCAHubCompanion, DCAHubSwapper, IERC20, ISwapperRegistry } from '@typechained';
+import { IERC20, ThirdPartyDCAHubSwapper } from '@typechained';
 import { StatefulChainlinkOracle } from '@mean-finance/oracles';
 import { DCAHub } from '@mean-finance/dca-v2-core';
 import { abi as DCA_HUB_ABI } from '@mean-finance/dca-v2-core/artifacts/contracts/DCAHub/DCAHub.sol/DCAHub.json';
 import { abi as IERC20_ABI } from '@openzeppelin/contracts/build/contracts/IERC20.json';
-import { BigNumber, utils } from 'ethers';
+import { BigNumber, BigNumberish, BytesLike, utils } from 'ethers';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers';
 import { SwapInterval } from '@test-utils/interval-utils';
 import zrx from '@test-utils/dexes/zrx';
@@ -21,13 +21,12 @@ const USDC_ADDRESS = '0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48';
 const WETH_WHALE_ADDRESS = '0xf04a5cc80b1e94c69b48f5ee68a08cd2f09a7c3e';
 
 contract('Single pair swap with DEX', () => {
+  const ABI_CODER = new utils.AbiCoder();
   let WETH: IERC20;
   let USDC: IERC20;
   let governor: JsonRpcSigner, timelock: JsonRpcSigner;
-  let cindy: SignerWithAddress, recipient: SignerWithAddress;
-  let DCAHubSwapper: DCAHubSwapper;
-  let DCAHubCompanion: DCAHubCompanion;
-  let swapperRegistry: ISwapperRegistry;
+  let cindy: SignerWithAddress, recipient: SignerWithAddress, swapStarter: SignerWithAddress;
+  let DCAHubSwapper: ThirdPartyDCAHubSwapper;
   let DCAHub: DCAHub;
   let initialPerformedSwaps: number;
   let snapshotId: string;
@@ -40,13 +39,11 @@ contract('Single pair swap with DEX', () => {
       network: 'ethereum',
     });
 
-    [cindy, recipient] = await ethers.getSigners();
+    [cindy, swapStarter, recipient] = await ethers.getSigners();
 
-    ({ msig: governor, timelock } = await deploy('DCAHubCompanion'));
+    ({ msig: governor, timelock } = await deploy('ThirdPartyDCAHubSwapper'));
     DCAHub = await ethers.getContract('DCAHub');
-    DCAHubCompanion = await ethers.getContract('DCAHubCompanion');
-    swapperRegistry = await ethers.getContract('SwapperRegistry');
-    DCAHubSwapper = await ethers.getContract('DCAHubSwapper');
+    DCAHubSwapper = await ethers.getContract('ThirdPartyDCAHubSwapper');
     const chainlinkOracle = await ethers.getContract<StatefulChainlinkOracle>('StatefulChainlinkOracle');
 
     // Allow tokens
@@ -55,9 +52,8 @@ contract('Single pair swap with DEX', () => {
     await DCAHub.connect(governor).addSwapIntervalsToAllowedList([SwapInterval.ONE_MINUTE.seconds]);
     //We are setting a very high fee, so that there is a surplus in both reward and toProvide tokens
     await DCAHub.connect(timelock).setSwapFee(20000); // 2%
-    // Allow swapper
-    await DCAHub.connect(governor).grantRole(await DCAHub.PRIVILEGED_SWAPPER_ROLE(), DCAHubSwapper.address);
-    await DCAHubSwapper.connect(governor).grantRole(await DCAHubSwapper.SWAP_EXECUTION_ROLE(), cindy.address);
+    // Allow swap started
+    await DCAHub.connect(governor).grantRole(await DCAHub.PRIVILEGED_SWAPPER_ROLE(), swapStarter.address);
 
     await chainlinkOracle.connect(governor).addMappings([WETH_ADDRESS], ['0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE']);
 
@@ -127,22 +123,23 @@ contract('Single pair swap with DEX', () => {
           takerAddress: DCAHubSwapper.address,
           skipValidation: true,
         });
-        await swapperRegistry.connect(governor).allowSwappers([dexQuote.to]);
-        const dexFunction = sendLeftoverToHub ? 'swapWithDexesForMean' : 'swapWithDexes';
+
         const tokensInSwap = [USDC_ADDRESS, WETH_ADDRESS];
         const indexesInSwap = [{ indexTokenA: 0, indexTokenB: 1 }];
-        const swapTx = await DCAHubSwapper[dexFunction]({
-          hub: DCAHub.address,
-          tokens: tokensInSwap,
-          pairsToSwap: indexesInSwap,
-          oracleData: [],
-          allowanceTargets: [{ token: dexQuote.sellTokenAddress, allowanceTarget: dexQuote.allowanceTarget, minAllowance: dexQuote.sellAmount }],
-          swappers: [dexQuote.to],
-          executions: [{ swapperIndex: 0, swapData: dexQuote.data }],
-          leftoverRecipient: recipient.address,
-          intermediateTokensToCheck: [],
-          deadline: constants.MAX_UINT_256,
+        const data = encode({
+          allowanceTargets: [{ token: dexQuote.sellTokenAddress, spender: dexQuote.allowanceTarget, amount: dexQuote.sellAmount }],
+          executions: [{ swapper: dexQuote.to, data: dexQuote.data }],
+          sendToProvideLeftoverToHub: sendLeftoverToHub,
         });
+        const swapTx = await DCAHub.connect(swapStarter).swap(
+          tokensInSwap,
+          indexesInSwap,
+          DCAHubSwapper.address,
+          DCAHubSwapper.address,
+          [0, 0],
+          data,
+          '0x'
+        );
         ({ reward, toProvide, receivedFromAgg, sentToAgg } = await getTransfers(swapTx));
       });
       then('swap is executed', async () => {
@@ -174,6 +171,28 @@ contract('Single pair swap with DEX', () => {
         });
       }
     });
+  }
+
+  type SwapData = {
+    allowanceTargets?: { token: string; spender: string; amount: BigNumberish }[];
+    executions: { data: BytesLike; swapper: string }[];
+    extraTokens?: string[];
+    sendToProvideLeftoverToHub?: boolean;
+  };
+  function encode(bytes: SwapData) {
+    return ABI_CODER.encode(
+      ['tuple(uint256, tuple(address, address, uint256)[], tuple(address, bytes)[], address[], address, bool)'],
+      [
+        [
+          constants.MAX_UINT_256,
+          bytes.allowanceTargets?.map(({ token, spender, amount }) => [token, spender, amount]) ?? [],
+          bytes.executions?.map(({ swapper, data }) => [swapper, data]) ?? [],
+          bytes.extraTokens ?? [],
+          recipient.address,
+          bytes.sendToProvideLeftoverToHub ?? false,
+        ],
+      ]
+    );
   }
 
   async function performedSwaps(): Promise<number> {
