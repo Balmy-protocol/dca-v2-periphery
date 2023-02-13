@@ -25,7 +25,7 @@ contract('DCAKeep3rJob', () => {
   let WETH: IERC20, K3PR: IERC20;
 
   let DCAKeep3rJob: DCAKeep3rJob;
-  let DCAHubSwapper: ThirdPartyDCAHubSwapper;
+  let thirdPartySwapper: ThirdPartyDCAHubSwapper;
   let DCAHub: DCAHub;
   let keep3rV2: Contract;
   let swapperRegistry: ISwapperRegistry;
@@ -46,7 +46,7 @@ contract('DCAKeep3rJob', () => {
     ({ msig, timelock } = await deploy('ThirdPartyDCAHubSwapper', 'DCAKeep3rJob'));
 
     DCAHub = await ethers.getContract('DCAHub');
-    DCAHubSwapper = await ethers.getContract('ThirdPartyDCAHubSwapper');
+    thirdPartySwapper = await ethers.getContract('ThirdPartyDCAHubSwapper');
     DCAKeep3rJob = await ethers.getContract('DCAKeep3rJob');
     swapperRegistry = await ethers.getContract('SwapperRegistry');
     keep3rV2 = await ethers.getContractAt(KEEP3R_ABI, await DCAKeep3rJob.keep3r());
@@ -146,7 +146,7 @@ contract('DCAKeep3rJob', () => {
       buyToken: USDC_ADDRESS,
       sellAmount: utils.parseEther('0.1'),
       slippagePercentage: 0.01,
-      takerAddress: DCAHubSwapper.address,
+      takerAddress: thirdPartySwapper.address,
       skipValidation: true,
     });
 
@@ -161,8 +161,8 @@ contract('DCAKeep3rJob', () => {
     const swapTx = await DCAHub.populateTransaction.swap(
       [USDC_ADDRESS, WETH_ADDRESS],
       [{ indexTokenA: 0, indexTokenB: 1 }],
-      DCAHubSwapper.address,
-      DCAHubSwapper.address,
+      thirdPartySwapper.address,
+      thirdPartySwapper.address,
       [0, 0],
       bytes,
       []
