@@ -13,7 +13,7 @@ const deployFunction: DeployFunction = async function (hre: HardhatRuntimeEnviro
     return;
   }
 
-  const swapper = await hre.deployments.get('DCAHubSwapper');
+  const dcaHub = await hre.deployments.get('DCAHub');
   await deployThroughDeterministicFactory({
     deployer,
     name: 'DCAKeep3rJob',
@@ -22,7 +22,7 @@ const deployFunction: DeployFunction = async function (hre: HardhatRuntimeEnviro
     bytecode,
     constructorArgs: {
       types: ['address', 'address', 'address', 'address[]'],
-      values: [keep3r, swapper.address, msig, []],
+      values: [keep3r, dcaHub.address, msig, []],
     },
     log: !process.env.TEST,
     overrides: !!process.env.COVERAGE
@@ -33,6 +33,6 @@ const deployFunction: DeployFunction = async function (hre: HardhatRuntimeEnviro
   });
 };
 
-deployFunction.dependencies = ['DCAHubSwapper'];
+deployFunction.dependencies = ['DCAHub'];
 deployFunction.tags = ['DCAKeep3rJob'];
 export default deployFunction;

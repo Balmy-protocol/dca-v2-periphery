@@ -4,7 +4,7 @@ import { BigNumber, BigNumberish, BytesLike, Contract, utils } from 'ethers';
 import { ethers } from 'hardhat';
 import { abi as IERC20_ABI } from '@openzeppelin/contracts/build/contracts/IERC20.json';
 import { expect } from 'chai';
-import { DCAHubSwapper, DCAKeep3rJob, IERC20, ISwapperRegistry } from '@typechained';
+import { DCAKeep3rJob, IERC20, ISwapperRegistry, ThirdPartyDCAHubSwapper } from '@typechained';
 import { SwapInterval } from '@test-utils/interval-utils';
 import evm, { snapshot } from '@test-utils/evm';
 import { contract, given, then, when } from '@test-utils/bdd';
@@ -25,7 +25,7 @@ contract('DCAKeep3rJob', () => {
   let WETH: IERC20, K3PR: IERC20;
 
   let DCAKeep3rJob: DCAKeep3rJob;
-  let DCAHubSwapper: DCAHubSwapper;
+  let thirdPartySwapper: ThirdPartyDCAHubSwapper;
   let DCAHub: DCAHub;
   let keep3rV2: Contract;
   let swapperRegistry: ISwapperRegistry;
@@ -43,10 +43,10 @@ contract('DCAKeep3rJob', () => {
       network: 'ethereum',
     });
 
-    ({ msig, timelock } = await deploy('DCAKeep3rJob'));
+    ({ msig, timelock } = await deploy('ThirdPartyDCAHubSwapper', 'DCAKeep3rJob'));
 
     DCAHub = await ethers.getContract('DCAHub');
-    DCAHubSwapper = await ethers.getContract('DCAHubSwapper');
+    thirdPartySwapper = await ethers.getContract('ThirdPartyDCAHubSwapper');
     DCAKeep3rJob = await ethers.getContract('DCAKeep3rJob');
     swapperRegistry = await ethers.getContract('SwapperRegistry');
     keep3rV2 = await ethers.getContractAt(KEEP3R_ABI, await DCAKeep3rJob.keep3r());
@@ -58,9 +58,8 @@ contract('DCAKeep3rJob', () => {
 
     await DCAHub.connect(timelock).setSwapFee(50000); // 5%
     await DCAHub.connect(msig).setAllowedTokens([WETH_ADDRESS, USDC_ADDRESS], [true, true]);
-    await DCAHub.connect(msig).grantRole(await DCAHub.PRIVILEGED_SWAPPER_ROLE(), DCAHubSwapper.address);
+    await DCAHub.connect(msig).grantRole(await DCAHub.PRIVILEGED_SWAPPER_ROLE(), DCAKeep3rJob.address);
     await DCAKeep3rJob.connect(msig).grantRole(DCAKeep3rJob.CAN_SIGN_ROLE(), signer.address);
-    await DCAHubSwapper.connect(msig).grantRole(await DCAHubSwapper.SWAP_EXECUTION_ROLE(), DCAKeep3rJob.address);
 
     WETH = await ethers.getContractAt(IERC20_ABI, WETH_ADDRESS);
     K3PR = await ethers.getContractAt(IERC20_ABI, KP3R_ADDRESS);
@@ -147,33 +146,31 @@ contract('DCAKeep3rJob', () => {
       buyToken: USDC_ADDRESS,
       sellAmount: utils.parseEther('0.1'),
       slippagePercentage: 0.01,
-      takerAddress: DCAHubSwapper.address,
+      takerAddress: thirdPartySwapper.address,
       skipValidation: true,
     });
 
-    await swapperRegistry.connect(msig).allowSwappers([quote.to]);
-
     const bytes = encodeSwap({
-      swappers: [quote.to],
-      executions: [{ index: 0, data: quote.data }],
+      allowanceTargets: [{ token: quote.sellTokenAddress, spender: quote.allowanceTarget, amount: quote.sellAmount }],
+      executions: [{ swapper: quote.to, data: quote.data }],
       leftoverRecipient: keeper,
       extraTokens: [],
       sendToProvideLeftoverToHub: false,
     });
 
-    const swapTx = await DCAHubSwapper.populateTransaction.optimizedSwap({
-      hub: DCAHub.address,
-      tokens: [USDC_ADDRESS, WETH_ADDRESS],
-      pairsToSwap: [{ indexTokenA: 0, indexTokenB: 1 }],
-      oracleData: [],
-      allowanceTargets: [{ token: quote.sellTokenAddress, allowanceTarget: quote.allowanceTarget, minAllowance: quote.sellAmount }],
-      callbackData: bytes,
-      deadline: constants.MAX_UINT_256,
-    });
+    const swapTx = await DCAHub.populateTransaction.swap(
+      [USDC_ADDRESS, WETH_ADDRESS],
+      [{ indexTokenA: 0, indexTokenB: 1 }],
+      thirdPartySwapper.address,
+      thirdPartySwapper.address,
+      [0, 0],
+      bytes,
+      []
+    );
 
     const signature = await getSignature({
       signer,
-      swapper: DCAHubSwapper.address,
+      swapper: DCAHub.address,
       data: swapTx.data!,
       nonce: 0,
       chainId,
@@ -216,27 +213,27 @@ contract('DCAKeep3rJob', () => {
     chainId: BigNumberish;
   };
 
-  type SwapWithDexes = {
-    swappers: string[];
-    executions: { data: BytesLike; index: number }[];
-    sendToProvideLeftoverToHub: boolean;
+  type SwapData = {
+    allowanceTargets: { token: string; spender: string; amount: BigNumberish }[];
+    executions: { data: BytesLike; swapper: string }[];
     extraTokens: string[];
+    sendToProvideLeftoverToHub: boolean;
     leftoverRecipient: { address: string };
   };
-  function encodeSwap(swap: SwapWithDexes) {
+  function encodeSwap(bytes: SwapData) {
     const abiCoder = new utils.AbiCoder();
-    const swapData = abiCoder.encode(
-      ['tuple(address[], tuple(uint8, bytes)[], address[], address, bool)'],
+    return abiCoder.encode(
+      ['tuple(uint256, tuple(address, address, uint256)[], tuple(address, bytes)[], address[], address, bool)'],
       [
         [
-          swap.swappers,
-          swap.executions.map(({ index, data }) => [index, data]),
-          swap.extraTokens,
-          swap.leftoverRecipient.address,
-          swap.sendToProvideLeftoverToHub,
+          constants.MAX_UINT_256,
+          bytes.allowanceTargets.map(({ token, spender, amount }) => [token, spender, amount]),
+          bytes.executions.map(({ swapper, data }) => [swapper, data]),
+          bytes.extraTokens,
+          bytes.leftoverRecipient.address,
+          bytes.sendToProvideLeftoverToHub,
         ],
       ]
     );
-    return abiCoder.encode(['tuple(uint256, bytes)'], [[2, swapData]]);
   }
 });
