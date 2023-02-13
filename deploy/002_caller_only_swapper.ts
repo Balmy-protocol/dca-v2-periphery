@@ -28,5 +28,5 @@ const deployFunction: DeployFunction = async function (hre: HardhatRuntimeEnviro
 };
 
 deployFunction.dependencies = [];
-deployFunction.tags = ['CallerOnlyDCAHubSwapper']; // We will use the old name to avoid re-deploying
+deployFunction.tags = ['CallerOnlyDCAHubSwapper'];
 export default deployFunction;
