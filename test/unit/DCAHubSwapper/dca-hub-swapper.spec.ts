@@ -1,22 +1,19 @@
 import chai, { expect } from 'chai';
-import { ethers, network } from 'hardhat';
+import { ethers } from 'hardhat';
 import { behaviours, constants, wallet } from '@test-utils';
 import { contract, given, then, when } from '@test-utils/bdd';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers';
 import { snapshot } from '@test-utils/evm';
-import { DCAHubSwapperMock, DCAHubSwapperMock__factory, IDCAHub, IERC20, ISwapper, ISwapperRegistry } from '@typechained';
+import { DCAHubSwapperMock, DCAHubSwapperMock__factory, IDCAHub, IERC20, ISwapperRegistry } from '@typechained';
 import { FakeContract, smock } from '@defi-wonderland/smock';
 import { BigNumberish } from '@ethersproject/bignumber';
 import { BytesLike } from '@ethersproject/bytes';
-import { TransactionResponse } from '@ethersproject/abstract-provider';
 import { utils } from 'ethers';
 
 chai.use(smock.matchers);
 
 contract('DCAHubSwapper', () => {
-  const ABI_CODER = new utils.AbiCoder();
   const BYTES = utils.hexlify(utils.randomBytes(10));
-  const DEX = constants.NOT_ZERO_ADDRESS;
   let swapExecutioner: SignerWithAddress, recipient: SignerWithAddress, admin: SignerWithAddress, superAdmin: SignerWithAddress;
   let DCAHub: FakeContract<IDCAHub>;
   let DCAHubSwapperFactory: DCAHubSwapperMock__factory;
@@ -214,7 +211,6 @@ contract('DCAHubSwapper', () => {
       thenHubIsCalledWith({
         rewardRecipient: SOME_RANDOM_ADDRESS,
         oracleData: BYTES,
-        callbackData: () => encode({ plan: 'swap for caller', bytes: 'none' }),
       });
       then('swap executor is cleared', async () => {
         expect(await DCAHubSwapper.isSwapExecutorEmpty()).to.be.true;
@@ -232,221 +228,6 @@ contract('DCAHubSwapper', () => {
           minimumOutput: [0, 0],
           maximumInput: [constants.MAX_UINT_256, constants.MAX_UINT_256],
           recipient: SOME_RANDOM_ADDRESS,
-          deadline: constants.MAX_UINT_256,
-        },
-      ],
-      addressWithRole: () => swapExecutioner,
-      role: () => swapExecutionRole,
-    });
-  });
-  describe('swapWithDexes', () => {
-    whenDeadlineHasExpiredThenTxReverts({
-      func: 'swapWithDexes',
-      args: () => [
-        {
-          hub: DCAHub.address,
-          tokens: [],
-          pairsToSwap: [],
-          oracleData: BYTES,
-          allowanceTargets: [],
-          intermediateTokensToCheck: [],
-          swappers: [],
-          executions: [],
-          leftoverRecipient: recipient.address,
-          deadline: 0,
-        },
-      ],
-    });
-    when('executing a swap with dexes', () => {
-      given(async () => {
-        await DCAHubSwapper.connect(swapExecutioner).swapWithDexes({
-          hub: DCAHub.address,
-          tokens: tokens,
-          pairsToSwap: INDEXES,
-          oracleData: BYTES,
-          allowanceTargets: [{ token: tokenA.address, allowanceTarget: DEX, minAllowance: 2000 }],
-          intermediateTokensToCheck: [intermediateToken.address],
-          swappers: [DEX],
-          executions: [{ swapData: BYTES, swapperIndex: 0 }],
-          leftoverRecipient: recipient.address,
-          deadline: constants.MAX_UINT_256,
-        });
-      });
-      then('allowance was called correctly', async () => {
-        const calls = await DCAHubSwapper.maxApproveSpenderCalls();
-        expect(calls).to.have.lengthOf(1);
-        expect(calls[0].token).to.equal(tokenA.address);
-        expect(calls[0].spender).to.equal(DEX);
-        expect(calls[0].minAllowance).to.equal(2000);
-        expect(calls[0].alreadyValidatedSpender).to.be.false;
-      });
-      thenHubIsCalledWith({
-        rewardRecipient: () => DCAHubSwapper,
-        oracleData: BYTES,
-        callbackData: () =>
-          encode({
-            plan: 'dexes',
-            bytes: {
-              swappers: [DEX],
-              executions: [{ data: BYTES, index: 0 }],
-              extraTokens: [intermediateToken.address],
-              sendToProvideLeftoverToHub: false,
-              leftoverRecipient: recipient,
-            },
-          }),
-      });
-    });
-    behaviours.shouldBeExecutableOnlyByRole({
-      contract: () => DCAHubSwapper,
-      funcAndSignature: 'swapWithDexes',
-      params: () => [
-        {
-          hub: DCAHub.address,
-          tokens: tokens,
-          pairsToSwap: INDEXES,
-          oracleData: BYTES,
-          allowanceTargets: [{ token: tokenA.address, allowanceTarget: DEX, minAllowance: 2000 }],
-          swappers: [DEX],
-          executions: [{ swapData: BYTES, swapperIndex: 0 }],
-          intermediateTokensToCheck: [],
-          leftoverRecipient: recipient.address,
-          deadline: constants.MAX_UINT_256,
-        },
-      ],
-      addressWithRole: () => swapExecutioner,
-      role: () => swapExecutionRole,
-    });
-  });
-  describe('swapWithDexesForMean', () => {
-    whenDeadlineHasExpiredThenTxReverts({
-      func: 'swapWithDexesForMean',
-      args: () => [
-        {
-          hub: DCAHub.address,
-          tokens: [],
-          pairsToSwap: [],
-          oracleData: BYTES,
-          allowanceTargets: [],
-          swappers: [],
-          executions: [],
-          intermediateTokensToCheck: [],
-          leftoverRecipient: recipient.address,
-          deadline: 0,
-        },
-      ],
-    });
-    when('executing a swap with dexes', () => {
-      given(async () => {
-        await DCAHubSwapper.connect(swapExecutioner).swapWithDexesForMean({
-          hub: DCAHub.address,
-          tokens: tokens,
-          pairsToSwap: INDEXES,
-          oracleData: BYTES,
-          allowanceTargets: [{ token: tokenA.address, allowanceTarget: DEX, minAllowance: 2000 }],
-          swappers: [DEX],
-          executions: [{ swapData: BYTES, swapperIndex: 0 }],
-          intermediateTokensToCheck: [intermediateToken.address],
-          leftoverRecipient: recipient.address,
-          deadline: constants.MAX_UINT_256,
-        });
-      });
-      then('allowance was called correctly', async () => {
-        const calls = await DCAHubSwapper.maxApproveSpenderCalls();
-        expect(calls).to.have.lengthOf(1);
-        expect(calls[0].token).to.equal(tokenA.address);
-        expect(calls[0].spender).to.equal(DEX);
-        expect(calls[0].minAllowance).to.equal(2000);
-        expect(calls[0].alreadyValidatedSpender).to.be.false;
-      });
-      thenHubIsCalledWith({
-        rewardRecipient: () => DCAHubSwapper,
-        oracleData: BYTES,
-        callbackData: () =>
-          encode({
-            plan: 'dexes',
-            bytes: {
-              swappers: [DEX],
-              executions: [{ data: BYTES, index: 0 }],
-              extraTokens: [intermediateToken.address],
-              sendToProvideLeftoverToHub: true,
-              leftoverRecipient: recipient,
-            },
-          }),
-      });
-    });
-    behaviours.shouldBeExecutableOnlyByRole({
-      contract: () => DCAHubSwapper,
-      funcAndSignature: 'swapWithDexesForMean',
-      params: () => [
-        {
-          hub: DCAHub.address,
-          tokens: tokens,
-          pairsToSwap: INDEXES,
-          oracleData: BYTES,
-          allowanceTargets: [{ token: tokenA.address, allowanceTarget: DEX, minAllowance: 2000 }],
-          swappers: [DEX],
-          executions: [{ swapData: BYTES, swapperIndex: 0 }],
-          intermediateTokensToCheck: [],
-          leftoverRecipient: recipient.address,
-          deadline: constants.MAX_UINT_256,
-        },
-      ],
-      addressWithRole: () => swapExecutioner,
-      role: () => swapExecutionRole,
-    });
-  });
-  describe('optimizedSwap', () => {
-    whenDeadlineHasExpiredThenTxReverts({
-      func: 'optimizedSwap',
-      args: () => [
-        {
-          hub: DCAHub.address,
-          tokens: [],
-          pairsToSwap: [],
-          oracleData: BYTES,
-          allowanceTargets: [],
-          callbackData: BYTES,
-          deadline: 0,
-        },
-      ],
-    });
-    when('executing a swap with dexes', () => {
-      given(async () => {
-        await DCAHubSwapper.connect(swapExecutioner).optimizedSwap({
-          hub: DCAHub.address,
-          tokens: tokens,
-          pairsToSwap: INDEXES,
-          oracleData: BYTES,
-          allowanceTargets: [{ token: tokenA.address, allowanceTarget: DEX, minAllowance: 2000 }],
-          callbackData: BYTES,
-          deadline: constants.MAX_UINT_256,
-        });
-      });
-      then('allowance was called correctly', async () => {
-        const calls = await DCAHubSwapper.maxApproveSpenderCalls();
-        expect(calls).to.have.lengthOf(1);
-        expect(calls[0].token).to.equal(tokenA.address);
-        expect(calls[0].spender).to.equal(DEX);
-        expect(calls[0].minAllowance).to.equal(2000);
-        expect(calls[0].alreadyValidatedSpender).to.be.false;
-      });
-      thenHubIsCalledWith({
-        rewardRecipient: () => DCAHubSwapper,
-        oracleData: BYTES,
-        callbackData: () => BYTES,
-      });
-    });
-    behaviours.shouldBeExecutableOnlyByRole({
-      contract: () => DCAHubSwapper,
-      funcAndSignature: 'optimizedSwap',
-      params: () => [
-        {
-          hub: DCAHub.address,
-          tokens: tokens,
-          pairsToSwap: INDEXES,
-          oracleData: BYTES,
-          allowanceTargets: [{ token: tokenA.address, allowanceTarget: DEX, minAllowance: 2000 }],
-          callbackData: BYTES,
           deadline: constants.MAX_UINT_256,
         },
       ],
@@ -508,168 +289,17 @@ contract('DCAHubSwapper', () => {
       hub = await ethers.getSigner(DCAHub.address);
       await wallet.setBalance({ account: hub.address, balance: utils.parseEther('1') });
     });
-    when('the swap plan is unexpected', () => {
-      const SWAP_DATA = ABI_CODER.encode(['tuple(uint256, bytes)'], [[0, ethers.utils.randomBytes(5)]]);
-      then('reverts with message', async () => {
-        await behaviours.txShouldRevertWithMessage({
-          contract: DCAHubSwapper.connect(hub),
-          func: 'DCAHubSwapCall',
-          args: [DCAHubSwapper.address, tokensInSwap, [], SWAP_DATA],
-          message: 'UnexpectedSwapPlan',
-        });
-      });
-    });
-    when('the swap plan is invalid', () => {
-      const SWAP_DATA = ABI_CODER.encode(['tuple(uint256, bytes)'], [[10, ethers.utils.randomBytes(5)]]);
-      then('reverts with message', async () => {
-        await behaviours.txShouldRevertWithMessage({
-          contract: DCAHubSwapper.connect(hub),
-          func: 'DCAHubSwapCall',
-          args: [DCAHubSwapper.address, tokensInSwap, [], SWAP_DATA],
-          // This happens when an invalid plan (not part of the enum) is sent
-          message: `Transaction reverted and Hardhat couldn't infer the reason. Please report this to help us improve Hardhat.`,
-        });
-      });
-    });
-    describe('handleSwapForCaller', () => {
-      when('swap for caller plan is executed', () => {
-        given(async () => {
-          await DCAHubSwapper.setSwapExecutor(swapExecutioner.address);
-          await DCAHubSwapper.connect(hub).DCAHubSwapCall(
-            DCAHubSwapper.address,
-            tokensInSwap,
-            [],
-            encode({ plan: 'swap for caller', bytes: 'none' })
-          );
-        });
-        then('tokens are sent from the swap executor to the hub correctly', () => {
-          for (const tokenInSwap of tokensInSwap) {
-            const token = fromAddressToToken(tokenInSwap.token);
-            expect(token.transferFrom).to.have.been.calledWith(swapExecutioner.address, hub.address, tokenInSwap.toProvide);
-          }
-        });
-      });
-    });
-    describe('handleSwapWithDexes', () => {
-      const swapData = ({ callsToSwapper, sendToHubFlag }: { callsToSwapper: BytesLike[]; sendToHubFlag: boolean }) =>
-        encode({
-          plan: 'dexes',
-          bytes: {
-            swappers: [swapper.address],
-            extraTokens: [intermediateToken.address],
-            executions: callsToSwapper.map((swap) => ({ index: 0, data: swap })),
-            leftoverRecipient: recipient,
-            sendToProvideLeftoverToHub: sendToHubFlag,
-          },
-        });
-
-      let swapper: FakeContract<ISwapper>;
-      let swapExecution: BytesLike;
+    when('swap for caller', () => {
       given(async () => {
-        swapper = await smock.fake('ISwapper');
-        const { data } = await swapper.populateTransaction.swap(tokenA.address, 1000, tokenA.address);
-        swapExecution = data!;
+        await DCAHubSwapper.setSwapExecutor(swapExecutioner.address);
+        await DCAHubSwapper.connect(hub).DCAHubSwapCall(DCAHubSwapper.address, tokensInSwap, [], []);
       });
-      when('swapper is not allowlisted', () => {
-        let tx: Promise<TransactionResponse>;
-        given(() => {
-          swapperRegistry.isSwapperAllowlisted.returns(false);
-          const data = swapData({ callsToSwapper: [], sendToHubFlag: true });
-          tx = DCAHubSwapper.connect(hub).DCAHubSwapCall(constants.ZERO_ADDRESS, [], [], data);
-        });
-        then('swap fails', async () => {
-          await expect(tx).to.have.revertedWith('SwapperNotAllowlisted');
-        });
+      then('tokens are sent from the swap executor to the hub correctly', () => {
+        for (const tokenInSwap of tokensInSwap) {
+          const token = fromAddressToToken(tokenInSwap.token);
+          expect(token.transferFrom).to.have.been.calledWith(swapExecutioner.address, hub.address, tokenInSwap.toProvide);
+        }
       });
-
-      when('swapper call fails', () => {
-        let tx: Promise<TransactionResponse>;
-        given(() => {
-          swapper.swap.reverts();
-          const data = swapData({ callsToSwapper: [swapExecution], sendToHubFlag: true });
-          tx = DCAHubSwapper.connect(hub).DCAHubSwapCall(constants.ZERO_ADDRESS, [], [], data);
-        });
-        then('then swap reverts', async () => {
-          await expect(tx).to.have.revertedWith('Call to swapper failed');
-        });
-      });
-
-      handleSwapWithDexes({
-        when: 'token needs to be provided and hub flag is set',
-        then: 'everything is transferred to the hub',
-        sendToHubFlag: true,
-        balance: 12345,
-        toProvide: 10000,
-        assertion: (token) => expect(token.transfer).to.have.been.calledOnceWith(hub.address, 12345),
-      });
-
-      handleSwapWithDexes({
-        when: 'token needs to be provided but there is no leftover',
-        then: 'available balance is sent to the hub only',
-        sendToHubFlag: false,
-        balance: 12345,
-        toProvide: 12345,
-        assertion: (token) => expect(token.transfer).to.have.been.calledOnceWith(hub.address, 12345),
-      });
-
-      handleSwapWithDexes({
-        when: 'token needs to be provided and there is some leftover',
-        then: 'leftover is sent to the recipient',
-        sendToHubFlag: false,
-        balance: 12345,
-        toProvide: 10000,
-        assertion: (token, recipient) => {
-          expect(token.transfer).to.have.been.calledTwice;
-          expect(token.transfer).to.have.been.calledWith(hub.address, 10000);
-          expect(token.transfer).to.have.been.calledWith(recipient, 2345);
-        },
-      });
-
-      handleSwapWithDexes({
-        when: 'token is reward (to provide is zero)',
-        then: 'everything is transferred to recipient',
-        balance: 12345,
-        toProvide: 0,
-        assertion: (token, recipient) => expect(token.transfer).to.have.been.calledOnceWith(recipient, 12345),
-      });
-
-      function handleSwapWithDexes({
-        when: title,
-        then: thenTitle,
-        balance,
-        toProvide,
-        sendToHubFlag,
-        assertion,
-      }: {
-        when: string;
-        then: string;
-        balance: BigNumberish;
-        toProvide?: BigNumberish;
-        sendToHubFlag?: boolean;
-        assertion: (_: FakeContract<IERC20>, recipient: string) => void;
-      }) {
-        when(title, () => {
-          given(async () => {
-            const tokensInSwap = [{ token: tokenA.address, toProvide: toProvide ?? 0, reward: 0, platformFee: 0 }];
-            tokenA.balanceOf.returns(balance);
-            const data = swapData({ callsToSwapper: [swapExecution], sendToHubFlag: sendToHubFlag ?? true });
-            await DCAHubSwapper.connect(hub).DCAHubSwapCall(constants.ZERO_ADDRESS, tokensInSwap, [], data);
-          });
-          then(thenTitle, () => assertion(tokenA, recipient.address));
-          then('registry is queried correctly', () => {
-            expect(swapperRegistry.isSwapperAllowlisted).to.have.been.calledOnceWith(swapper.address);
-          });
-          then('swap is executed correctly', () => {
-            expect(swapper.swap).to.have.been.calledOnceWith(tokenA.address, 1000, tokenA.address);
-          });
-          then('send balance on contract to recipient was called correctly', async () => {
-            const calls = await DCAHubSwapper.sendBalanceOnContractToRecipientCalls();
-            expect(calls).to.have.lengthOf(1);
-            expect(calls[0].token).to.equal(intermediateToken.address);
-            expect(calls[0].recipient).to.equal(recipient.address);
-          });
-        });
-      }
     });
   });
   function fromAddressToToken(tokenAddress: string): FakeContract<IERC20> {
@@ -694,12 +324,10 @@ contract('DCAHubSwapper', () => {
     });
   }
   function thenHubIsCalledWith({
-    callbackData: expectedCalbackData,
     oracleData: expectedOracleData,
     rewardRecipient: expectedRewardRecipient,
   }: {
     rewardRecipient: string | (() => { address: string });
-    callbackData: () => BytesLike;
     oracleData: BytesLike;
   }) {
     then('hub was called with the correct parameters', () => {
@@ -714,47 +342,8 @@ contract('DCAHubSwapper', () => {
       expect(borrow).to.have.lengthOf(2);
       expect((borrow as any)[0]).to.equal(constants.ZERO);
       expect((borrow as any)[1]).to.equal(constants.ZERO);
-      expect(callbackData).to.equal(expectedCalbackData());
+      expect(callbackData).to.equal('0x');
       expect(oracleData).to.equal(expectedOracleData);
     });
-  }
-  type SwapWithDexes = {
-    swappers: string[];
-    executions: { data: BytesLike; index: number }[];
-    extraTokens: string[];
-    sendToProvideLeftoverToHub: boolean;
-    leftoverRecipient: { address: string };
-  };
-  function encode({ plan, bytes }: { plan: 'none' | 'invalid' | 'swap for caller' | 'dexes'; bytes: 'none' | 'random' | SwapWithDexes }) {
-    let swapPlan: number = 0;
-    let swapData: BytesLike;
-    if (plan === 'none') {
-      swapPlan = 0;
-    } else if (plan === 'swap for caller') {
-      swapPlan = 1;
-    } else if (plan === 'dexes') {
-      swapPlan = 2;
-    } else if (plan === 'invalid') {
-      swapPlan = 10;
-    }
-    if (bytes == 'random') {
-      swapData = ethers.utils.randomBytes(10);
-    } else if (bytes == 'none') {
-      swapData = [];
-    } else {
-      swapData = ABI_CODER.encode(
-        ['tuple(address[], tuple(uint8, bytes)[], address[], address, bool)'],
-        [
-          [
-            bytes.swappers,
-            bytes.executions.map(({ index, data }) => [index, data]),
-            bytes.extraTokens,
-            bytes.leftoverRecipient.address,
-            bytes.sendToProvideLeftoverToHub,
-          ],
-        ]
-      );
-    }
-    return ABI_CODER.encode(['tuple(uint256, bytes)'], [[swapPlan, swapData]]);
   }
 });
