@@ -4,7 +4,7 @@ import { JsonRpcSigner, TransactionResponse } from '@ethersproject/providers';
 import { constants, wallet } from '@test-utils';
 import { contract, given, then, when } from '@test-utils/bdd';
 import evm, { snapshot } from '@test-utils/evm';
-import { DCAHubSwapper, IERC20 } from '@typechained';
+import { CallerOnlyDCAHubSwapper, IERC20 } from '@typechained';
 import { DCAHub } from '@mean-finance/dca-v2-core';
 import { abi as DCA_HUB_ABI } from '@mean-finance/dca-v2-core/artifacts/contracts/DCAHub/DCAHub.sol/DCAHub.json';
 import { abi as IERC20_ABI } from '@openzeppelin/contracts/build/contracts/IERC20.json';
@@ -23,7 +23,7 @@ contract('Swap for caller', () => {
   let WETH: IERC20, USDC: IERC20;
   let governor: JsonRpcSigner;
   let cindy: SignerWithAddress, swapper: SignerWithAddress, recipient: SignerWithAddress;
-  let DCAHubSwapper: DCAHubSwapper;
+  let DCAHubSwapper: CallerOnlyDCAHubSwapper;
   let DCAHub: DCAHub;
   let initialPerformedSwaps: number;
   let snapshotId: string;
@@ -41,7 +41,7 @@ contract('Swap for caller', () => {
     ({ msig: governor } = await deploy());
 
     DCAHub = await ethers.getContract('DCAHub');
-    DCAHubSwapper = await ethers.getContract('DCAHubSwapper');
+    DCAHubSwapper = await ethers.getContract('CallerOnlyDCAHubSwapper');
 
     // Allow tokens
     await DCAHub.connect(governor).setAllowedTokens([WETH_ADDRESS, USDC_ADDRESS], [true, true]);
