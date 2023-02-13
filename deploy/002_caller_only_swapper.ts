@@ -10,7 +10,7 @@ const deployFunction: DeployFunction = async function (hre: HardhatRuntimeEnviro
 
   await deployThroughDeterministicFactory({
     deployer,
-    name: 'DCAHubSwapper', // We will use the old name to avoid re-deploying
+    name: 'CallerOnlyDCAHubSwapper',
     salt: 'MF-DCAV2-CallerDCAHubSwapper-V1',
     contract: 'contracts/DCAHubSwapper/CallerOnlyDCAHubSwapper.sol:CallerOnlyDCAHubSwapper',
     bytecode,
@@ -28,5 +28,5 @@ const deployFunction: DeployFunction = async function (hre: HardhatRuntimeEnviro
 };
 
 deployFunction.dependencies = [];
-deployFunction.tags = ['DCAHubSwapper']; // We will use the old name to avoid re-deploying
+deployFunction.tags = ['CallerOnlyDCAHubSwapper']; // We will use the old name to avoid re-deploying
 export default deployFunction;

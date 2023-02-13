@@ -36,7 +36,7 @@ export async function deployWithAddress(
       'TransformerRegistry',
       'SwapperRegistry',
       'DCAHub',
-      'DCAHubSwapper',
+      'CallerOnlyDCAHubSwapper',
       ...contracts,
     ],
     {

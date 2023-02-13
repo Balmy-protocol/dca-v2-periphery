@@ -44,7 +44,7 @@ contract('DCAFeeManager', () => {
     ({ msig: superAdmin } = await deploy('DCAFeeManager'));
 
     DCAHub = await ethers.getContract('DCAHub');
-    DCAHubSwapper = await ethers.getContract('DCAHubSwapper');
+    DCAHubSwapper = await ethers.getContract('CallerOnlyDCAHubSwapper');
     DCAFeeManager = await ethers.getContract('DCAFeeManager');
     transformerRegistry = await ethers.getContract('TransformerRegistry');
     swapperRegistry = await ethers.getContract('SwapperRegistry');

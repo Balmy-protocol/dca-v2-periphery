@@ -41,7 +41,7 @@ contract('Swap for caller', () => {
     ({ msig: governor } = await deploy());
 
     DCAHub = await ethers.getContract('DCAHub');
-    DCAHubSwapper = await ethers.getContract('DCAHubSwapper');
+    DCAHubSwapper = await ethers.getContract('CallerOnlyDCAHubSwapper');
 
     // Allow tokens
     await DCAHub.connect(governor).setAllowedTokens([WETH_ADDRESS, USDC_ADDRESS], [true, true]);

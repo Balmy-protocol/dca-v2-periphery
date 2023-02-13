@@ -50,7 +50,7 @@ contract('Multicall', () => {
 
     DCAHub = await ethers.getContract('DCAHub');
     DCAHubCompanion = await ethers.getContract('DCAHubCompanion');
-    DCAHubSwapper = await ethers.getContract('DCAHubSwapper');
+    DCAHubSwapper = await ethers.getContract('CallerOnlyDCAHubSwapper');
     DCAPermissionManager = await ethers.getContract('PermissionsManager');
     transformerRegistry = await ethers.getContract('TransformerRegistry');
 
