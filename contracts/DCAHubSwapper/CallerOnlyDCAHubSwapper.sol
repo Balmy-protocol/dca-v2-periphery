@@ -4,10 +4,10 @@ pragma solidity >=0.8.7 <0.9.0;
 import '@openzeppelin/contracts/access/AccessControl.sol';
 import '@mean-finance/swappers/solidity/contracts/extensions/GetBalances.sol';
 import '@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol';
-import '../interfaces/IDCAHubSwapper.sol';
+import '../interfaces/ICallerOnlyDCAHubSwapper.sol';
 import './utils/DeadlineValidation.sol';
 
-contract CallerOnlyDCAHubSwapper is DeadlineValidation, AccessControl, GetBalances, IDCAHubSwapper {
+contract CallerOnlyDCAHubSwapper is DeadlineValidation, AccessControl, GetBalances, ICallerOnlyDCAHubSwapper {
   using SafeERC20 for IERC20;
   using Address for address;
 
@@ -40,7 +40,7 @@ contract CallerOnlyDCAHubSwapper is DeadlineValidation, AccessControl, GetBalanc
     }
   }
 
-  /// @inheritdoc IDCAHubSwapper
+  /// @inheritdoc ICallerOnlyDCAHubSwapper
   function swapForCaller(SwapForCallerParams calldata _parameters)
     external
     payable
@@ -79,12 +79,12 @@ contract CallerOnlyDCAHubSwapper is DeadlineValidation, AccessControl, GetBalanc
     _swapExecutor = _NO_EXECUTOR;
   }
 
-  /// @inheritdoc IDCAHubSwapper
+  /// @inheritdoc ICallerOnlyDCAHubSwapper
   function revokeAllowances(RevokeAction[] calldata _revokeActions) external onlyRole(ADMIN_ROLE) {
     _revokeAllowances(_revokeActions);
   }
 
-  /// @inheritdoc IDCAHubSwapper
+  /// @inheritdoc ICallerOnlyDCAHubSwapper
   function sendDust(
     address _token,
     uint256 _amount,

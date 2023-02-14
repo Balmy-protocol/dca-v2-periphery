@@ -5,7 +5,7 @@ import '@mean-finance/dca-v2-core/contracts/interfaces/IDCAHub.sol';
 import '@mean-finance/dca-v2-core/contracts/interfaces/IDCAHubSwapCallee.sol';
 import '@mean-finance/swappers/solidity/interfaces/ISwapAdapter.sol';
 
-interface IDCAHubSwapper is IDCAHubSwapCallee {
+interface ICallerOnlyDCAHubSwapper is IDCAHubSwapCallee {
   /// @notice Parameters to execute a swap for caller
   struct SwapForCallerParams {
     // The address of the DCAHub
