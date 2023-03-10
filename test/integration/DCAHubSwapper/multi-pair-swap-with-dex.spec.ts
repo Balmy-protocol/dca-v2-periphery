@@ -207,12 +207,12 @@ contract('Multi pair swap with DEX', () => {
   };
   function encode(bytes: SwapData) {
     return ABI_CODER.encode(
-      ['tuple(uint256, tuple(address, address, uint256)[], tuple(address, bytes)[], address[], address, bool)'],
+      ['tuple(uint256, tuple(address, address, uint256)[], tuple(address, uint256, bytes)[], address[], address, bool)'],
       [
         [
           constants.MAX_UINT_256,
           bytes.allowanceTargets?.map(({ token, spender, amount }) => [token, spender, amount]) ?? [],
-          bytes.executions?.map(({ swapper, data }) => [swapper, data]) ?? [],
+          bytes.executions?.map(({ swapper, data }) => [swapper, 0, data]) ?? [],
           bytes.extraTokens ?? [],
           recipient.address,
           bytes.sendToProvideLeftoverToHub ?? false,
