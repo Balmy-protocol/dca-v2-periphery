@@ -15,12 +15,13 @@ import { SwapInterval } from '@test-utils/interval-utils';
 import zrx from '@test-utils/dexes/zrx';
 import { deploy } from '@integration/utils';
 
+const ETH_ADDRESS = '0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee';
 const WETH_ADDRESS = '0xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2';
 const USDC_ADDRESS = '0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48';
 // USDC < WETH
 const WETH_WHALE_ADDRESS = '0xf04a5cc80b1e94c69b48f5ee68a08cd2f09a7c3e';
 
-contract('Single pair swap with DEX', () => {
+contract('Swap with DEX, using native', () => {
   const ABI_CODER = new utils.AbiCoder();
   let WETH: IERC20;
   let USDC: IERC20;
@@ -83,64 +84,33 @@ contract('Single pair swap with DEX', () => {
   });
 
   describe('swap with dex', () => {
-    swapWithDexTest({
-      dex: '0x',
-      isSwapAndTransfer: false,
-      sendLeftoverToHub: false,
-    });
-    swapWithDexTest({
-      dex: '0x',
-      isSwapAndTransfer: false,
-      sendLeftoverToHub: true,
-    });
-  });
-
-  function swapWithDexTest({
-    dex,
-    isSwapAndTransfer,
-    sendLeftoverToHub,
-  }: {
-    dex: string;
-    isSwapAndTransfer: boolean;
-    sendLeftoverToHub: boolean;
-  }) {
-    const title = `executing a swap with ${dex}, ${isSwapAndTransfer ? 'with' : 'without'} swap and transfer and ${
-      !sendLeftoverToHub ? 'without ' : ''
-    }sending leftover to hub`;
-    when(title, () => {
+    when('executing a swap with 0x', () => {
       let initialHubWETHBalance: BigNumber, initialHubUSDCBalance: BigNumber, initialRecipientUSDCBalance: BigNumber;
-      let reward: BigNumber, toProvide: BigNumber, sentToAgg: BigNumber, receivedFromAgg: BigNumber;
+      let reward: BigNumber, receivedFromAgg: BigNumber;
       given(async () => {
         initialHubWETHBalance = await WETH.balanceOf(DCAHub.address);
         initialHubUSDCBalance = await USDC.balanceOf(DCAHub.address);
         initialRecipientUSDCBalance = await USDC.balanceOf(recipient.address);
         const dexQuote = await zrx.quote({
           chainId: 1,
-          sellToken: WETH_ADDRESS,
+          sellToken: ETH_ADDRESS,
           buyToken: USDC_ADDRESS,
           sellAmount: RATE,
           slippagePercentage: 0.01, // 1%
           takerAddress: DCAHubSwapper.address,
           skipValidation: true,
         });
-
         const tokensInSwap = [USDC_ADDRESS, WETH_ADDRESS];
         const indexesInSwap = [{ indexTokenA: 0, indexTokenB: 1 }];
         const data = encode({
-          allowanceTargets: [{ token: dexQuote.sellTokenAddress, spender: dexQuote.allowanceTarget, amount: dexQuote.sellAmount }],
-          executions: [{ swapper: dexQuote.to, data: dexQuote.data }],
-          sendToProvideLeftoverToHub: sendLeftoverToHub,
+          allowanceTargets: [],
+          executions: [{ swapper: dexQuote.to, data: dexQuote.data, value: RATE }],
+          sendToProvideLeftoverToHub: true,
         });
-        const swapTx = await DCAHub.connect(swapStarter).swap(
-          tokensInSwap,
-          indexesInSwap,
-          DCAHubSwapper.address,
-          DCAHubSwapper.address,
-          [0, 0],
-          data,
-          '0x'
-        );
-        ({ reward, toProvide, receivedFromAgg, sentToAgg } = await getTransfers(swapTx));
+        const swapTx = await DCAHubSwapper.connect(swapStarter).executeSwap(DCAHub.address, tokensInSwap, indexesInSwap, [0, 0], data, '0x', {
+          value: RATE,
+        });
+        ({ reward, receivedFromAgg } = await getTransfers(swapTx));
       });
       then('swap is executed', async () => {
         expect(await performedSwaps()).to.equal(initialPerformedSwaps + 1);
@@ -149,33 +119,22 @@ contract('Single pair swap with DEX', () => {
         const hubWETHBalance = await WETH.balanceOf(DCAHub.address);
         const hubUSDCBalance = await USDC.balanceOf(DCAHub.address);
         expect(hubWETHBalance).to.equal(initialHubWETHBalance.sub(reward));
-        if (!sendLeftoverToHub) {
-          expect(hubUSDCBalance).to.equal(initialHubUSDCBalance.add(toProvide));
-        } else {
-          expect(hubUSDCBalance).to.equal(initialHubUSDCBalance.add(receivedFromAgg));
-        }
+        expect(hubUSDCBalance).to.equal(initialHubUSDCBalance.add(receivedFromAgg));
       });
-      then('all reward surpluss is sent to leftover recipient', async () => {
+      then('all reward is sent to leftover recipient', async () => {
         const recipientWETHBalance = await WETH.balanceOf(recipient.address);
-        expect(recipientWETHBalance).to.equal(reward.sub(sentToAgg));
+        expect(recipientWETHBalance).to.equal(reward);
       });
-      if (!sendLeftoverToHub) {
-        then('all "toProvide" surpluss is sent to leftover recipient', async () => {
-          const recipientUSDCBalance = await USDC.balanceOf(recipient.address);
-          expect(recipientUSDCBalance.sub(initialRecipientUSDCBalance)).to.equal(receivedFromAgg.sub(toProvide));
-        });
-      } else {
-        then('leftover recipient has no "toProvide" balance', async () => {
-          const recipientUSDCBalance = await USDC.balanceOf(recipient.address);
-          expect(recipientUSDCBalance).to.equal(initialRecipientUSDCBalance);
-        });
-      }
+      then('leftover recipient has no "toProvide" balance', async () => {
+        const recipientUSDCBalance = await USDC.balanceOf(recipient.address);
+        expect(recipientUSDCBalance).to.equal(initialRecipientUSDCBalance);
+      });
     });
-  }
+  });
 
   type SwapData = {
     allowanceTargets?: { token: string; spender: string; amount: BigNumberish }[];
-    executions: { data: BytesLike; swapper: string }[];
+    executions: { data: BytesLike; swapper: string; value: BigNumberish }[];
     extraTokens?: string[];
     sendToProvideLeftoverToHub?: boolean;
   };
@@ -186,7 +145,7 @@ contract('Single pair swap with DEX', () => {
         [
           constants.MAX_UINT_256,
           bytes.allowanceTargets?.map(({ token, spender, amount }) => [token, spender, amount]) ?? [],
-          bytes.executions?.map(({ swapper, data }) => [swapper, 0, data]) ?? [],
+          bytes.executions?.map(({ swapper, data, value }) => [swapper, value, data]) ?? [],
           bytes.extraTokens ?? [],
           recipient.address,
           bytes.sendToProvideLeftoverToHub ?? false,

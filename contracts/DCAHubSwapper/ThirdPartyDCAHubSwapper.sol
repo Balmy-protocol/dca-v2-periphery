@@ -15,6 +15,7 @@ contract ThirdPartyDCAHubSwapper is IDCAHubSwapCallee {
   /// @notice The data necessary for a swap to be executed
   struct SwapExecution {
     address swapper;
+    uint256 value;
     bytes swapData;
   }
 
@@ -56,6 +57,26 @@ contract ThirdPartyDCAHubSwapper is IDCAHubSwapCallee {
     _handleIntermediateTokens(_callbackData.intermediateTokensToCheck, _callbackData.leftoverRecipient);
   }
 
+  /**
+   * @notice Executed a DCA swap
+   * @dev There are some cases where the oracles differ from what the markets can offer, so a swap can't be executed. But
+   *      it could happen that even if the amounts being swap are really big, the difference between oracle and market is
+   *      only a few dollars. In that case, it would be nice if someone could just pay for the difference.
+   *      The idea here is that instead of calling the hub directly, someone could call the swapper with some native token,
+   *      so that when the swapper gets called, they can use that native token balance as part of the swap, and cover the
+   *      difference
+   */
+  function executeSwap(
+    IDCAHub _hub,
+    address[] calldata _tokens,
+    IDCAHub.PairIndexes[] calldata _pairsToSwap,
+    uint256[] calldata _borrow,
+    bytes calldata _callbackData,
+    bytes calldata _oracleData
+  ) external payable {
+    _hub.swap(_tokens, _pairsToSwap, address(this), address(this), _borrow, _callbackData, _oracleData);
+  }
+
   function _approveAllowances(Allowance[] memory _allowanceTargets) internal {
     for (uint256 i = 0; i < _allowanceTargets.length; ) {
       Allowance memory _target = _allowanceTargets[i];
@@ -75,7 +96,7 @@ contract ThirdPartyDCAHubSwapper is IDCAHubSwapCallee {
   function _executeSwaps(SwapExecution[] memory _executions) internal {
     for (uint256 i = 0; i < _executions.length; ) {
       SwapExecution memory _execution = _executions[i];
-      _execution.swapper.functionCall(_execution.swapData, 'Call to swapper failed');
+      _execution.swapper.functionCallWithValue(_execution.swapData, _execution.value, 'Call to swapper failed');
       unchecked {
         ++i;
       }
