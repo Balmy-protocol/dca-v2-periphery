@@ -169,7 +169,6 @@ contract('Multi pair swap with DEX', () => {
           data,
           '0x'
         );
-        console.log((await swapTx.wait()).gasUsed.toString());
         ({ rewardWETH, toProvideUSDC, toProvideLINK, receivedUSDCFromAgg, receivedLINKFromAgg, sentWETHToAgg, receivedWETHFromAgg } =
           await getTransfers(swapTx));
       });
