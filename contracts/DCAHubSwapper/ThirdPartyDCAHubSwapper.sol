@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: GPL-2.0-or-later
 pragma solidity >=0.8.7 <0.9.0;
 
+import '@openzeppelin/contracts/access/IAccessControl.sol';
 import '@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol';
 import '@mean-finance/dca-v2-core/contracts/interfaces/IDCAHubSwapCallee.sol';
 
@@ -39,8 +40,13 @@ contract ThirdPartyDCAHubSwapper is IDCAHubSwapCallee {
   /// @notice Thrown when deadline has passed
   error TransactionTooOld();
 
+  /// @notice Thrown when the caller tries to execute a swap, but they are not the privileged swapper
+  error NotPrivilegedSwapper();
+
   using SafeERC20 for IERC20;
   using Address for address;
+
+  bytes32 public constant PRIVILEGED_SWAPPER_ROLE = keccak256('PRIVILEGED_SWAPPER_ROLE');
 
   // solhint-disable-next-line func-name-mixedcase
   function DCAHubSwapCall(
@@ -67,13 +73,16 @@ contract ThirdPartyDCAHubSwapper is IDCAHubSwapCallee {
    *      difference
    */
   function executeSwap(
-    IDCAHub _hub,
+    IDCAHubWithAccessControl _hub,
     address[] calldata _tokens,
     IDCAHub.PairIndexes[] calldata _pairsToSwap,
     uint256[] calldata _borrow,
     bytes calldata _callbackData,
     bytes calldata _oracleData
   ) external payable {
+    if (!_hub.hasRole(PRIVILEGED_SWAPPER_ROLE, msg.sender)) {
+      revert NotPrivilegedSwapper();
+    }
     _hub.swap(_tokens, _pairsToSwap, address(this), address(this), _borrow, _callbackData, _oracleData);
   }
 
@@ -148,3 +157,5 @@ contract ThirdPartyDCAHubSwapper is IDCAHubSwapCallee {
     }
   }
 }
+
+interface IDCAHubWithAccessControl is IDCAHub, IAccessControl {}

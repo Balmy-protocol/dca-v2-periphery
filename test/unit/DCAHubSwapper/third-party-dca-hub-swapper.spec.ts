@@ -4,7 +4,7 @@ import { behaviours, constants } from '@test-utils';
 import { contract, given, then, when } from '@test-utils/bdd';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers';
 import { snapshot } from '@test-utils/evm';
-import { IERC20, ISwapper, ThirdPartyDCAHubSwapper, ThirdPartyDCAHubSwapper__factory } from '@typechained';
+import { IERC20, ISwapper, ThirdPartyDCAHubSwapper, ThirdPartyDCAHubSwapper__factory, IDCAHubWithAccessControl } from '@typechained';
 import { FakeContract, smock } from '@defi-wonderland/smock';
 import { BigNumberish } from '@ethersproject/bignumber';
 import { BytesLike } from '@ethersproject/bytes';
@@ -15,17 +15,18 @@ chai.use(smock.matchers);
 
 contract('ThirdPartyDCAHubSwapper', () => {
   const ABI_CODER = new utils.AbiCoder();
-  let recipient: SignerWithAddress, hub: SignerWithAddress;
+  let recipient: SignerWithAddress, hub: SignerWithAddress, caller: SignerWithAddress;
   let DCAHubSwapper: ThirdPartyDCAHubSwapper;
-  let token: FakeContract<IERC20>, intermediateToken: FakeContract<IERC20>;
+  let token: FakeContract<IERC20>, intermediateToken: FakeContract<IERC20>, dcaHub: FakeContract<IDCAHubWithAccessControl>;
   let snapshotId: string;
 
   before(async () => {
-    [recipient, hub] = await ethers.getSigners();
+    [recipient, hub, caller] = await ethers.getSigners();
     const DCAHubSwapperFactory: ThirdPartyDCAHubSwapper__factory = await ethers.getContractFactory('ThirdPartyDCAHubSwapper');
     DCAHubSwapper = await DCAHubSwapperFactory.deploy();
     token = await smock.fake('IERC20');
     intermediateToken = await smock.fake('IERC20');
+    dcaHub = await smock.fake('IDCAHubWithAccessControl');
     snapshotId = await snapshot.take();
   });
 
@@ -40,6 +41,47 @@ contract('ThirdPartyDCAHubSwapper', () => {
     intermediateToken.transfer.reset();
     intermediateToken.balanceOf.reset();
     intermediateToken.transfer.returns(true);
+    dcaHub.hasRole.reset();
+    dcaHub.swap.reset();
+  });
+
+  describe('executeSwap', () => {
+    when('caller doesnt have privilege', () => {
+      given(() => {
+        dcaHub.hasRole.returns(false);
+      });
+      then('tx reverts', async () => {
+        await behaviours.txShouldRevertWithMessage({
+          contract: DCAHubSwapper,
+          func: 'executeSwap',
+          args: [dcaHub.address, [], [], [], [], []],
+          message: 'NotPrivilegedSwapper',
+        });
+      });
+    });
+    when('caller has privilege', () => {
+      const TOKENS = ['0x0000000000000000000000000000000000000001', '0x0000000000000000000000000000000000000002'];
+      const PAIRS = [{ indexTokenA: 0, indexTokenB: 1 }];
+      const BORROW = [0, 0];
+      const CALLBACK_DATA = '0x01';
+      const ORACLE_DATA = '0x02';
+      given(async () => {
+        dcaHub.hasRole.returns(true);
+        await DCAHubSwapper.connect(caller).executeSwap(dcaHub.address, TOKENS, PAIRS, BORROW, CALLBACK_DATA, ORACLE_DATA);
+      });
+      then('hub is called correctly', async () => {
+        expect(dcaHub.swap).to.have.been.calledOnceWith(
+          TOKENS,
+          PAIRS,
+          DCAHubSwapper.address,
+          DCAHubSwapper.address,
+          BORROW,
+          CALLBACK_DATA,
+          ORACLE_DATA
+        );
+        expect(dcaHub.hasRole).to.have.been.calledOnceWith(await DCAHubSwapper.PRIVILEGED_SWAPPER_ROLE(), caller.address);
+      });
+    });
   });
 
   describe('DCAHubSwapCall', () => {
