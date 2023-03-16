@@ -71,7 +71,7 @@ jobs:
         run: yarn test:integration
         env:
           TS_NODE_SKIP_IGNORE: true
-          ETH_NODE_URI_ETHEREUM: https://eth-mainnet.alchemyapi.io/v2/${{ secrets.ALCHEMY_API_KEY }}
+          ETH_NODE_URI_ETHEREUM: https://rpc.ankr.com/eth
           ETH_NODE_URI_OPTIMISM: https://opt-mainnet.g.alchemy.com/v2/${{ secrets.ALCHEMY_API_KEY }}
           ETH_NODE_URI_OPTIMISM_KOVAN: https://opt-kovan.g.alchemy.com/v2/${{ secrets.ALCHEMY_API_KEY }}
           ETH_NODE_URI_POLYGON: https://polygon-mainnet.g.alchemy.com/v2/${{ secrets.ALCHEMY_API_KEY }}
