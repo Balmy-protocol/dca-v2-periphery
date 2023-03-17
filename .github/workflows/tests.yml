@@ -11,22 +11,16 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Check out github repository
-        uses: actions/checkout@v2
+        uses: actions/checkout@v3
         with:
           fetch-depth: 1
 
-      - name: Cache node modules
-        uses: actions/cache@v2
-        env:
-          cache-name: cache-node-modules
-        with:
-          path: "**/node_modules"
-          key: ${{ runner.os }}-build-${{ env.cache-name }}-${{ hashFiles('**/yarn.lock') }}
-
       - name: Install node
-        uses: actions/setup-node@v1
+        uses: actions/setup-node@v3
         with:
           node-version: "16.x"
+          cache: yarn
+          cache-dependency-path: "**/yarn.lock"
 
       - name: Install dependencies
         run: yarn --frozen-lockfile
@@ -39,30 +33,23 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Check out github repository
-        uses: actions/checkout@v2
+        uses: actions/checkout@v3
         with:
           fetch-depth: 1
 
-      - name: Cache node modules
-        uses: actions/cache@v2
-        env:
-          cache-name: cache-node-modules
-        with:
-          path: "**/node_modules"
-          key: ${{ runner.os }}-build-${{ env.cache-name }}-${{ hashFiles('**/yarn.lock') }}
-
-      - name: Cache hardhat network fork
-        uses: actions/cache@v2
-        env:
-          cache-name: cache-hardhat-network-fork
-        with:
-          path: cache/hardhat-network-fork
-          key: ${{ runner.os }}-build-${{ env.cache-name }}-${{ hashFiles('test/integration/fork-block-numbers.ts') }}
-
       - name: Install node
-        uses: actions/setup-node@v1
+        uses: actions/setup-node@v3
         with:
           node-version: "16.x"
+          cache: yarn
+          cache-dependency-path: "**/yarn.lock"
+
+      # - name: Cache hardhat network fork
+      #   uses: actions/cache@v3
+      #   id: cache-hardhat-network-fork
+      #   with:
+      #     path: cache/hardhat-network-fork
+      #     key: ${{ runner.os }}-hh-fork-${{ hashFiles('test/integration/fork-block-numbers.ts') }}
 
       - name: Install dependencies
         run: yarn --frozen-lockfile
@@ -71,7 +58,7 @@ jobs:
         run: yarn test:integration
         env:
           TS_NODE_SKIP_IGNORE: true
-          ETH_NODE_URI_ETHEREUM: https://rpc.ankr.com/eth
+          ETH_NODE_URI_ETHEREUM: https://eth.llamarpc.com/rpc/${{ secrets.LLAMA_NODES_KEY }}
           ETH_NODE_URI_OPTIMISM: https://rpc.ankr.com/optimism
           ETH_NODE_URI_OPTIMISM_KOVAN: https://opt-kovan.g.alchemy.com/v2/${{ secrets.ALCHEMY_API_KEY }}
-          ETH_NODE_URI_POLYGON: https://polygon-mainnet.g.alchemy.com/v2/${{ secrets.ALCHEMY_API_KEY }}
+          ETH_NODE_URI_POLYGON: https://polygon.llamarpc.com/rpc/${{ secrets.LLAMA_NODES_KEY }}
