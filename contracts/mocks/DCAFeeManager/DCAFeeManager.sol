@@ -10,7 +10,13 @@ contract DCAFeeManagerMock is DCAFeeManager {
     address recipient;
   }
 
+  struct SendBalanceOnContractToRecipientCall {
+    address token;
+    address recipient;
+  }
+
   SendToRecipientCall[] internal _sendToRecipientCalls;
+  SendBalanceOnContractToRecipientCall[] internal _sendBalanceOnContractToRecipientCalls;
   RevokeAction[][] internal _revokeCalls;
 
   constructor(
@@ -18,6 +24,10 @@ contract DCAFeeManagerMock is DCAFeeManager {
     address _superAdmin,
     address[] memory _initialAdmins
   ) DCAFeeManager(_swapperRegistry, _superAdmin, _initialAdmins) {}
+
+  function sendBalanceOnContractToRecipientCalls() external view returns (SendBalanceOnContractToRecipientCall[] memory) {
+    return _sendBalanceOnContractToRecipientCalls;
+  }
 
   function sendToRecipientCalls() external view returns (SendToRecipientCall[] memory) {
     return _sendToRecipientCalls;
@@ -43,6 +53,10 @@ contract DCAFeeManagerMock is DCAFeeManager {
     for (uint256 i; i < _positionIds.length; i++) {
       _positionsWithToken[_toToken].push(_positionIds[i]);
     }
+  }
+
+  function _sendBalanceOnContractToRecipient(address _token, address _recipient) internal override {
+    _sendBalanceOnContractToRecipientCalls.push(SendBalanceOnContractToRecipientCall(_token, _recipient));
   }
 
   function _sendToRecipient(
