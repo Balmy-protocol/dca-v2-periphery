@@ -43,7 +43,7 @@ const reset = async ({ network: networkName, ...forkingConfig }: ForkConfig) => 
   if (!('blockNumber' in forkingConfig)) {
     const provider = new ethers.providers.JsonRpcProvider(jsonRpcUrl);
     const latestBlock = await provider.getBlockNumber();
-    forkingConfig = { forkingConfig, blockNumber: latestBlock };
+    forkingConfig = { ...forkingConfig, blockNumber: latestBlock };
   }
   const params = [
     {
