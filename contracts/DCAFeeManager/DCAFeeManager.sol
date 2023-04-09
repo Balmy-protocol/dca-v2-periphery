@@ -6,7 +6,7 @@ import '@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol';
 import '@openzeppelin/contracts/utils/Multicall.sol';
 import '../interfaces/IDCAFeeManager.sol';
 
-contract DCAFeeManager is RunSwap, AccessControl, Multicall, IDCAFeeManager {
+contract DCAFeeManager is RunSwap, TakeManyRunSwapsAndTransferMany, AccessControl, Multicall, IDCAFeeManager {
   bytes32 public constant SUPER_ADMIN_ROLE = keccak256('SUPER_ADMIN_ROLE');
   bytes32 public constant ADMIN_ROLE = keccak256('ADMIN_ROLE');
 
@@ -40,6 +40,16 @@ contract DCAFeeManager is RunSwap, AccessControl, Multicall, IDCAFeeManager {
   /// @inheritdoc IDCAFeeManager
   function runSwap(RunSwapParams calldata _parameters) public payable override(IDCAFeeManager, RunSwap) onlyRole(ADMIN_ROLE) {
     super.runSwap(_parameters);
+  }
+
+  /// @inheritdoc IDCAFeeManager
+  function takeManyRunSwapsAndTransferMany(TakeManyRunSwapsAndTransferManyParams calldata _parameters)
+    public
+    payable
+    override(IDCAFeeManager, TakeManyRunSwapsAndTransferMany)
+    onlyRole(ADMIN_ROLE)
+  {
+    super.takeManyRunSwapsAndTransferMany(_parameters);
   }
 
   /// @inheritdoc IDCAFeeManager
