@@ -1,5 +1,5 @@
 import { getNodeUrl } from '@utils/network';
-import { network } from 'hardhat';
+import { ethers, network } from 'hardhat';
 
 export let networkBeingForked: string;
 
@@ -39,11 +39,17 @@ const reset = async ({ network: networkName, ...forkingConfig }: ForkConfig) => 
   if (!forkingConfig.skipHardhatDeployFork) {
     process.env.HARDHAT_DEPLOY_FORK = networkName;
   }
+  const jsonRpcUrl = getNodeUrl(networkName);
+  if (!('blockNumber' in forkingConfig)) {
+    const provider = new ethers.providers.JsonRpcProvider(jsonRpcUrl);
+    const latestBlock = await provider.getBlockNumber();
+    forkingConfig = { forkingConfig, blockNumber: latestBlock };
+  }
   const params = [
     {
       forking: {
         ...forkingConfig,
-        jsonRpcUrl: getNodeUrl(networkName),
+        jsonRpcUrl,
       },
     },
   ];
