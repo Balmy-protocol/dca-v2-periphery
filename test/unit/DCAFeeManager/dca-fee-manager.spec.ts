@@ -107,6 +107,26 @@ contract('DCAFeeManager', () => {
     });
   });
 
+  describe('takeManyRunSwapsAndTransferMany', () => {
+    // Note: we can't test that the underlying function was called
+    behaviours.shouldBeExecutableOnlyByRole({
+      contract: () => DCAFeeManager,
+      funcAndSignature: 'takeManyRunSwapsAndTransferMany',
+      params: () => [
+        {
+          takeFromCaller: [],
+          allowanceTargets: [],
+          swappers: [],
+          swaps: [],
+          swapContext: [],
+          transferOutBalance: [],
+        },
+      ],
+      addressWithRole: () => admin,
+      role: () => adminRole,
+    });
+  });
+
   describe('withdrawFromPlatformBalance', () => {
     const RECIPIENT = wallet.generateRandomAddress();
     when('withdraw is executed', () => {

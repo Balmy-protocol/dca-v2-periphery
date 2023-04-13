@@ -3,6 +3,7 @@ pragma solidity >=0.8.7 <0.9.0;
 
 import '@mean-finance/dca-v2-core/contracts/interfaces/IDCAHub.sol';
 import '@mean-finance/swappers/solidity/contracts/extensions/RunSwap.sol';
+import '@mean-finance/swappers/solidity/contracts/extensions/TakeManyRunSwapsAndTransferMany.sol';
 
 /**
  * @title DCA Fee Manager
@@ -75,6 +76,15 @@ interface IDCAFeeManager {
    * @param parameters The parameters for the swap
    */
   function runSwap(RunSwap.RunSwapParams calldata parameters) external payable;
+
+  /**
+   * @notice Executes multiple swaps
+   * @dev This function can only be executed with swappers that are allowlisted. Can only be executed by admins
+   * @param parameters The parameters for the swap
+   */
+  function takeManyRunSwapsAndTransferMany(TakeManyRunSwapsAndTransferMany.TakeManyRunSwapsAndTransferManyParams calldata parameters)
+    external
+    payable;
 
   /**
    * @notice Withdraws tokens from the platform balance, and sends them to the given recipient
