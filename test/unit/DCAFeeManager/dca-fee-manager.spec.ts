@@ -143,6 +143,19 @@ contract('DCAFeeManager', () => {
         expect(calls[0].token).to.equal(erc20Token.address);
         expect(calls[0].amount).to.equal(AMOUNT_TO_WITHDRAW);
         expect(calls[0].recipient).to.equal(RECIPIENT);
+        expect(await DCAFeeManager.sendBalanceOnContractToRecipientCalls()).to.be.empty;
+      });
+    });
+    when('withdraw with max(uint256) is executed', () => {
+      given(async () => {
+        await DCAFeeManager.connect(admin).withdrawFromBalance([{ token: erc20Token.address, amount: constants.MaxUint256 }], RECIPIENT);
+      });
+      then('internal function is called correctly', async () => {
+        const calls = await DCAFeeManager.sendBalanceOnContractToRecipientCalls();
+        expect(calls).to.have.lengthOf(1);
+        expect(calls[0].token).to.equal(erc20Token.address);
+        expect(calls[0].recipient).to.equal(RECIPIENT);
+        expect(await DCAFeeManager.sendToRecipientCalls()).to.be.empty;
       });
     });
     behaviours.shouldBeExecutableOnlyByRole({

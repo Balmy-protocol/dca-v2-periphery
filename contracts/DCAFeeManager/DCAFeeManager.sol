@@ -55,7 +55,11 @@ contract DCAFeeManager is RunSwap, AccessControl, Multicall, IDCAFeeManager {
   function withdrawFromBalance(IDCAHub.AmountOfToken[] calldata _amountToWithdraw, address _recipient) external onlyRole(ADMIN_ROLE) {
     for (uint256 i = 0; i < _amountToWithdraw.length; ) {
       IDCAHub.AmountOfToken memory _amountOfToken = _amountToWithdraw[i];
-      _sendToRecipient(_amountOfToken.token, _amountOfToken.amount, _recipient);
+      if (_amountOfToken.amount == type(uint256).max) {
+        _sendBalanceOnContractToRecipient(_amountOfToken.token, _recipient);
+      } else {
+        _sendToRecipient(_amountOfToken.token, _amountOfToken.amount, _recipient);
+      }
       unchecked {
         i++;
       }
