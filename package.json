@@ -1,6 +1,6 @@
 {
   "name": "@mean-finance/dca-v2-periphery",
-  "version": "3.4.0",
+  "version": "3.5.0",
   "description": "💱 Periphery smart contracts of DCA V2 by mean.finance",
   "keywords": [
     "ethereum",
@@ -62,7 +62,7 @@
   },
   "dependencies": {
     "@0xged/hardhat-deploy": "0.11.5",
-    "@mean-finance/dca-v2-core": "3.2.0",
+    "@mean-finance/dca-v2-core": "3.3.0",
     "@mean-finance/deterministic-factory": "1.6.0",
     "@mean-finance/swappers": "1.1.0",
     "@openzeppelin/contracts": "4.7.3",

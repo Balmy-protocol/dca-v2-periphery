@@ -1221,15 +1221,15 @@
     "@mean-finance/deterministic-factory" "1.6.0"
     "@openzeppelin/contracts" "4.7.3"
 
-"@mean-finance/dca-v2-core@3.2.0":
-  version "3.2.0"
-  resolved "https://registry.yarnpkg.com/@mean-finance/dca-v2-core/-/dca-v2-core-3.2.0.tgz#1fafed010c683b6f91f8e0dc16eb894f4819e276"
-  integrity sha512-vZgKvx8sF70M5Vb2/x2h3GNJpHel3S+n9Slbh1h4QyboMt4Xpztv7VnRMOW53Qv0rOZSAVGBoMxV7AQbEFnebQ==
+"@mean-finance/dca-v2-core@3.3.0":
+  version "3.3.0"
+  resolved "https://registry.yarnpkg.com/@mean-finance/dca-v2-core/-/dca-v2-core-3.3.0.tgz#328d59d24a215b950d1083a8e4ceb9e16da23300"
+  integrity sha512-+jRhjzg4NIawExZq0BBl9DxW9BHuOYBak0n414o6bztCWdBeBJRV91ha8QA96y6yhPYzq2dGk6ahla6SqfYncA==
   dependencies:
     "@0xged/hardhat-deploy" "0.11.5"
     "@mean-finance/deterministic-factory" "1.6.0"
     "@mean-finance/nft-descriptors" "1.1.0"
-    "@mean-finance/oracles" "2.2.0"
+    "@mean-finance/oracles" "2.4.0"
     "@openzeppelin/contracts" "4.7.3"
 
 "@mean-finance/deterministic-factory@1.3.2":
@@ -1258,10 +1258,10 @@
     "@openzeppelin/contracts" "4.7.3"
     base64-sol "1.0.1"
 
-"@mean-finance/oracles@2.2.0":
-  version "2.2.0"
-  resolved "https://registry.yarnpkg.com/@mean-finance/oracles/-/oracles-2.2.0.tgz#da37396ef38c996f720956fe0f214523011376aa"
-  integrity sha512-5N8qHkeT67U4mz4KA3JT4rKVzcsOT90keZZnXtAs9BVVc3xN+GC9zJhddiuhBLGXMgYtUyYt+ss4gWZNUQmgtQ==
+"@mean-finance/oracles@2.4.0":
+  version "2.4.0"
+  resolved "https://registry.yarnpkg.com/@mean-finance/oracles/-/oracles-2.4.0.tgz#376cee0c46c75f64253d359878c8c3da7648ef65"
+  integrity sha512-Uyoxt6xHJ40trjwPs58gDONQVX7kbJ3p6shDm9ZkQYJNBGEemQP2bk9zgHH9hOqd/jgAcAig2HTiy1fUJ9BD7g==
   dependencies:
     "@0xged/hardhat-deploy" "0.11.5"
     "@chainlink/contracts" "0.4.2"
