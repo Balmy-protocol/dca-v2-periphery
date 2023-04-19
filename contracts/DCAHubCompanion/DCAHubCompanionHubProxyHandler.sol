@@ -19,6 +19,18 @@ abstract contract DCAHubCompanionHubProxyHandler is IDCAHubCompanionHubProxyHand
   }
 
   /// @inheritdoc IDCAHubCompanionHubProxyHandler
+  function multiPermissionPermit(
+    IDCAPermissionManager _permissionManager,
+    IDCAPermissionManager.PositionPermissions[] calldata _permissions,
+    uint256 _deadline,
+    uint8 _v,
+    bytes32 _r,
+    bytes32 _s
+  ) external payable {
+    _permissionManager.multiPermissionPermit(_permissions, _deadline, _v, _r, _s);
+  }
+
+  /// @inheritdoc IDCAHubCompanionHubProxyHandler
   function deposit(
     IDCAHub _hub,
     address _from,

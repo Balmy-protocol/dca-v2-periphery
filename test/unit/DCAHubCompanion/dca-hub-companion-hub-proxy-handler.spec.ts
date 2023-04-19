@@ -92,6 +92,36 @@ contract('DCAHubCompanionHubProxyHandler', () => {
     });
   });
 
+  const MULTI_PERMISSIONS = [
+    {
+      tokenId: 10,
+      permissionSets: PERMISSIONS,
+    },
+  ];
+  describe('multiPermissionPermit', () => {
+    const R = utils.formatBytes32String('r');
+    const S = utils.formatBytes32String('s');
+
+    when('method is executed', () => {
+      given(async () => {
+        await DCAHubCompanionHubProxyHandler.multiPermissionPermit(DCAPermissionManager.address, MULTI_PERMISSIONS, 20, 30, R, S);
+      });
+      then('hub is called', () => {
+        expect(DCAPermissionManager.multiPermissionPermit).to.have.been.calledOnce;
+        const [permissions, deadline, v, r, s] = DCAPermissionManager.multiPermissionPermit.getCall(0).args;
+        expect((permissions as any).length).to.equal(MULTI_PERMISSIONS.length);
+        expect((permissions as any)[0].tokenId).to.equal(10);
+        expect((permissions as any)[0].permissionSets.length).to.equal(1);
+        expect((permissions as any)[0].permissionSets[0].operator).to.equal(PERMISSIONS[0].operator);
+        expect((permissions as any)[0].permissionSets[0].permissions).to.eql(PERMISSIONS[0].permissions);
+        expect(deadline).to.equal(20);
+        expect(v).to.equal(30);
+        expect(r).to.equal(R);
+        expect(s).to.equal(S);
+      });
+    });
+  });
+
   describe('deposit', () => {
     const TO = '0x0000000000000000000000000000000000000002';
     const AMOUNT = 10000;
