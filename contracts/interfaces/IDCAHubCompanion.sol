@@ -199,6 +199,24 @@ interface IDCAHubCompanionHubProxyHandler {
   ) external payable returns (uint256 unswapped, uint256 swapped);
 
   /**
+   * @notice Calls the permission manager and sets multiple permissions via signature
+   * @param permissionManager The address of the permission manager
+   * @param permissions The permissions to set
+   * @param deadline The deadline timestamp by which the call must be mined for the approve to work
+   * @param v Must produce valid secp256k1 signature from the holder along with `r` and `s`
+   * @param r Must produce valid secp256k1 signature from the holder along with `v` and `s`
+   * @param s Must produce valid secp256k1 signature from the holder along with `r` and `v`
+   */
+  function multiPermissionPermit(
+    IDCAPermissionManager permissionManager,
+    IDCAPermissionManager.PositionPermissions[] calldata permissions,
+    uint256 deadline,
+    uint8 v,
+    bytes32 r,
+    bytes32 s
+  ) external payable;
+
+  /**
    * @notice Calls the permission manager and sets permissions via signature
    * @param permissionManager The address of the permission manager
    * @param permissions The permissions to set
