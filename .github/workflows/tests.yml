@@ -36,6 +36,7 @@ jobs:
         timeout-minutes: 15
 
   integration:
+    needs: ["unit"]
     runs-on: ubuntu-latest
     steps:
       - name: Check out github repository
