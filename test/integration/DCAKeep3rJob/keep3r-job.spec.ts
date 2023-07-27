@@ -11,9 +11,9 @@ import { contract, given, then, when } from '@test-utils/bdd';
 import { wallet, constants } from '@test-utils';
 import { deploy } from '@integration/utils';
 import { DCAHub } from '@mean-finance/dca-v2-core';
-import zrx from '@test-utils/dexes/zrx';
 import { fromRpcSig } from 'ethereumjs-util';
 import KEEP3R_ABI from '../abis/Keep3r.json';
+import { buildSDK } from '@mean-finance/sdk';
 
 const WETH_ADDRESS = '0xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2';
 const USDC_ADDRESS = '0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48';
@@ -140,19 +140,25 @@ contract('DCAKeep3rJob', () => {
   });
 
   async function generateCallAndSignature() {
-    const quote = await zrx.quote({
-      chainId: 1,
-      sellToken: WETH_ADDRESS,
-      buyToken: USDC_ADDRESS,
-      sellAmount: utils.parseEther('0.1'),
-      slippagePercentage: 0.01,
-      takerAddress: thirdPartySwapper.address,
-      skipValidation: true,
-    });
+    const quote = await buildSDK()
+      .quoteService.getAllQuotes({
+        request: {
+          chainId: 1,
+          sellToken: WETH_ADDRESS,
+          buyToken: USDC_ADDRESS,
+          order: { type: 'sell', sellAmount: utils.parseEther('0.1').toBigInt() },
+          slippagePercentage: 0.01,
+          takerAddress: thirdPartySwapper.address,
+        },
+        config: {
+          timeout: '3s',
+        },
+      })
+      .then((quotes) => quotes[0]);
 
     const bytes = encodeSwap({
-      allowanceTargets: [{ token: quote.sellTokenAddress, spender: quote.allowanceTarget, amount: quote.sellAmount }],
-      executions: [{ swapper: quote.to, data: quote.data }],
+      allowanceTargets: [{ token: quote.sellToken.address, spender: quote.source.allowanceTarget, amount: quote.sellAmount.amount }],
+      executions: [{ swapper: quote.tx.to, data: quote.tx.data }],
       leftoverRecipient: keeper,
       extraTokens: [],
       sendToProvideLeftoverToHub: false,

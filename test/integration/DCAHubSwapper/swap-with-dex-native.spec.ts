@@ -12,8 +12,8 @@ import { abi as IERC20_ABI } from '@openzeppelin/contracts/build/contracts/IERC2
 import { BigNumber, BigNumberish, BytesLike, utils } from 'ethers';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers';
 import { SwapInterval } from '@test-utils/interval-utils';
-import zrx from '@test-utils/dexes/zrx';
 import { deploy } from '@integration/utils';
+import { buildSDK } from '@mean-finance/sdk';
 
 const ETH_ADDRESS = '0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee';
 const WETH_ADDRESS = '0xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2';
@@ -91,20 +91,26 @@ contract('Swap with DEX, using native', () => {
         initialHubWETHBalance = await WETH.balanceOf(DCAHub.address);
         initialHubUSDCBalance = await USDC.balanceOf(DCAHub.address);
         initialRecipientUSDCBalance = await USDC.balanceOf(recipient.address);
-        const dexQuote = await zrx.quote({
-          chainId: 1,
-          sellToken: ETH_ADDRESS,
-          buyToken: USDC_ADDRESS,
-          sellAmount: RATE,
-          slippagePercentage: 0.01, // 1%
-          takerAddress: DCAHubSwapper.address,
-          skipValidation: true,
-        });
+        const dexQuote = await buildSDK()
+          .quoteService.getAllQuotes({
+            request: {
+              chainId: 1,
+              sellToken: ETH_ADDRESS,
+              buyToken: USDC_ADDRESS,
+              order: { type: 'sell', sellAmount: RATE.toBigInt() },
+              slippagePercentage: 1,
+              takerAddress: DCAHubSwapper.address,
+            },
+            config: {
+              timeout: '3s',
+            },
+          })
+          .then((quotes) => quotes[0]);
         const tokensInSwap = [USDC_ADDRESS, WETH_ADDRESS];
         const indexesInSwap = [{ indexTokenA: 0, indexTokenB: 1 }];
         const data = encode({
           allowanceTargets: [],
-          executions: [{ swapper: dexQuote.to, data: dexQuote.data, value: RATE }],
+          executions: [{ swapper: dexQuote.tx.to, data: dexQuote.tx.data, value: RATE }],
           sendToProvideLeftoverToHub: true,
         });
         const swapTx = await DCAHubSwapper.connect(swapStarter).executeSwap(DCAHub.address, tokensInSwap, indexesInSwap, [0, 0], data, '0x', {
