@@ -689,7 +689,7 @@ contract('Multicall', () => {
       swapData: data!,
       swapper: transformerRegistry.address,
       expectedAmountOut: amount,
-      allowanceTarget: constants.ZERO_ADDRESS,
+      allowanceTarget: transformerRegistry.address,
     };
   }
 

@@ -12,8 +12,8 @@ import { BigNumber, BigNumberish, BytesLike, utils } from 'ethers';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers';
 import { SwapInterval } from '@test-utils/interval-utils';
 import { StatefulChainlinkOracle } from '@mean-finance/oracles';
-import zrx from '@test-utils/dexes/zrx';
 import { deploy } from '@integration/utils';
+import { buildSDK } from '@mean-finance/sdk';
 
 const LINK_ADDRESS = '0x514910771af9ca656af840dff83e8264ecf986ca';
 const USDC_ADDRESS = '0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48';
@@ -124,25 +124,38 @@ contract('Multi pair swap with DEX', () => {
           true,
           []
         );
+        const { quoteService } = buildSDK();
         const dexQuotes = await Promise.all([
-          zrx.quote({
-            chainId: 1,
-            sellToken: WETH_ADDRESS,
-            buyToken: USDC_ADDRESS,
-            buyAmount: usdc.toProvide,
-            slippagePercentage: 0.01,
-            takerAddress: DCAHubSwapper.address,
-            skipValidation: true,
-          }),
-          zrx.quote({
-            chainId: 1,
-            sellToken: WETH_ADDRESS,
-            buyToken: LINK_ADDRESS,
-            buyAmount: link.toProvide,
-            slippagePercentage: 0.01,
-            takerAddress: DCAHubSwapper.address,
-            skipValidation: true,
-          }),
+          quoteService
+            .getAllQuotes({
+              request: {
+                chainId: 1,
+                sellToken: WETH_ADDRESS,
+                buyToken: USDC_ADDRESS,
+                order: { type: 'buy', buyAmount: usdc.toProvide.toBigInt() },
+                slippagePercentage: 1,
+                takerAddress: DCAHubSwapper.address,
+              },
+              config: {
+                timeout: '3s',
+              },
+            })
+            .then((quotes) => quotes[0]),
+          quoteService
+            .getAllQuotes({
+              request: {
+                chainId: 1,
+                sellToken: WETH_ADDRESS,
+                buyToken: LINK_ADDRESS,
+                order: { type: 'buy', buyAmount: link.toProvide.toBigInt() },
+                slippagePercentage: 1,
+                takerAddress: DCAHubSwapper.address,
+              },
+              config: {
+                timeout: '3s',
+              },
+            })
+            .then((quotes) => quotes[0]),
         ]);
         const tokensInSwap = [LINK_ADDRESS, USDC_ADDRESS, WETH_ADDRESS];
         const indexesInSwap = [
@@ -151,12 +164,12 @@ contract('Multi pair swap with DEX', () => {
         ];
         const data = encode({
           allowanceTargets: [
-            { token: dexQuotes[0].sellTokenAddress, spender: dexQuotes[0].allowanceTarget, amount: dexQuotes[0].sellAmount },
-            { token: dexQuotes[1].sellTokenAddress, spender: dexQuotes[1].allowanceTarget, amount: dexQuotes[1].sellAmount },
+            { token: dexQuotes[0].sellToken.address, spender: dexQuotes[0].source.allowanceTarget, amount: dexQuotes[0].sellAmount.amount },
+            { token: dexQuotes[1].sellToken.address, spender: dexQuotes[1].source.allowanceTarget, amount: dexQuotes[1].sellAmount.amount },
           ],
           executions: [
-            { swapper: dexQuotes[0].to, data: dexQuotes[0].data },
-            { swapper: dexQuotes[1].to, data: dexQuotes[1].data },
+            { swapper: dexQuotes[0].tx.to, data: dexQuotes[0].tx.data },
+            { swapper: dexQuotes[1].tx.to, data: dexQuotes[1].tx.data },
           ],
           sendToProvideLeftoverToHub: false,
         });
