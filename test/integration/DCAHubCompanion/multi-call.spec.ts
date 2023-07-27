@@ -16,7 +16,8 @@ import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers';
 import { SwapInterval } from '@test-utils/interval-utils';
 import { fromRpcSig } from 'ethereumjs-util';
 import { deploy } from '@integration/utils';
-import zrx from '@test-utils/dexes/zrx';
+import { buildSDK, isSameAddress } from '@mean-finance/sdk';
+import { JsonRpcSigner } from '@ethersproject/providers';
 
 const WETH_ADDRESS = '0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2';
 const USDC_ADDRESS = '0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48';
@@ -24,17 +25,17 @@ const WBTC_ADDRESS = '0x2260fac5e5542a773aa44fbcfedf7c193bc2c599';
 const WETH_WHALE_ADDRESS = '0xf04a5cc80b1e94c69b48f5ee68a08cd2f09a7c3e';
 const USDC_WHALE_ADDRESS = '0xcffad3200574698b78f32232aa9d63eabd290703';
 const WBTC_WHALE_ADDRESS = '0x9ff58f4ffb29fa2266ab25e75e2a8b3503311656';
-const ZRX = '0xdef1c0ded9bec7f1a1670819833240f027b25eff';
 const USDC_1000 = utils.parseUnits('1000', 6);
 const ETH_1 = utils.parseEther('1');
 
 contract('Multicall', () => {
   let WETH: IERC20, USDC: IERC20, WBTC: IERC20;
   let recipientInitialETHBalance: BigNumber;
-  let positionOwner: SignerWithAddress, swapper: SignerWithAddress, recipient: SignerWithAddress;
+  let positionOwner: SignerWithAddress, swapper: SignerWithAddress, recipient: SignerWithAddress, admin: JsonRpcSigner;
   let DCAHubCompanion: DCAHubCompanion;
   let DCAPermissionManager: DCAPermissionsManager;
   let DCAHub: DCAHub;
+  let swapperRegistry: SwapperRegistry;
   let DCAHubSwapper: CallerOnlyDCAHubSwapper;
   let transformerRegistry: TransformerRegistry;
   let chainId: BigNumber;
@@ -46,7 +47,7 @@ contract('Multicall', () => {
     await evm.reset({ network: 'ethereum' });
     [positionOwner, swapper, recipient] = await ethers.getSigners();
 
-    const { msig: admin } = await deploy('DCAHubCompanion');
+    ({ msig: admin } = await deploy('DCAHubCompanion'));
 
     DCAHub = await ethers.getContract('DCAHub');
     DCAHubCompanion = await ethers.getContract('DCAHubCompanion');
@@ -54,7 +55,7 @@ contract('Multicall', () => {
     DCAPermissionManager = await ethers.getContract('PermissionsManager');
     transformerRegistry = await ethers.getContract('TransformerRegistry');
 
-    const swapperRegistry = await ethers.getContract<SwapperRegistry>('SwapperRegistry');
+    swapperRegistry = await ethers.getContract<SwapperRegistry>('SwapperRegistry');
     const transformerOracle = await ethers.getContract<TransformerOracle>('TransformerOracle');
     const protocolTokenTransformer = await ethers.getContract('ProtocolTokenWrapperTransformer');
     const chainlinkOracle = await ethers.getContract<StatefulChainlinkOracle>('StatefulChainlinkOracle');
@@ -76,7 +77,7 @@ contract('Multicall', () => {
     // Send tokens from whales, to our users
     await distributeTokensToUsers();
 
-    await swapperRegistry.connect(admin).allowSwappers([transformerRegistry.address, ZRX]);
+    await swapperRegistry.connect(admin).allowSwappers([transformerRegistry.address]);
     await transformerRegistry
       .connect(admin)
       .registerTransformers([{ transformer: protocolTokenTransformer.address, dependents: [WETH.address] }]);
@@ -99,7 +100,7 @@ contract('Multicall', () => {
       });
       swapAndDepositTest({
         from: 'USDC',
-        swap: ({ amountIn }) => swapIn0x({ from: USDC, to: WETH, amountIn }),
+        swap: ({ amountIn }) => swapInDex({ from: USDC, to: WETH, amountIn }),
       });
       function swapAndDepositTest({ from, swap }: { from: 'USDC' | 'ETH'; swap: Swap }) {
         const AMOUNT_IN = USDC_1000;
@@ -133,7 +134,7 @@ contract('Multicall', () => {
       });
       swapAndIncreaseTest({
         from: 'USDC',
-        swap: ({ amountIn }) => swapIn0x({ from: USDC, to: WETH, amountIn }),
+        swap: ({ amountIn }) => swapInDex({ from: USDC, to: WETH, amountIn }),
       });
       function swapAndIncreaseTest({ from, swap }: { from: 'USDC' | 'ETH'; swap: Swap }) {
         const AMOUNT_IN = USDC_1000;
@@ -175,7 +176,7 @@ contract('Multicall', () => {
       });
       withdrawAndSwapTest({
         to: 'USDC',
-        swap: ({ amountIn }) => swapIn0x({ from: WETH, to: USDC, amountIn }),
+        swap: ({ amountIn }) => swapInDex({ from: WETH, to: USDC, amountIn }),
       });
       function withdrawAndSwapTest({ to, swap }: { to: 'USDC' | 'ETH'; swap: Swap }) {
         when(`withdrawing and swapping from WETH to ${to}`, () => {
@@ -216,7 +217,7 @@ contract('Multicall', () => {
       });
       reduceAndSwapTest({
         to: 'USDC',
-        swap: ({ amountIn }) => swapIn0x({ from: WETH, to: USDC, amountIn }),
+        swap: ({ amountIn }) => swapInDex({ from: WETH, to: USDC, amountIn }),
       });
       function reduceAndSwapTest({ to, swap }: { to: 'USDC' | 'ETH'; swap: Swap }) {
         when(`reducing position and swapping from WETH to ${to}`, () => {
@@ -261,7 +262,7 @@ contract('Multicall', () => {
           const { swapExecutionData: executionDataWBTC, expectedAmountOut: _expectedAmountOutBTC } = await runSwapData({
             tokenIn: USDC.address,
             amountIn: swappedBalance,
-            swap: ({ amountIn }) => swapIn0x({ from: USDC, to: WBTC, amountIn }),
+            swap: ({ amountIn }) => swapInDex({ from: USDC, to: WBTC, amountIn }),
           });
           const sendETHData = await sendAllInCompanionToRecipientData({ token: await DCAHubCompanion.PROTOCOL_TOKEN(), recipient });
           const sendWBTCData = await sendAllERC20InCompanionToRecipientData({ token: WBTC, recipient });
@@ -587,12 +588,14 @@ contract('Multicall', () => {
     return data!;
   }
 
-  type Swap = (_: { amountIn: BigNumber }) => Promise<{ swapper: string; swapData: BytesLike; expectedAmountOut: BigNumber }>;
+  type Swap = (_: {
+    amountIn: BigNumber;
+  }) => Promise<{ swapper: string; allowanceTarget: string; swapData: BytesLike; expectedAmountOut: BigNumber }>;
   async function runSwapData({ tokenIn, amountIn, swap }: { tokenIn: string; amountIn: BigNumber; swap: Swap }) {
-    const { swapper, swapData, expectedAmountOut } = await swap({ amountIn });
+    const { swapper, swapData, expectedAmountOut, allowanceTarget } = await swap({ amountIn });
     const { data } = await DCAHubCompanion.populateTransaction.runSwap({
       swapper,
-      allowanceTarget: swapper,
+      allowanceTarget,
       swapData,
       tokenIn,
       amountIn,
@@ -686,6 +689,7 @@ contract('Multicall', () => {
       swapData: data!,
       swapper: transformerRegistry.address,
       expectedAmountOut: amount,
+      allowanceTarget: constants.ZERO_ADDRESS,
     };
   }
 
@@ -701,23 +705,42 @@ contract('Multicall', () => {
       swapData: data!,
       swapper: transformerRegistry.address,
       expectedAmountOut: amount,
+      allowanceTarget: constants.ZERO_ADDRESS,
     };
   }
 
-  async function swapIn0x({ from, to, amountIn }: { from: IERC20; to: IERC20; amountIn: BigNumber }) {
-    const dexQuote = await zrx.quote({
-      chainId: 1,
-      sellToken: from.address,
-      buyToken: to.address,
-      sellAmount: amountIn,
-      slippagePercentage: 0.05, // 5%
-      takerAddress: DCAHubCompanion.address,
-      skipValidation: true,
+  async function swapInDex({ from, to, amountIn }: { from: IERC20; to: IERC20; amountIn: BigNumber }) {
+    const { quoteService } = buildSDK();
+    const quotes = await quoteService.getAllQuotes({
+      request: {
+        chainId: 1,
+        sellToken: from.address,
+        buyToken: to.address,
+        order: { type: 'sell', sellAmount: amountIn.toString() },
+        slippagePercentage: 5, // 5%
+        takerAddress: DCAHubCompanion.address,
+        filters: { includeSources: ['1inch', 'paraswap'] },
+      },
+      config: {
+        timeout: '3s',
+        ignoredFailed: true,
+        sort: { by: 'most-swapped', using: 'max sell/min buy amounts' },
+      },
     });
+    const {
+      tx,
+      minBuyAmount,
+      source: { allowanceTarget },
+    } = quotes[0];
+    await swapperRegistry.connect(admin).allowSwappers([tx.to]);
+    if (!isSameAddress(tx.to, allowanceTarget)) {
+      await swapperRegistry.connect(admin).allowSupplementaryAllowanceTargets([allowanceTarget]);
+    }
     return {
-      swapData: dexQuote.data,
-      swapper: dexQuote.to,
-      expectedAmountOut: BigNumber.from(dexQuote.buyAmount).mul(95).div(100), // Take 5% due to slippage
+      swapData: tx.data,
+      swapper: tx.to,
+      expectedAmountOut: BigNumber.from(minBuyAmount.amount),
+      allowanceTarget,
     };
   }
 
