@@ -26,6 +26,7 @@ interface IPermit2 {
     uint256 requestedAmount;
   }
 
+  // solhint-disable-next-line func-name-mixedcase
   function DOMAIN_SEPARATOR() external view returns (bytes32);
 
   function permitTransferFrom(

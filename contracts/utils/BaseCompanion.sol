@@ -21,6 +21,7 @@ abstract contract BaseCompanion is RunSwap, RevokableWithGovernor, GetBalances, 
    * @dev This value is constant and cannot change
    * @return The address of the Permit2 contract
    */
+  // solhint-disable-next-line func-name-mixedcase
   IPermit2 public immutable PERMIT2;
 
   constructor(
