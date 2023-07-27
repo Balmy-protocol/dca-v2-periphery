@@ -27,6 +27,7 @@ const USDC_WHALE_ADDRESS = '0xcffad3200574698b78f32232aa9d63eabd290703';
 const WBTC_WHALE_ADDRESS = '0x9ff58f4ffb29fa2266ab25e75e2a8b3503311656';
 const USDC_1000 = utils.parseUnits('1000', 6);
 const ETH_1 = utils.parseEther('1');
+const NONCE = 12345678;
 
 contract('Multicall', () => {
   let WETH: IERC20, USDC: IERC20, WBTC: IERC20;
@@ -38,6 +39,7 @@ contract('Multicall', () => {
   let swapperRegistry: SwapperRegistry;
   let DCAHubSwapper: CallerOnlyDCAHubSwapper;
   let transformerRegistry: TransformerRegistry;
+  let permit2Address: string;
   let chainId: BigNumber;
   let snapshotId: string;
 
@@ -77,6 +79,10 @@ contract('Multicall', () => {
     // Send tokens from whales, to our users
     await distributeTokensToUsers();
 
+    // Approve Permit2
+    permit2Address = await DCAHubCompanion.PERMIT2();
+    await USDC.connect(positionOwner).approve(permit2Address, constants.MAX_UINT_256);
+
     await swapperRegistry.connect(admin).allowSwappers([transformerRegistry.address]);
     await transformerRegistry
       .connect(admin)
@@ -107,7 +113,7 @@ contract('Multicall', () => {
         when(`swapping ${from} to WETH and depositing`, () => {
           let minExpected: BigNumber;
           given(async () => {
-            const takeData = await takeFromCallerDataIfUSDC({ from, amount: USDC_1000 });
+            const takeData = await permitTakeFromCallerDataIfUSDC({ from, amount: USDC_1000 });
             const { swapExecutionData, expectedAmountOut } = await runSwapData({ tokenIn: await getAddress(from), amountIn: AMOUNT_IN, swap });
             const depositData = await depositAllInCompanionData({ from: WETH, to: WBTC });
             await DCAHubCompanion.multicall(filterMulticalls([takeData, swapExecutionData, depositData]), {
@@ -142,7 +148,7 @@ contract('Multicall', () => {
           let positionId: BigNumber, minExpectedBalance: BigNumber;
           given(async () => {
             const { positionId: createdPositionId, unswappedBalance } = await depositAndSwap({ from: WETH, to: USDC, amount: ETH_1 });
-            const takeData = await takeFromCallerDataIfUSDC({ from, amount: USDC_1000 });
+            const takeData = await permitTakeFromCallerDataIfUSDC({ from, amount: USDC_1000 });
             const { swapExecutionData, expectedAmountOut } = await runSwapData({ tokenIn: await getAddress(from), amountIn: AMOUNT_IN, swap });
             const permissionData = await givePermissionToCompanionData({
               signer: positionOwner,
@@ -282,10 +288,34 @@ contract('Multicall', () => {
       });
     });
 
-    async function takeFromCallerDataIfUSDC({ from, amount }: { from: 'USDC' | 'ETH'; amount: BigNumberish }) {
+    async function permitTakeFromCallerDataIfUSDC({ from, amount }: { from: 'USDC' | 'ETH'; amount: BigNumberish }) {
       if (from === 'USDC') {
-        await USDC.connect(positionOwner).approve(DCAHubCompanion.address, amount);
-        const takeData = await takeFromCallerData({ token: USDC, amount });
+        const signature = await positionOwner._signTypedData(
+          {
+            name: 'Permit2',
+            chainId,
+            verifyingContract: permit2Address,
+          },
+          {
+            PermitTransferFrom: [
+              { type: 'TokenPermissions', name: 'permitted' },
+              { type: 'address', name: 'spender' },
+              { type: 'uint256', name: 'nonce' },
+              { type: 'uint256', name: 'deadline' },
+            ],
+            TokenPermissions: [
+              { type: 'address', name: 'token' },
+              { type: 'uint256', name: 'amount' },
+            ],
+          },
+          {
+            permitted: { token: USDC.address, amount },
+            spender: DCAHubCompanion.address,
+            nonce: NONCE,
+            deadline: constants.MAX_UINT_256,
+          }
+        );
+        const takeData = await permitTakeFromCallerData({ token: USDC, amount, nonce: NONCE, deadline: constants.MAX_UINT_256, signature });
         return takeData;
       }
     }
@@ -660,6 +690,23 @@ contract('Multicall', () => {
 
   async function takeFromCallerData({ token, amount }: { token: IERC20; amount: BigNumberish }) {
     const { data } = await DCAHubCompanion.populateTransaction.takeFromCaller(token.address, amount);
+    return data!;
+  }
+
+  async function permitTakeFromCallerData({
+    token,
+    amount,
+    nonce,
+    deadline,
+    signature,
+  }: {
+    token: IERC20;
+    amount: BigNumberish;
+    nonce: BigNumberish;
+    deadline: BigNumberish;
+    signature: string;
+  }) {
+    const { data } = await DCAHubCompanion.populateTransaction.permitTakeFromCaller(token.address, amount, nonce, deadline, signature);
     return data!;
   }
 
