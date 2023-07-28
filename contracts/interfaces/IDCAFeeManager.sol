@@ -2,7 +2,6 @@
 pragma solidity >=0.8.7 <0.9.0;
 
 import '@mean-finance/dca-v2-core/contracts/interfaces/IDCAHub.sol';
-import '@mean-finance/swappers/solidity/contracts/extensions/RunSwap.sol';
 import '@mean-finance/swappers/solidity/contracts/extensions/TakeManyRunSwapsAndTransferMany.sol';
 
 /**
@@ -13,6 +12,20 @@ import '@mean-finance/swappers/solidity/contracts/extensions/TakeManyRunSwapsAnd
  *         of their choosing
  */
 interface IDCAFeeManager {
+  /// @notice The parameters to execute the call
+  struct RunSwapsAndTransferManyParams {
+    // The accounts that should be approved for spending
+    Allowance[] allowanceTargets;
+    // The different swappers involved in the swap
+    address[] swappers;
+    // The different swapps to execute
+    bytes[] swaps;
+    // Context necessary for the swap execution
+    SwapContext[] swapContext;
+    // Tokens to transfer after swaps have been executed
+    TransferOutBalance[] transferOutBalance;
+  }
+
   /// @notice Represents a share of a target token
   struct TargetTokenShare {
     address token;
@@ -69,22 +82,11 @@ interface IDCAFeeManager {
   function positions(bytes32 pairKey) external view returns (uint256); // key(from, to) => position id
 
   /**
-   * @notice Executes a swap with the given swapper. The input tokens are expected to be on the contract before
-   *         this function is executed. If the swap doesn't include a transfer, then the swapped tokens will be left
-   *         on the contract
-   * @dev This function can only be executed with swappers that are allowlisted. Can only be executed by admins
-   * @param parameters The parameters for the swap
-   */
-  function runSwap(RunSwap.RunSwapParams calldata parameters) external payable;
-
-  /**
    * @notice Executes multiple swaps
-   * @dev This function can only be executed with swappers that are allowlisted. Can only be executed by admins
+   * @dev Can only be executed by admins
    * @param parameters The parameters for the swap
    */
-  function takeManyRunSwapsAndTransferMany(TakeManyRunSwapsAndTransferMany.TakeManyRunSwapsAndTransferManyParams calldata parameters)
-    external
-    payable;
+  function runSwapsAndTransferMany(RunSwapsAndTransferManyParams calldata parameters) external payable;
 
   /**
    * @notice Withdraws tokens from the platform balance, and sends them to the given recipient
