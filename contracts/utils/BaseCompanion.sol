@@ -1,9 +1,7 @@
 // SPDX-License-Identifier: GPL-2.0-or-later
 pragma solidity >=0.8.7 <0.9.0;
 
-import '@mean-finance/swappers/solidity/contracts/extensions/GetBalances.sol';
 import '@mean-finance/swappers/solidity/contracts/extensions/RevokableWithGovernor.sol';
-import '@mean-finance/swappers/solidity/contracts/extensions/RunSwap.sol';
 import '@mean-finance/swappers/solidity/contracts/extensions/PayableMulticall.sol';
 import {IPermit2} from '../interfaces/external/IPermit2.sol';
 import {Permit2Transfers} from '../libraries/Permit2Transfers.sol';
@@ -13,8 +11,15 @@ import {Permit2Transfers} from '../libraries/Permit2Transfers.sol';
  *         contracts so that they can execute multicalls, swaps, revokes and more
  * @dev All public functions are payable, so that they can be multicalled together with other payable functions when msg.value > 0
  */
-abstract contract BaseCompanion is RunSwap, RevokableWithGovernor, GetBalances, PayableMulticall {
+abstract contract BaseCompanion is RevokableWithGovernor, PayableMulticall {
   using Permit2Transfers for IPermit2;
+
+  /**
+   * @notice Thrown when the swap produced less token out than expected
+   * @param received The amount of token out received
+   * @param expected The amount of token out expected
+   */
+  error ReceivedTooLittleTokenOut(uint256 received, uint256 expected);
 
   /**
    * @notice Returns the address of the Permit2 contract
@@ -24,11 +29,20 @@ abstract contract BaseCompanion is RunSwap, RevokableWithGovernor, GetBalances, 
   // solhint-disable-next-line var-name-mixedcase
   IPermit2 public immutable PERMIT2;
 
+  /// @notice The address of the swapper
+  address public swapper;
+
+  /// @notice The address of the allowance target
+  address public allowanceTarget;
+
   constructor(
-    address _swapperRegistry,
+    address _swapper,
+    address _allowanceTarget,
     address _governor,
     IPermit2 _permit2
-  ) SwapAdapter(_swapperRegistry) Governable(_governor) {
+  ) SwapAdapter(address(1)) Governable(_governor) {
+    swapper = _swapper;
+    allowanceTarget = _allowanceTarget;
     PERMIT2 = _permit2;
   }
 
@@ -56,21 +70,48 @@ abstract contract BaseCompanion is RunSwap, RevokableWithGovernor, GetBalances, 
   }
 
   /**
+   * @notice Executes a swap against the swapper
+   * @param _allowanceToken The token to set allowance for (can be set to zero address to ignore)
+   * @param _value The value to send to the swapper as part of the swap
+   * @param _swapData The swap data
+   * @param _tokenOut The token that will be bought as part of the swap
+   * @param _minTokenOut The min amount of token out that we expect
+   */
+  function runSwap(
+    address _allowanceToken,
+    uint256 _value,
+    bytes calldata _swapData,
+    address _tokenOut,
+    uint256 _minTokenOut
+  ) external payable {
+    if (_allowanceToken != address(0)) {
+      IERC20(_allowanceToken).approve(allowanceTarget, type(uint256).max);
+    }
+
+    _executeSwap(swapper, _swapData, _value);
+
+    uint256 _balance = _tokenOut == PROTOCOL_TOKEN ? address(this).balance : IERC20(_tokenOut).balanceOf(address(this));
+    if (_balance < _minTokenOut) revert ReceivedTooLittleTokenOut(_balance, _minTokenOut);
+  }
+
+  /**
    * @notice Takes the given amount of tokens from the caller with Permit2 and transfers it to this contract
    * @param _token The token to take
    * @param _amount The amount to take
    * @param _nonce The signed nonce
    * @param _deadline The signature's deadline
    * @param _signature The owner's signature
+   * @param _recipient The address that will receive the funds
    */
   function permitTakeFromCaller(
     address _token,
     uint256 _amount,
     uint256 _nonce,
     uint256 _deadline,
-    bytes calldata _signature
+    bytes calldata _signature,
+    address _recipient
   ) external payable {
-    PERMIT2.takeFromCaller(_token, _amount, _nonce, _deadline, _signature);
+    PERMIT2.takeFromCaller(_token, _amount, _nonce, _deadline, _signature, _recipient);
   }
 
   /**
@@ -79,14 +120,16 @@ abstract contract BaseCompanion is RunSwap, RevokableWithGovernor, GetBalances, 
    * @param _nonce The signed nonce
    * @param _deadline The signature's deadline
    * @param _signature The owner's signature
+   * @param _recipient The address that will receive the funds
    */
   function batchPermitTakeFromCaller(
     IPermit2.TokenPermissions[] calldata _tokens,
     uint256 _nonce,
     uint256 _deadline,
-    bytes calldata _signature
+    bytes calldata _signature,
+    address _recipient
   ) external payable {
-    PERMIT2.batchTakeFromCaller(_tokens, _nonce, _deadline, _signature);
+    PERMIT2.batchTakeFromCaller(_tokens, _nonce, _deadline, _signature, _recipient);
   }
 
   /**
@@ -97,5 +140,15 @@ abstract contract BaseCompanion is RunSwap, RevokableWithGovernor, GetBalances, 
    */
   function sendBalanceOnContractToRecipient(address _token, address _recipient) external payable {
     _sendBalanceOnContractToRecipient(_token, _recipient);
+  }
+
+  /**
+   * @notice Sets a new swapper and allowance target
+   * @param _newSwapper The address of the new swapper
+   * @param _newAllowanceTarget The address of the new allowance target
+   */
+  function setSwapper(address _newSwapper, address _newAllowanceTarget) external onlyGovernor {
+    swapper = _newSwapper;
+    allowanceTarget = _newAllowanceTarget;
   }
 }
