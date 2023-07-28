@@ -614,9 +614,7 @@ contract('Multicall', () => {
     return data!;
   }
 
-  type Swap = (_: {
-    amountIn: BigNumber;
-  }) => Promise<{
+  type Swap = (_: { amountIn: BigNumber }) => Promise<{
     tokenIn: string;
     tokenOut: string;
     swapper: string;
