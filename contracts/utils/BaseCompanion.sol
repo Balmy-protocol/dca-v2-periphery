@@ -3,7 +3,7 @@ pragma solidity >=0.8.7 <0.9.0;
 
 import '@mean-finance/swappers/solidity/contracts/extensions/RevokableWithGovernor.sol';
 import '@mean-finance/swappers/solidity/contracts/extensions/PayableMulticall.sol';
-import '@mean-finance/call-simulation/contracts/SimulationAdapter.sol';
+import {SimulationAdapter} from '@mean-finance/call-simulation/contracts/SimulationAdapter.sol';
 import {IPermit2} from '../interfaces/external/IPermit2.sol';
 import {Permit2Transfers} from '../libraries/Permit2Transfers.sol';
 
