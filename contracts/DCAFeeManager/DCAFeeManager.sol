@@ -6,7 +6,7 @@ import '@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol';
 import '@openzeppelin/contracts/utils/Multicall.sol';
 import '../interfaces/IDCAFeeManager.sol';
 
-contract DCAFeeManager is RunSwap, TakeManyRunSwapsAndTransferMany, AccessControl, Multicall, IDCAFeeManager {
+contract DCAFeeManager is SwapAdapter, AccessControl, Multicall, IDCAFeeManager {
   bytes32 public constant SUPER_ADMIN_ROLE = keccak256('SUPER_ADMIN_ROLE');
   bytes32 public constant ADMIN_ROLE = keccak256('ADMIN_ROLE');
 
@@ -22,11 +22,7 @@ contract DCAFeeManager is RunSwap, TakeManyRunSwapsAndTransferMany, AccessContro
 
   mapping(address => uint256[]) internal _positionsWithToken; // token address => all positions with address as to
 
-  constructor(
-    address _swapperRegistry,
-    address _superAdmin,
-    address[] memory _initialAdmins
-  ) SwapAdapter(_swapperRegistry) {
+  constructor(address _superAdmin, address[] memory _initialAdmins) SwapAdapter(address(1)) {
     if (_superAdmin == address(0)) revert ZeroAddress();
     // We are setting the super admin role as its own admin so we can transfer it
     _setRoleAdmin(SUPER_ADMIN_ROLE, SUPER_ADMIN_ROLE);
@@ -38,18 +34,33 @@ contract DCAFeeManager is RunSwap, TakeManyRunSwapsAndTransferMany, AccessContro
   }
 
   /// @inheritdoc IDCAFeeManager
-  function runSwap(RunSwapParams calldata _parameters) public payable override(IDCAFeeManager, RunSwap) onlyRole(ADMIN_ROLE) {
-    super.runSwap(_parameters);
-  }
+  function runSwapsAndTransferMany(RunSwapsAndTransferManyParams calldata _parameters) public payable onlyRole(ADMIN_ROLE) {
+    // Approve whatever is necessary
+    for (uint256 i = 0; i < _parameters.allowanceTargets.length; ) {
+      Allowance memory _allowance = _parameters.allowanceTargets[i];
+      _maxApproveSpenderIfNeeded(_allowance.token, _allowance.allowanceTarget, _allowance.minAllowance);
+      unchecked {
+        i++;
+      }
+    }
 
-  /// @inheritdoc IDCAFeeManager
-  function takeManyRunSwapsAndTransferMany(TakeManyRunSwapsAndTransferManyParams calldata _parameters)
-    public
-    payable
-    override(IDCAFeeManager, TakeManyRunSwapsAndTransferMany)
-    onlyRole(ADMIN_ROLE)
-  {
-    super.takeManyRunSwapsAndTransferMany(_parameters);
+    // Execute swaps
+    for (uint256 i = 0; i < _parameters.swaps.length; ) {
+      SwapContext memory _context = _parameters.swapContext[i];
+      _executeSwap(_parameters.swappers[_context.swapperIndex], _parameters.swaps[i], _context.value);
+      unchecked {
+        i++;
+      }
+    }
+
+    // Transfer out whatever was left in the contract
+    for (uint256 i = 0; i < _parameters.transferOutBalance.length; ) {
+      TransferOutBalance memory _transferOutBalance = _parameters.transferOutBalance[i];
+      _sendBalanceOnContractToRecipient(_transferOutBalance.token, _transferOutBalance.recipient);
+      unchecked {
+        i++;
+      }
+    }
   }
 
   /// @inheritdoc IDCAFeeManager
@@ -202,6 +213,23 @@ contract DCAFeeManager is RunSwap, TakeManyRunSwapsAndTransferMany, AccessContro
       // If position exists, then try to increase it
       try _hub.increasePosition(_positionId, _amount, _amountOfSwaps) {} catch {
         _failed = true;
+      }
+    }
+  }
+
+  /// @dev This version does not check the swapper registry at all
+  function _maxApproveSpenderIfNeeded(
+    IERC20 _token,
+    address _spender,
+    uint256 _minAllowance
+  ) internal {
+    if (_spender != address(0)) {
+      uint256 _allowance = _token.allowance(address(this), _spender);
+      if (_allowance < _minAllowance) {
+        if (_allowance > 0) {
+          _token.approve(_spender, 0); // We do this because some tokens (like USDT) fail if we don't
+        }
+        _token.approve(_spender, type(uint256).max);
       }
     }
   }

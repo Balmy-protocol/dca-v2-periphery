@@ -17,6 +17,7 @@ library Permit2Transfers {
    * @param _nonce The owner's nonce
    * @param _deadline The signature's expiration deadline
    * @param _signature The signature that allows the transfer
+   * @param _recipient The address that will receive the funds
    */
   function takeFromCaller(
     IPermit2 _permit2,
@@ -24,13 +25,14 @@ library Permit2Transfers {
     uint256 _amount,
     uint256 _nonce,
     uint256 _deadline,
-    bytes calldata _signature
+    bytes calldata _signature,
+    address _recipient
   ) internal {
     _permit2.permitTransferFrom(
       // The permit message.
       IPermit2.PermitTransferFrom({permitted: IPermit2.TokenPermissions({token: _token, amount: _amount}), nonce: _nonce, deadline: _deadline}),
       // The transfer recipient and amount.
-      IPermit2.SignatureTransferDetails({to: address(this), requestedAmount: _amount}),
+      IPermit2.SignatureTransferDetails({to: _recipient, requestedAmount: _amount}),
       // The owner of the tokens, which must also be
       // the signer of the message, otherwise this call
       // will fail.
@@ -48,20 +50,22 @@ library Permit2Transfers {
    * @param _nonce The owner's nonce
    * @param _deadline The signature's expiration deadline
    * @param _signature The signature that allows the transfer
+   * @param _recipient The address that will receive the funds
    */
   function batchTakeFromCaller(
     IPermit2 _permit2,
     IPermit2.TokenPermissions[] calldata _tokens,
     uint256 _nonce,
     uint256 _deadline,
-    bytes calldata _signature
+    bytes calldata _signature,
+    address _recipient
   ) internal {
     if (_tokens.length > 0) {
       _permit2.permitTransferFrom(
         // The permit message.
         IPermit2.PermitBatchTransferFrom({permitted: _tokens, nonce: _nonce, deadline: _deadline}),
         // The transfer recipients and amounts.
-        _buildTransferDetails(_tokens),
+        _buildTransferDetails(_tokens, _recipient),
         // The owner of the tokens, which must also be
         // the signer of the message, otherwise this call
         // will fail.
@@ -73,14 +77,14 @@ library Permit2Transfers {
     }
   }
 
-  function _buildTransferDetails(IPermit2.TokenPermissions[] calldata _tokens)
+  function _buildTransferDetails(IPermit2.TokenPermissions[] calldata _tokens, address _recipient)
     private
-    view
+    pure
     returns (IPermit2.SignatureTransferDetails[] memory _details)
   {
     _details = new IPermit2.SignatureTransferDetails[](_tokens.length);
     for (uint256 i; i < _details.length; ) {
-      _details[i] = IPermit2.SignatureTransferDetails({to: address(this), requestedAmount: _tokens[i].amount});
+      _details[i] = IPermit2.SignatureTransferDetails({to: _recipient, requestedAmount: _tokens[i].amount});
       unchecked {
         ++i;
       }

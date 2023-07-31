@@ -6,17 +6,15 @@ import { deployThroughDeterministicFactory } from '@mean-finance/deterministic-f
 const deployFunction: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
   const { deployer, msig } = await hre.getNamedAccounts();
 
-  const swapperRegistry = await hre.deployments.get('SwapperRegistry');
-
   await deployThroughDeterministicFactory({
     deployer,
     name: 'DCAFeeManager',
-    salt: 'MF-DCAV2-DCAFeeManager-V2',
+    salt: 'MF-DCAV2-DCAFeeManager-V3',
     contract: 'contracts/DCAFeeManager/DCAFeeManager.sol:DCAFeeManager',
     bytecode,
     constructorArgs: {
-      types: ['address', 'address', 'address[]'],
-      values: [swapperRegistry.address, msig, [msig]],
+      types: ['address', 'address[]'],
+      values: [msig, [msig]],
     },
     log: !process.env.TEST,
     overrides: !!process.env.COVERAGE

@@ -2,7 +2,7 @@ import chai, { expect } from 'chai';
 import { ethers } from 'hardhat';
 import { contract, given, then, when } from '@test-utils/bdd';
 import { snapshot } from '@test-utils/evm';
-import { DCAFeeManagerMock, DCAFeeManagerMock__factory, IDCAHub, IDCAHubPositionHandler, IERC20, ISwapperRegistry } from '@typechained';
+import { DCAFeeManagerMock, DCAFeeManagerMock__factory, IDCAHub, IDCAHubPositionHandler, IERC20 } from '@typechained';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers';
 import { duration } from 'moment';
 import { behaviours, wallet } from '@test-utils';
@@ -17,7 +17,6 @@ contract('DCAFeeManager', () => {
   const TOKEN_B = '0x0000000000000000000000000000000000000011';
   const MAX_SHARES = 10000;
   const SWAP_INTERVAL = duration(1, 'day').asSeconds();
-  let swapperRegistry: FakeContract<ISwapperRegistry>;
   let DCAHub: FakeContract<IDCAHub>;
   let DCAFeeManager: DCAFeeManagerMock;
   let DCAFeeManagerFactory: DCAFeeManagerMock__factory;
@@ -30,9 +29,8 @@ contract('DCAFeeManager', () => {
     [random, superAdmin, admin] = await ethers.getSigners();
     DCAHub = await smock.fake('IDCAHub');
     erc20Token = await smock.fake('IERC20');
-    swapperRegistry = await smock.fake('ISwapperRegistry');
     DCAFeeManagerFactory = await ethers.getContractFactory('contracts/mocks/DCAFeeManager/DCAFeeManager.sol:DCAFeeManagerMock');
-    DCAFeeManager = await DCAFeeManagerFactory.deploy(swapperRegistry.address, superAdmin.address, [admin.address]);
+    DCAFeeManager = await DCAFeeManagerFactory.deploy(superAdmin.address, [admin.address]);
     superAdminRole = await DCAFeeManager.SUPER_ADMIN_ROLE();
     adminRole = await DCAFeeManager.ADMIN_ROLE();
     snapshotId = await snapshot.take();
@@ -56,7 +54,7 @@ contract('DCAFeeManager', () => {
       then('tx is reverted with reason error', async () => {
         await behaviours.deployShouldRevertWithMessage({
           contract: DCAFeeManagerFactory,
-          args: [swapperRegistry.address, constants.AddressZero, []],
+          args: [constants.AddressZero, []],
           message: 'ZeroAddress',
         });
       });
@@ -87,34 +85,13 @@ contract('DCAFeeManager', () => {
     });
   });
 
-  describe('runSwap', () => {
-    // Note: we can't test that the underlying function was called, so we will test the functionality
-    // in e2e/integration tests
-    behaviours.shouldBeExecutableOnlyByRole({
-      contract: () => DCAFeeManager,
-      funcAndSignature: 'runSwap',
-      params: () => [
-        {
-          swapper: constants.AddressZero,
-          allowanceTarget: constants.AddressZero,
-          swapData: constants.HashZero,
-          tokenIn: constants.AddressZero,
-          amountIn: 0,
-        },
-      ],
-      addressWithRole: () => admin,
-      role: () => adminRole,
-    });
-  });
-
-  describe('takeManyRunSwapsAndTransferMany', () => {
+  describe('runSwapsAndTransferMany', () => {
     // Note: we can't test that the underlying function was called
     behaviours.shouldBeExecutableOnlyByRole({
       contract: () => DCAFeeManager,
-      funcAndSignature: 'takeManyRunSwapsAndTransferMany',
+      funcAndSignature: 'runSwapsAndTransferMany',
       params: () => [
         {
-          takeFromCaller: [],
           allowanceTargets: [],
           swappers: [],
           swaps: [],

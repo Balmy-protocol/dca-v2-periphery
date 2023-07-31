@@ -19,11 +19,7 @@ contract DCAFeeManagerMock is DCAFeeManager {
   SendBalanceOnContractToRecipientCall[] internal _sendBalanceOnContractToRecipientCalls;
   RevokeAction[][] internal _revokeCalls;
 
-  constructor(
-    address _swapperRegistry,
-    address _superAdmin,
-    address[] memory _initialAdmins
-  ) DCAFeeManager(_swapperRegistry, _superAdmin, _initialAdmins) {}
+  constructor(address _superAdmin, address[] memory _initialAdmins) DCAFeeManager(_superAdmin, _initialAdmins) {}
 
   function sendBalanceOnContractToRecipientCalls() external view returns (SendBalanceOnContractToRecipientCall[] memory) {
     return _sendBalanceOnContractToRecipientCalls;
