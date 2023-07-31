@@ -7,7 +7,6 @@ import evm, { snapshot } from '@test-utils/evm';
 import { DCAHubCompanion, CallerOnlyDCAHubSwapper, IERC20 } from '@typechained';
 import { DCAHub, DCAPermissionsManager } from '@mean-finance/dca-v2-core';
 import { TransformerRegistry } from '@mean-finance/transformers';
-import { SwapperRegistry } from '@mean-finance/swappers';
 import { TransformerOracle, StatefulChainlinkOracle } from '@mean-finance/oracles';
 import { abi as DCA_HUB_ABI } from '@mean-finance/dca-v2-core/artifacts/contracts/DCAHub/DCAHub.sol/DCAHub.json';
 import { abi as IERC20_ABI } from '@openzeppelin/contracts/build/contracts/IERC20.json';
@@ -36,7 +35,7 @@ contract('Multicall', () => {
   let DCAHubCompanion: DCAHubCompanion;
   let DCAPermissionManager: DCAPermissionsManager;
   let DCAHub: DCAHub;
-  let swapperRegistry: SwapperRegistry;
+  let companionSwapper: string;
   let DCAHubSwapper: CallerOnlyDCAHubSwapper;
   let transformerRegistry: TransformerRegistry;
   let permit2Address: string;
@@ -57,10 +56,10 @@ contract('Multicall', () => {
     DCAPermissionManager = await ethers.getContract('PermissionsManager');
     transformerRegistry = await ethers.getContract('TransformerRegistry');
 
-    swapperRegistry = await ethers.getContract<SwapperRegistry>('SwapperRegistry');
     const transformerOracle = await ethers.getContract<TransformerOracle>('TransformerOracle');
     const protocolTokenTransformer = await ethers.getContract('ProtocolTokenWrapperTransformer');
     const chainlinkOracle = await ethers.getContract<StatefulChainlinkOracle>('StatefulChainlinkOracle');
+    companionSwapper = await DCAHubCompanion.swapper();
 
     WETH = await ethers.getContractAt(IERC20_ABI, WETH_ADDRESS);
     USDC = await ethers.getContractAt(IERC20_ABI, USDC_ADDRESS);
@@ -83,7 +82,6 @@ contract('Multicall', () => {
     permit2Address = await DCAHubCompanion.PERMIT2();
     await USDC.connect(positionOwner).approve(permit2Address, constants.MAX_UINT_256);
 
-    await swapperRegistry.connect(admin).allowSwappers([transformerRegistry.address]);
     await transformerRegistry
       .connect(admin)
       .registerTransformers([{ transformer: protocolTokenTransformer.address, dependents: [WETH.address] }]);
@@ -114,7 +112,7 @@ contract('Multicall', () => {
           let minExpected: BigNumber;
           given(async () => {
             const takeData = await permitTakeFromCallerDataIfUSDC({ from, amount: USDC_1000 });
-            const { swapExecutionData, expectedAmountOut } = await runSwapData({ tokenIn: await getAddress(from), amountIn: AMOUNT_IN, swap });
+            const { swapExecutionData, expectedAmountOut } = await runSwapData({ amountIn: AMOUNT_IN, swap });
             const depositData = await depositAllInCompanionData({ from: WETH, to: WBTC });
             await DCAHubCompanion.multicall(filterMulticalls([takeData, swapExecutionData, depositData]), {
               value: from === 'ETH' ? AMOUNT_IN : 0,
@@ -149,7 +147,7 @@ contract('Multicall', () => {
           given(async () => {
             const { positionId: createdPositionId, unswappedBalance } = await depositAndSwap({ from: WETH, to: USDC, amount: ETH_1 });
             const takeData = await permitTakeFromCallerDataIfUSDC({ from, amount: USDC_1000 });
-            const { swapExecutionData, expectedAmountOut } = await runSwapData({ tokenIn: await getAddress(from), amountIn: AMOUNT_IN, swap });
+            const { swapExecutionData, expectedAmountOut } = await runSwapData({ amountIn: AMOUNT_IN, swap });
             const permissionData = await givePermissionToCompanionData({
               signer: positionOwner,
               positionId: createdPositionId,
@@ -194,8 +192,8 @@ contract('Multicall', () => {
               positionId,
               permissions: [Permission.WITHDRAW],
             });
-            const withdrawData = await withdrawSwappedData({ positionId, recipient: DCAHubCompanion });
-            const { swapExecutionData, expectedAmountOut } = await runSwapData({ tokenIn: WETH.address, amountIn: swappedBalance, swap });
+            const withdrawData = await withdrawSwappedData({ positionId, recipient: companionSwapper });
+            const { swapExecutionData, expectedAmountOut } = await runSwapData({ amountIn: swappedBalance, swap });
             const sendData = await sendAllInCompanionToRecipientData({ token: await getAddress(to), recipient });
             await DCAHubCompanion.multicall([permissionData, withdrawData, swapExecutionData, sendData]);
             minExpected = expectedAmountOut;
@@ -231,8 +229,8 @@ contract('Multicall', () => {
           given(async () => {
             const { positionId, unswappedBalance } = await depositAndSwap({ from: WETH, to: USDC, amount: ETH_1 });
             const permissionData = await givePermissionToCompanionData({ signer: positionOwner, positionId, permissions: [Permission.REDUCE] });
-            const reduceData = await reduceAllPositionData({ positionId, recipient: DCAHubCompanion });
-            const { swapExecutionData, expectedAmountOut } = await runSwapData({ tokenIn: WETH.address, amountIn: unswappedBalance, swap });
+            const reduceData = await reduceAllPositionData({ positionId, recipient: companionSwapper });
+            const { swapExecutionData, expectedAmountOut } = await runSwapData({ amountIn: unswappedBalance, swap });
             const sendData = await sendAllInCompanionToRecipientData({ token: await getAddress(to), recipient });
             await DCAHubCompanion.multicall([permissionData, reduceData, swapExecutionData, sendData]);
             minExpected = expectedAmountOut;
@@ -259,20 +257,18 @@ contract('Multicall', () => {
         given(async () => {
           const { positionId, swappedBalance, unswappedBalance } = await depositAndSwap({ from: WETH, to: USDC, amount: ETH_1 });
           const permissionData = await givePermissionToCompanionData({ signer: positionOwner, positionId, permissions: [Permission.TERMINATE] });
-          const terminateData = await terminateAndSendToCompanionData({ positionId });
+          const _terminateData = await terminateData({ positionId, recipient: companionSwapper });
           const { swapExecutionData: executionDataETH, expectedAmountOut: _expectedAmountOutETH } = await runSwapData({
-            tokenIn: WETH.address,
             amountIn: unswappedBalance,
             swap: ({ amountIn }) => transformWETHToETH(amountIn),
           });
           const { swapExecutionData: executionDataWBTC, expectedAmountOut: _expectedAmountOutBTC } = await runSwapData({
-            tokenIn: USDC.address,
             amountIn: swappedBalance,
             swap: ({ amountIn }) => swapInDex({ from: USDC, to: WBTC, amountIn }),
           });
           const sendETHData = await sendAllInCompanionToRecipientData({ token: await DCAHubCompanion.PROTOCOL_TOKEN(), recipient });
           const sendWBTCData = await sendAllERC20InCompanionToRecipientData({ token: WBTC, recipient });
-          await DCAHubCompanion.multicall([permissionData, terminateData, executionDataETH, sendETHData, executionDataWBTC, sendWBTCData]);
+          await DCAHubCompanion.multicall([permissionData, _terminateData, executionDataETH, sendETHData, executionDataWBTC, sendWBTCData]);
           expectedAmountOutETH = _expectedAmountOutETH;
           expectedAmountOutBTC = _expectedAmountOutBTC;
         });
@@ -618,39 +614,59 @@ contract('Multicall', () => {
     return data!;
   }
 
-  type Swap = (_: {
-    amountIn: BigNumber;
-  }) => Promise<{ swapper: string; allowanceTarget: string; swapData: BytesLike; expectedAmountOut: BigNumber }>;
-  async function runSwapData({ tokenIn, amountIn, swap }: { tokenIn: string; amountIn: BigNumber; swap: Swap }) {
-    const { swapper, swapData, expectedAmountOut, allowanceTarget } = await swap({ amountIn });
-    const { data } = await DCAHubCompanion.populateTransaction.runSwap({
-      swapper,
-      allowanceTarget,
-      swapData,
-      tokenIn,
-      amountIn,
+  type Swap = (_: { amountIn: BigNumber }) => Promise<{
+    tokenIn: string;
+    tokenOut: string;
+    swapper: string;
+    allowanceTarget: string;
+    swapData: string;
+    expectedAmountOut: BigNumber;
+    value?: BigNumber;
+  }>;
+  async function runSwapData({ amountIn, swap }: { amountIn: BigNumber; swap: Swap }) {
+    const { tokenIn, tokenOut, swapper, swapData, expectedAmountOut, allowanceTarget, value } = await swap({ amountIn });
+    const allowanceTargets = isSameAddress(allowanceTarget, constants.ZERO_ADDRESS) ? [] : [{ token: tokenIn, target: allowanceTarget }];
+    const tokenOutDistribution = isSameAddress(tokenOut, await DCAHubCompanion.PROTOCOL_TOKEN()) ? constants.ZERO_ADDRESS : tokenOut;
+
+    const arbitraryCall = buildSDK().permit2Service.arbitrary.buildArbitraryCallWithoutPermit({
+      allowanceTargets,
+      calls: [{ to: swapper, data: swapData, value: value?.toBigInt() ?? 0 }],
+      distribution: { [tokenOutDistribution]: [{ recipient: DCAHubCompanion.address, shareBps: 0 }] },
+      txValidFor: '1y',
     });
+    const { data } = await DCAHubCompanion.populateTransaction.runSwap(
+      constants.ZERO_ADDRESS, // No need to set it because we are already transferring the funds to the swapper
+      value?.toBigInt() ?? 0,
+      arbitraryCall.data,
+      tokenOut,
+      expectedAmountOut
+    );
     return { swapExecutionData: data!, expectedAmountOut };
   }
 
-  async function withdrawSwappedData({ positionId, recipient }: { positionId: BigNumberish; recipient: HasAddress }) {
-    const { data } = await DCAHubCompanion.populateTransaction.withdrawSwapped(DCAHub.address, positionId, recipient.address);
-    return data!;
-  }
-
-  async function reduceAllPositionData({ positionId, recipient }: { positionId: BigNumberish; recipient: HasAddress }) {
-    const { remaining } = await DCAHub.userPosition(positionId);
-    const { data } = await DCAHubCompanion.populateTransaction.reducePosition(DCAHub.address, positionId, remaining, 0, recipient.address);
-    return data!;
-  }
-
-  async function terminateAndSendToCompanionData({ positionId }: { positionId: BigNumberish }) {
-    const { data } = await DCAHubCompanion.populateTransaction.terminate(
+  async function withdrawSwappedData({ positionId, recipient }: { positionId: BigNumberish; recipient: HasAddress | string }) {
+    const { data } = await DCAHubCompanion.populateTransaction.withdrawSwapped(
       DCAHub.address,
       positionId,
-      DCAHubCompanion.address,
-      DCAHubCompanion.address
+      typeof recipient === 'string' ? recipient : recipient.address
     );
+    return data!;
+  }
+
+  async function reduceAllPositionData({ positionId, recipient }: { positionId: BigNumberish; recipient: HasAddress | string }) {
+    const { remaining } = await DCAHub.userPosition(positionId);
+    const { data } = await DCAHubCompanion.populateTransaction.reducePosition(
+      DCAHub.address,
+      positionId,
+      remaining,
+      0,
+      typeof recipient === 'string' ? recipient : recipient.address
+    );
+    return data!;
+  }
+
+  async function terminateData({ positionId, recipient }: { positionId: BigNumberish; recipient: string }) {
+    const { data } = await DCAHubCompanion.populateTransaction.terminate(DCAHub.address, positionId, recipient, recipient);
     return data!;
   }
 
@@ -706,7 +722,14 @@ contract('Multicall', () => {
     deadline: BigNumberish;
     signature: string;
   }) {
-    const { data } = await DCAHubCompanion.populateTransaction.permitTakeFromCaller(token.address, amount, nonce, deadline, signature);
+    const { data } = await DCAHubCompanion.populateTransaction.permitTakeFromCaller(
+      token.address,
+      amount,
+      nonce,
+      deadline,
+      signature,
+      companionSwapper
+    );
     return data!;
   }
 
@@ -725,11 +748,12 @@ contract('Multicall', () => {
   }
 
   async function transformWETHToETH(amount: BigNumber) {
+    const nativeToken = await DCAHubCompanion.PROTOCOL_TOKEN();
     const { data } = await transformerRegistry.populateTransaction.transformToUnderlying(
       WETH.address,
       amount,
       DCAHubCompanion.address,
-      [{ underlying: await DCAHubCompanion.PROTOCOL_TOKEN(), amount }],
+      [{ underlying: nativeToken, amount }],
       constants.MAX_UINT_256
     );
     return {
@@ -737,13 +761,16 @@ contract('Multicall', () => {
       swapper: transformerRegistry.address,
       expectedAmountOut: amount,
       allowanceTarget: transformerRegistry.address,
+      tokenIn: WETH.address,
+      tokenOut: nativeToken,
     };
   }
 
   async function transformETHToWETH(amount: BigNumber) {
+    const nativeToken = await DCAHubCompanion.PROTOCOL_TOKEN();
     const { data } = await transformerRegistry.populateTransaction.transformToDependent(
       WETH.address,
-      [{ underlying: await DCAHubCompanion.PROTOCOL_TOKEN(), amount }],
+      [{ underlying: nativeToken, amount }],
       DCAHubCompanion.address,
       amount,
       constants.MAX_UINT_256
@@ -753,41 +780,40 @@ contract('Multicall', () => {
       swapper: transformerRegistry.address,
       expectedAmountOut: amount,
       allowanceTarget: constants.ZERO_ADDRESS,
+      tokenIn: nativeToken,
+      tokenOut: WETH.address,
+      value: amount,
     };
   }
 
   async function swapInDex({ from, to, amountIn }: { from: IERC20; to: IERC20; amountIn: BigNumber }) {
     const { quoteService } = buildSDK();
-    const quotes = await quoteService.getAllQuotes({
+    const {
+      tx,
+      minBuyAmount,
+      source: { allowanceTarget },
+    } = await quoteService.getBestQuote({
       request: {
         chainId: 1,
         sellToken: from.address,
         buyToken: to.address,
         order: { type: 'sell', sellAmount: amountIn.toString() },
         slippagePercentage: 5, // 5%
-        takerAddress: DCAHubCompanion.address,
-        filters: { includeSources: ['1inch', 'paraswap'] },
+        takerAddress: companionSwapper,
+        filters: { includeSources: ['1inch', 'paraswap', 'open-ocean', 'li-fi'] },
       },
       config: {
         timeout: '3s',
-        ignoredFailed: true,
-        sort: { by: 'most-swapped', using: 'max sell/min buy amounts' },
+        choose: { by: 'most-swapped', using: 'max sell/min buy amounts' },
       },
     });
-    const {
-      tx,
-      minBuyAmount,
-      source: { allowanceTarget },
-    } = quotes[0];
-    await swapperRegistry.connect(admin).allowSwappers([tx.to]);
-    if (!isSameAddress(tx.to, allowanceTarget)) {
-      await swapperRegistry.connect(admin).allowSupplementaryAllowanceTargets([allowanceTarget]);
-    }
     return {
       swapData: tx.data,
       swapper: tx.to,
       expectedAmountOut: BigNumber.from(minBuyAmount.amount),
       allowanceTarget,
+      tokenIn: from.address,
+      tokenOut: to.address,
     };
   }
 

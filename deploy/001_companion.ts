@@ -7,7 +7,7 @@ const deployFunction: DeployFunction = async function (hre: HardhatRuntimeEnviro
   const { deployer, msig } = await hre.getNamedAccounts();
 
   const permit2 = '0x000000000022d473030f116ddee9f6b43ac78ba3';
-  const swapperRegistry = await hre.deployments.get('SwapperRegistry');
+  const swapper = '0x8546189def9f233b61d7e72863da27f28b9986d7';
 
   await deployThroughDeterministicFactory({
     deployer,
@@ -16,8 +16,8 @@ const deployFunction: DeployFunction = async function (hre: HardhatRuntimeEnviro
     contract: 'contracts/DCAHubCompanion/DCAHubCompanion.sol:DCAHubCompanion',
     bytecode,
     constructorArgs: {
-      types: ['address', 'address', 'address'],
-      values: [swapperRegistry.address, msig, permit2],
+      types: ['address', 'address', 'address', 'address'],
+      values: [swapper, swapper, msig, permit2],
     },
     log: !process.env.TEST,
     overrides: !!process.env.COVERAGE
