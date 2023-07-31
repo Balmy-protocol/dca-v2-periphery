@@ -3,6 +3,7 @@ pragma solidity >=0.8.7 <0.9.0;
 
 import '@mean-finance/swappers/solidity/contracts/extensions/RevokableWithGovernor.sol';
 import '@mean-finance/swappers/solidity/contracts/extensions/PayableMulticall.sol';
+import {SimulationAdapter} from '@mean-finance/call-simulation/contracts/SimulationAdapter.sol';
 import {IPermit2} from '../interfaces/external/IPermit2.sol';
 import {Permit2Transfers} from '../libraries/Permit2Transfers.sol';
 
@@ -11,7 +12,7 @@ import {Permit2Transfers} from '../libraries/Permit2Transfers.sol';
  *         contracts so that they can execute multicalls, swaps, revokes and more
  * @dev All public functions are payable, so that they can be multicalled together with other payable functions when msg.value > 0
  */
-abstract contract BaseCompanion is RevokableWithGovernor, PayableMulticall {
+abstract contract BaseCompanion is SimulationAdapter, RevokableWithGovernor, PayableMulticall {
   using Permit2Transfers for IPermit2;
 
   /**
@@ -83,15 +84,15 @@ abstract contract BaseCompanion is RevokableWithGovernor, PayableMulticall {
     bytes calldata _swapData,
     address _tokenOut,
     uint256 _minTokenOut
-  ) external payable {
+  ) external payable returns (uint256 _amountOut) {
     if (_allowanceToken != address(0)) {
       IERC20(_allowanceToken).approve(allowanceTarget, type(uint256).max);
     }
 
     _executeSwap(swapper, _swapData, _value);
 
-    uint256 _balance = _tokenOut == PROTOCOL_TOKEN ? address(this).balance : IERC20(_tokenOut).balanceOf(address(this));
-    if (_balance < _minTokenOut) revert ReceivedTooLittleTokenOut(_balance, _minTokenOut);
+    _amountOut = _tokenOut == PROTOCOL_TOKEN ? address(this).balance : IERC20(_tokenOut).balanceOf(address(this));
+    if (_amountOut < _minTokenOut) revert ReceivedTooLittleTokenOut(_amountOut, _minTokenOut);
   }
 
   /**
