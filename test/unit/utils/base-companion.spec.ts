@@ -168,7 +168,7 @@ contract('BaseCompanion', () => {
 
   describe('setSwapper', () => {
     const newSwapper = '0x0000000000000000000000000000000000000001';
-    const newAllowanceTarget = '0x0000000000000000000000000000000000000001';
+    const newAllowanceTarget = '0x0000000000000000000000000000000000000002';
     when('setting a new swapper', () => {
       given(async () => {
         await baseCompanion.connect(governor).setSwapper(newSwapper, newAllowanceTarget);
