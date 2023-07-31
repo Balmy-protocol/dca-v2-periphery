@@ -6,5 +6,10 @@ import './DCAHubCompanionHubProxyHandler.sol';
 import '../utils/BaseCompanion.sol';
 
 contract DCAHubCompanion is DCAHubCompanionLibrariesHandler, DCAHubCompanionHubProxyHandler, BaseCompanion, IDCAHubCompanion {
-  constructor(address _swapperRegistry, address _governor) BaseCompanion(_swapperRegistry, _governor) {}
+  constructor(
+    address _swapper,
+    address _allowanceTarget,
+    address _governor,
+    IPermit2 _permit2
+  ) BaseCompanion(_swapper, _allowanceTarget, _governor, _permit2) {}
 }

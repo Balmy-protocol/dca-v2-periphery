@@ -161,12 +161,12 @@ contract('DCAFeeManager', () => {
       [{ underlying: await transformerRegistry.PROTOCOL_TOKEN(), amount: total }],
       constants.MAX_UINT_256
     );
-    const { data: unwrapData } = await DCAFeeManager.populateTransaction.runSwap({
-      swapper: transformerRegistry.address,
-      allowanceTarget: transformerRegistry.address,
-      swapData: unwrapExecutionData!,
-      tokenIn: WETH.address,
-      amountIn: total,
+    const { data: unwrapData } = await DCAFeeManager.populateTransaction.runSwapsAndTransferMany({
+      allowanceTargets: [{ token: WETH.address, allowanceTarget: transformerRegistry.address, minAllowance: total }],
+      swappers: [transformerRegistry.address],
+      swaps: [unwrapExecutionData!],
+      swapContext: [{ swapperIndex: 0, value: 0 }],
+      transferOutBalance: [],
     });
     const { data: withdrawProtocolTokenData } = await DCAFeeManager.populateTransaction.withdrawFromBalance(
       [{ token: await DCAFeeManager.PROTOCOL_TOKEN(), amount: total }],
