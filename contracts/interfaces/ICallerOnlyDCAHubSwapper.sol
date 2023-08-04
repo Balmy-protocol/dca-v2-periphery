@@ -1,15 +1,15 @@
 // SPDX-License-Identifier: GPL-2.0-or-later
 pragma solidity >=0.8.7 <0.9.0;
 
+import '@openzeppelin/contracts/access/IAccessControl.sol';
 import '@mean-finance/dca-v2-core/contracts/interfaces/IDCAHub.sol';
 import '@mean-finance/dca-v2-core/contracts/interfaces/IDCAHubSwapCallee.sol';
-import '@mean-finance/swappers/solidity/interfaces/ISwapAdapter.sol';
 
 interface ICallerOnlyDCAHubSwapper is IDCAHubSwapCallee {
   /// @notice Parameters to execute a swap for caller
   struct SwapForCallerParams {
     // The address of the DCAHub
-    IDCAHub hub;
+    IDCAHubWithAccessControl hub;
     // The tokens involved in the swap
     address[] tokens;
     // The pairs to swap
@@ -41,24 +41,6 @@ interface ICallerOnlyDCAHubSwapper is IDCAHubSwapCallee {
    * @return The information about the executed swap
    */
   function swapForCaller(SwapForCallerParams calldata parameters) external payable returns (IDCAHub.SwapInfo memory);
-
-  /**
-   * @notice Revokes ERC20 allowances for the given spenders
-   * @dev Can only be called an admin
-   * @param revokeActions The spenders and tokens to revoke
-   */
-  function revokeAllowances(ISwapAdapter.RevokeAction[] calldata revokeActions) external;
-
-  /**
-   * @notice Sends the given token to the recipient
-   * @dev Can only be called an admin
-   * @param token The token to send to the recipient (can be an ERC20 or the protocol token)
-   * @param amount The amount to transfer to the recipient
-   * @param recipient The address of the recipient
-   */
-  function sendDust(
-    address token,
-    uint256 amount,
-    address recipient
-  ) external;
 }
+
+interface IDCAHubWithAccessControl is IDCAHub, IAccessControl {}

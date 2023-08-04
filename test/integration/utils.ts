@@ -34,7 +34,6 @@ export async function deployWithAddress(
       'TransformerOracle',
       'ProtocolTokenWrapperTransformer',
       'TransformerRegistry',
-      'SwapperRegistry',
       'DCAHub',
       'CallerOnlyDCAHubSwapper',
       ...contracts,

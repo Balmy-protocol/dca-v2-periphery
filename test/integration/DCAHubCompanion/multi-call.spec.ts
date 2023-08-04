@@ -67,7 +67,7 @@ contract('Multicall', () => {
 
     // Allow tokens and swapper
     await DCAHub.connect(admin).setAllowedTokens([WETH_ADDRESS, USDC_ADDRESS, WBTC_ADDRESS], [true, true, true]);
-    await DCAHubSwapper.connect(admin).grantRole(await DCAHubSwapper.SWAP_EXECUTION_ROLE(), swapper.address);
+    await DCAHub.connect(admin).grantRole(await DCAHub.PRIVILEGED_SWAPPER_ROLE(), swapper.address);
     await chainlinkOracle
       .connect(admin)
       .addMappings(

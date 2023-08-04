@@ -4,7 +4,7 @@ import { BigNumber, BigNumberish, BytesLike, Contract, utils } from 'ethers';
 import { ethers } from 'hardhat';
 import { abi as IERC20_ABI } from '@openzeppelin/contracts/build/contracts/IERC20.json';
 import { expect } from 'chai';
-import { DCAKeep3rJob, IERC20, ISwapperRegistry, ThirdPartyDCAHubSwapper } from '@typechained';
+import { DCAKeep3rJob, IERC20, ThirdPartyDCAHubSwapper } from '@typechained';
 import { SwapInterval } from '@test-utils/interval-utils';
 import evm, { snapshot } from '@test-utils/evm';
 import { contract, given, then, when } from '@test-utils/bdd';
@@ -28,7 +28,6 @@ contract('DCAKeep3rJob', () => {
   let thirdPartySwapper: ThirdPartyDCAHubSwapper;
   let DCAHub: DCAHub;
   let keep3rV2: Contract;
-  let swapperRegistry: ISwapperRegistry;
 
   let cindy: SignerWithAddress, signer: SignerWithAddress, keeper: SignerWithAddress;
   let msig: JsonRpcSigner, timelock: JsonRpcSigner, keep3rGovernance: JsonRpcSigner;
@@ -48,7 +47,6 @@ contract('DCAKeep3rJob', () => {
     DCAHub = await ethers.getContract('DCAHub');
     thirdPartySwapper = await ethers.getContract('ThirdPartyDCAHubSwapper');
     DCAKeep3rJob = await ethers.getContract('DCAKeep3rJob');
-    swapperRegistry = await ethers.getContract('SwapperRegistry');
     keep3rV2 = await ethers.getContractAt(KEEP3R_ABI, await DCAKeep3rJob.keep3r());
 
     const wethWhale = await wallet.impersonate(WETH_WHALE_ADDRESS);
