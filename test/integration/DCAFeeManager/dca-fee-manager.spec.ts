@@ -4,7 +4,7 @@ import { JsonRpcSigner } from '@ethersproject/providers';
 import { constants, wallet } from '@test-utils';
 import { contract } from '@test-utils/bdd';
 import evm from '@test-utils/evm';
-import { CallerOnlyDCAHubSwapper, IERC20, DCAFeeManager, ISwapperRegistry } from '@typechained';
+import { CallerOnlyDCAHubSwapper, IERC20, DCAFeeManager } from '@typechained';
 import { DCAHub } from '@mean-finance/dca-v2-core';
 import { abi as IERC20_ABI } from '@openzeppelin/contracts/build/contracts/IERC20.json';
 import { BigNumber, utils } from 'ethers';
@@ -32,7 +32,6 @@ contract('DCAFeeManager', () => {
   let DCAHubSwapper: CallerOnlyDCAHubSwapper;
   let DCAHub: DCAHub;
   let transformerRegistry: TransformerRegistry;
-  let swapperRegistry: ISwapperRegistry;
 
   before(async () => {
     [cindy, allowed, swapper] = await ethers.getSigners();
@@ -47,7 +46,6 @@ contract('DCAFeeManager', () => {
     DCAHubSwapper = await ethers.getContract('CallerOnlyDCAHubSwapper');
     DCAFeeManager = await ethers.getContract('DCAFeeManager');
     transformerRegistry = await ethers.getContract('TransformerRegistry');
-    swapperRegistry = await ethers.getContract('SwapperRegistry');
     const transformerOracle = await ethers.getContract<TransformerOracle>('TransformerOracle');
     const protocolTokenTransformer = await ethers.getContract('ProtocolTokenWrapperTransformer');
     const chainlinkOracle = await ethers.getContract<StatefulChainlinkOracle>('StatefulChainlinkOracle');
@@ -55,9 +53,8 @@ contract('DCAFeeManager', () => {
     // Set up tokens and permissions
     await DCAHub.connect(superAdmin).setAllowedTokens([WETH_ADDRESS, USDC_ADDRESS, WBTC_ADDRESS], [true, true, true]);
     await DCAHub.connect(superAdmin).grantRole(await DCAHub.PLATFORM_WITHDRAW_ROLE(), DCAFeeManager.address);
+    await DCAHub.connect(superAdmin).grantRole(await DCAHub.PRIVILEGED_SWAPPER_ROLE(), swapper.address);
     await DCAFeeManager.connect(superAdmin).grantRole(await DCAFeeManager.ADMIN_ROLE(), allowed.address);
-    await swapperRegistry.connect(superAdmin).allowSwappers([transformerRegistry.address]);
-    await DCAHubSwapper.connect(superAdmin).grantRole(await DCAHubSwapper.SWAP_EXECUTION_ROLE(), swapper.address);
 
     WETH = await ethers.getContractAt(IERC20_ABI, WETH_ADDRESS);
     USDC = await ethers.getContractAt(IERC20_ABI, USDC_ADDRESS);

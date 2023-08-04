@@ -22,7 +22,6 @@ contract('BaseCompanion', () => {
 
   before('Setup accounts and contracts', async () => {
     const baseCompanionFactory: BaseCompanionMock__factory = await ethers.getContractFactory('BaseCompanionMock');
-    const registry = await smock.fake('ISwapperRegistry');
     token = await smock.fake('IERC20');
     permit2 = await smock.fake('IPermit2');
     swapper = await smock.fake('ISwapper');
