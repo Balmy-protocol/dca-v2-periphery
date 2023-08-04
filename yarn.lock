@@ -1216,10 +1216,10 @@
     "@jridgewell/resolve-uri" "^3.0.3"
     "@jridgewell/sourcemap-codec" "^1.4.10"
 
-"@mean-finance/call-simulation@^0.0.1":
-  version "0.0.1"
-  resolved "https://registry.yarnpkg.com/@mean-finance/call-simulation/-/call-simulation-0.0.1.tgz#719acb89e736add8fbe09a08daa342459457cea5"
-  integrity sha512-WngN+1AqJAcEcP148SO84ENQfwFloZmKxA7CN8Dlk3J7fS+xaVX1j6QIXLiCouI4OkuKBw7JzeRfjzWmESTk7A==
+"@mean-finance/call-simulation@0.0.2":
+  version "0.0.2"
+  resolved "https://registry.yarnpkg.com/@mean-finance/call-simulation/-/call-simulation-0.0.2.tgz#f5794bad1666771b0258362b3dc5af3c5c3b20d2"
+  integrity sha512-AUiavMUnW0glzVwmey2Aj/kmwe7bVqzFs90wnz0hNa8emFnd2SPFHQN0cNlLF6wQMYwibAiI8tbNuWf4kNt9zw==
 
 "@mean-finance/chainlink-registry@2.1.0":
   version "2.1.0"

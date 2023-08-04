@@ -705,7 +705,7 @@ contract('Multicall', () => {
   }
 
   async function takeFromCallerData({ token, amount }: { token: IERC20; amount: BigNumberish }) {
-    const { data } = await DCAHubCompanion.populateTransaction.takeFromCaller(token.address, amount);
+    const { data } = await DCAHubCompanion.populateTransaction.takeFromCaller(token.address, amount, DCAHubCompanion.address);
     return data!;
   }
 

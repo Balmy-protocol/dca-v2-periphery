@@ -14,6 +14,7 @@ import {Permit2Transfers} from '../libraries/Permit2Transfers.sol';
  */
 abstract contract BaseCompanion is SimulationAdapter, RevokableWithGovernor, PayableMulticall {
   using Permit2Transfers for IPermit2;
+  using SafeERC20 for IERC20;
 
   /**
    * @notice Thrown when the swap produced less token out than expected
@@ -66,8 +67,12 @@ abstract contract BaseCompanion is SimulationAdapter, RevokableWithGovernor, Pay
    * @param _token The token to take
    * @param _amount The amount to take
    */
-  function takeFromCaller(IERC20 _token, uint256 _amount) external payable {
-    _takeFromMsgSender(_token, _amount);
+  function takeFromCaller(
+    IERC20 _token,
+    uint256 _amount,
+    address _recipient
+  ) external payable {
+    _token.safeTransferFrom(msg.sender, _recipient, _amount);
   }
 
   /**

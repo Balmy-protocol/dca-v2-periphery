@@ -55,21 +55,6 @@ contract('BaseCompanion', () => {
     });
   });
 
-  describe('takeFromCaller', () => {
-    const AMOUNT = 123456789;
-    when('taking token from caller', () => {
-      given(async () => {
-        await baseCompanion.takeFromCaller(token.address, AMOUNT);
-      });
-      then('internal function is called correctly', async () => {
-        const calls = await baseCompanion.takeFromMsgSenderCalls();
-        expect(calls).to.have.lengthOf(1);
-        expect(calls[0].token).to.equal(token.address);
-        expect(calls[0].amount).to.equal(AMOUNT);
-      });
-    });
-  });
-
   describe('runSwap', () => {
     let swapExecution: BytesLike;
     given(async () => {

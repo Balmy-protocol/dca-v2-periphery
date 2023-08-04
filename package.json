@@ -1,6 +1,6 @@
 {
   "name": "@mean-finance/dca-v2-periphery",
-  "version": "3.6.0",
+  "version": "3.7.2",
   "description": "💱 Periphery smart contracts of DCA V2 by mean.finance",
   "keywords": [
     "ethereum",
@@ -62,7 +62,7 @@
   },
   "dependencies": {
     "@0xged/hardhat-deploy": "0.11.5",
-    "@mean-finance/call-simulation": "^0.0.1",
+    "@mean-finance/call-simulation": "0.0.2",
     "@mean-finance/dca-v2-core": "3.3.0",
     "@mean-finance/deterministic-factory": "1.6.0",
     "@mean-finance/swappers": "1.1.0",

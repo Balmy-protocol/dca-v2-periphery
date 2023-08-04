@@ -7,12 +7,12 @@ const deployFunction: DeployFunction = async function (hre: HardhatRuntimeEnviro
   const { deployer, msig } = await hre.getNamedAccounts();
 
   const permit2 = '0x000000000022d473030f116ddee9f6b43ac78ba3';
-  const swapper = '0x8546189def9f233b61d7e72863da27f28b9986d7';
+  const swapper = '0x227F070ED2afd8744eF059959b8a8B8e8edC6C0f';
 
   await deployThroughDeterministicFactory({
     deployer,
     name: 'DCAHubCompanion',
-    salt: 'MF-DCAV2-DCAHubCompanion-V3',
+    salt: 'MF-DCAV2-DCAHubCompanion-V5',
     contract: 'contracts/DCAHubCompanion/DCAHubCompanion.sol:DCAHubCompanion',
     bytecode,
     constructorArgs: {
