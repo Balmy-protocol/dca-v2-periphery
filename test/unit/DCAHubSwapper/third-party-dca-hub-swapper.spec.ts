@@ -190,32 +190,9 @@ contract('ThirdPartyDCAHubSwapper', () => {
       leftoverTokensTest({
         when: 'token needs to be provided and hub flag is set',
         then: 'everything is transferred to the hub',
-        sendToHubFlag: true,
         balance: 12345,
         toProvide: 10000,
         assertion: (token) => expect(token.transfer).to.have.been.calledOnceWith(hub.address, 12345),
-      });
-
-      leftoverTokensTest({
-        when: 'token needs to be provided but there is no leftover',
-        then: 'available balance is sent to the hub only',
-        sendToHubFlag: false,
-        balance: 12345,
-        toProvide: 12345,
-        assertion: (token) => expect(token.transfer).to.have.been.calledOnceWith(hub.address, 12345),
-      });
-
-      leftoverTokensTest({
-        when: 'token needs to be provided and there is some leftover',
-        then: 'leftover is sent to the recipient',
-        sendToHubFlag: false,
-        balance: 12345,
-        toProvide: 10000,
-        assertion: (token, recipient) => {
-          expect(token.transfer).to.have.been.calledTwice;
-          expect(token.transfer).to.have.been.calledWith(hub.address, 10000);
-          expect(token.transfer).to.have.been.calledWith(recipient, 2345);
-        },
       });
 
       leftoverTokensTest({
@@ -231,14 +208,12 @@ contract('ThirdPartyDCAHubSwapper', () => {
         then: thenTitle,
         balance,
         toProvide,
-        sendToHubFlag,
         assertion,
       }: {
         when: string;
         then: string;
         balance: BigNumberish;
         toProvide?: BigNumberish;
-        sendToHubFlag?: boolean;
         assertion: (_: FakeContract<IERC20>, recipient: string) => void;
       }) {
         when(title, () => {
@@ -247,7 +222,6 @@ contract('ThirdPartyDCAHubSwapper', () => {
             token.balanceOf.returns(balance);
             const data = encode({
               executions: [{ swapper: swapper.address, data: swapExecution }],
-              sendToProvideLeftoverToHub: sendToHubFlag ?? true,
             });
             await DCAHubSwapper.connect(hub).DCAHubSwapCall(constants.ZERO_ADDRESS, tokensInSwap, [], data);
           });
@@ -294,25 +268,42 @@ contract('ThirdPartyDCAHubSwapper', () => {
       });
     });
 
+    describe('isTest', () => {
+      when('executing a test call', () => {
+        let tx: Promise<TransactionResponse>;
+        given(async () => {
+          token.balanceOf.returns(1);
+          intermediateToken.balanceOf.returns(2);
+          const tokensInSwap = [{ token: token.address, toProvide: 0, reward: 0, platformFee: 0 }];
+          const data = encode({ extraTokens: [intermediateToken.address], isTest: true });
+          tx = DCAHubSwapper.connect(hub).DCAHubSwapCall(constants.ZERO_ADDRESS, tokensInSwap, [], data);
+        });
+        then('reports the correct balances', async () => {
+          const expectedError = `SwapResults([["${token.address}", 1], ["${intermediateToken.address}", 2]])`;
+          await expect(tx).to.have.revertedWith(expectedError);
+        });
+      });
+    });
+
     type SwapWithDexes = {
       deadline?: BigNumberish;
       allowanceTargets?: { token: string; spender: string; amount: BigNumberish }[];
       executions?: { data: BytesLike; swapper: string }[];
       extraTokens?: string[];
       leftoverRecipient?: { address: string };
-      sendToProvideLeftoverToHub?: boolean;
+      isTest?: boolean;
     };
     function encode(bytes: SwapWithDexes) {
       return ABI_CODER.encode(
-        ['tuple(uint256, tuple(address, address, uint256)[], tuple(address, uint256, bytes)[], address[], address, bool)'],
+        ['tuple(bool, uint256, tuple(address, address, uint256)[], tuple(address, uint256, bytes)[], address[], address)'],
         [
           [
+            bytes.isTest ?? false,
             bytes.deadline ?? constants.MAX_UINT_256,
             bytes.allowanceTargets?.map(({ token, spender, amount }) => [token, spender, amount]) ?? [],
             bytes.executions?.map(({ swapper, data }) => [swapper, 0, data]) ?? [],
             bytes.extraTokens ?? [],
             bytes.leftoverRecipient?.address ?? recipient.address,
-            bytes.sendToProvideLeftoverToHub ?? false,
           ],
         ]
       );
