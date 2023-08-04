@@ -1,53 +1,35 @@
 // SPDX-License-Identifier: GPL-2.0-or-later
 pragma solidity >=0.8.7 <0.9.0;
 
-import '@openzeppelin/contracts/access/AccessControl.sol';
-import '@mean-finance/swappers/solidity/contracts/extensions/GetBalances.sol';
 import '@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol';
 import '../interfaces/ICallerOnlyDCAHubSwapper.sol';
 import './utils/DeadlineValidation.sol';
 
-contract CallerOnlyDCAHubSwapper is DeadlineValidation, AccessControl, GetBalances, ICallerOnlyDCAHubSwapper {
+contract CallerOnlyDCAHubSwapper is DeadlineValidation, ICallerOnlyDCAHubSwapper {
   using SafeERC20 for IERC20;
   using Address for address;
 
-  bytes32 public constant SUPER_ADMIN_ROLE = keccak256('SUPER_ADMIN_ROLE');
-  bytes32 public constant ADMIN_ROLE = keccak256('ADMIN_ROLE');
-  bytes32 public constant SWAP_EXECUTION_ROLE = keccak256('SWAP_EXECUTION_ROLE');
+  /// @notice Thrown when the caller tries to execute a swap, but they are not the privileged swapper
+  error NotPrivilegedSwapper();
+
+  bytes32 public constant PRIVILEGED_SWAPPER_ROLE = keccak256('PRIVILEGED_SWAPPER_ROLE');
 
   /// @notice Represents the lack of an executor. We are not using the zero address so that it's cheaper to modify
   address internal constant _NO_EXECUTOR = 0x000000000000000000000000000000000000dEaD;
   /// @notice The caller who initiated a swap execution
   address internal _swapExecutor = _NO_EXECUTOR;
 
-  constructor(
-    address _swapperRegistry,
-    address _superAdmin,
-    address[] memory _initialAdmins,
-    address[] memory _initialSwapExecutors
-  ) SwapAdapter(_swapperRegistry) {
-    if (_superAdmin == address(0)) revert ZeroAddress();
-    // We are setting the super admin role as its own admin so we can transfer it
-    _setRoleAdmin(SUPER_ADMIN_ROLE, SUPER_ADMIN_ROLE);
-    _setRoleAdmin(ADMIN_ROLE, SUPER_ADMIN_ROLE);
-    _setRoleAdmin(SWAP_EXECUTION_ROLE, SUPER_ADMIN_ROLE);
-    _setupRole(SUPER_ADMIN_ROLE, _superAdmin);
-    for (uint256 i = 0; i < _initialAdmins.length; i++) {
-      _setupRole(ADMIN_ROLE, _initialAdmins[i]);
-    }
-    for (uint256 i = 0; i < _initialSwapExecutors.length; i++) {
-      _setupRole(SWAP_EXECUTION_ROLE, _initialSwapExecutors[i]);
-    }
-  }
-
   /// @inheritdoc ICallerOnlyDCAHubSwapper
   function swapForCaller(SwapForCallerParams calldata _parameters)
     external
     payable
     checkDeadline(_parameters.deadline)
-    onlyRole(SWAP_EXECUTION_ROLE)
     returns (IDCAHub.SwapInfo memory _swapInfo)
   {
+    if (!_parameters.hub.hasRole(PRIVILEGED_SWAPPER_ROLE, msg.sender)) {
+      revert NotPrivilegedSwapper();
+    }
+
     // Set the swap's executor
     _swapExecutor = msg.sender;
 
@@ -77,20 +59,6 @@ contract CallerOnlyDCAHubSwapper is DeadlineValidation, AccessControl, GetBalanc
 
     // Clear the swap executor
     _swapExecutor = _NO_EXECUTOR;
-  }
-
-  /// @inheritdoc ICallerOnlyDCAHubSwapper
-  function revokeAllowances(RevokeAction[] calldata _revokeActions) external onlyRole(ADMIN_ROLE) {
-    _revokeAllowances(_revokeActions);
-  }
-
-  /// @inheritdoc ICallerOnlyDCAHubSwapper
-  function sendDust(
-    address _token,
-    uint256 _amount,
-    address _recipient
-  ) external onlyRole(ADMIN_ROLE) {
-    _sendToRecipient(_token, _amount, _recipient);
   }
 
   // solhint-disable-next-line func-name-mixedcase

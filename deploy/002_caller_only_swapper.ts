@@ -4,19 +4,17 @@ import { bytecode } from '../artifacts/contracts/DCAHubSwapper/CallerOnlyDCAHubS
 import { deployThroughDeterministicFactory } from '@mean-finance/deterministic-factory/utils/deployment';
 
 const deployFunction: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
-  const { deployer, msig } = await hre.getNamedAccounts();
-
-  const swapperRegistry = await hre.deployments.get('SwapperRegistry');
+  const { deployer } = await hre.getNamedAccounts();
 
   await deployThroughDeterministicFactory({
     deployer,
     name: 'CallerOnlyDCAHubSwapper',
-    salt: 'MF-DCAV2-CallerDCAHubSwapper-V1',
+    salt: 'MF-DCAV2-CallerDCAHubSwapper-V2',
     contract: 'contracts/DCAHubSwapper/CallerOnlyDCAHubSwapper.sol:CallerOnlyDCAHubSwapper',
     bytecode,
     constructorArgs: {
-      types: ['address', 'address', 'address[]', 'address[]'],
-      values: [swapperRegistry.address, msig, [msig], []],
+      types: [],
+      values: [],
     },
     log: !process.env.TEST,
     overrides: !!process.env.COVERAGE

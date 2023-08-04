@@ -4,7 +4,7 @@ import { behaviours, constants, wallet } from '@test-utils';
 import { contract, given, then, when } from '@test-utils/bdd';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers';
 import { snapshot } from '@test-utils/evm';
-import { CallerOnlyDCAHubSwapperMock, CallerOnlyDCAHubSwapperMock__factory, IDCAHub, IERC20, ISwapperRegistry } from '@typechained';
+import { CallerOnlyDCAHubSwapperMock, CallerOnlyDCAHubSwapperMock__factory, IDCAHubWithAccessControl, IERC20 } from '@typechained';
 import { FakeContract, smock } from '@defi-wonderland/smock';
 import { BigNumberish } from '@ethersproject/bignumber';
 import { BytesLike } from '@ethersproject/bytes';
@@ -15,12 +15,10 @@ chai.use(smock.matchers);
 contract('CallerOnlyDCAHubSwapper', () => {
   const BYTES = utils.hexlify(utils.randomBytes(10));
   let swapExecutioner: SignerWithAddress, recipient: SignerWithAddress, admin: SignerWithAddress, superAdmin: SignerWithAddress;
-  let DCAHub: FakeContract<IDCAHub>;
+  let DCAHub: FakeContract<IDCAHubWithAccessControl>;
   let DCAHubSwapperFactory: CallerOnlyDCAHubSwapperMock__factory;
   let DCAHubSwapper: CallerOnlyDCAHubSwapperMock;
-  let swapperRegistry: FakeContract<ISwapperRegistry>;
   let tokenA: FakeContract<IERC20>, tokenB: FakeContract<IERC20>, intermediateToken: FakeContract<IERC20>;
-  let swapExecutionRole: string, adminRole: string, superAdminRole: string;
   let snapshotId: string;
 
   const INDEXES = [{ indexTokenA: 0, indexTokenB: 1 }];
@@ -31,70 +29,24 @@ contract('CallerOnlyDCAHubSwapper', () => {
     DCAHubSwapperFactory = await ethers.getContractFactory(
       'contracts/mocks/DCAHubSwapper/CallerOnlyDCAHubSwapper.sol:CallerOnlyDCAHubSwapperMock'
     );
-    DCAHub = await smock.fake('IDCAHub');
-    swapperRegistry = await smock.fake('ISwapperRegistry');
-    DCAHubSwapper = await DCAHubSwapperFactory.deploy(swapperRegistry.address, superAdmin.address, [admin.address], [swapExecutioner.address]);
+    DCAHub = await smock.fake('contracts/interfaces/ICallerOnlyDCAHubSwapper.sol:IDCAHubWithAccessControl');
+    DCAHubSwapper = await DCAHubSwapperFactory.deploy();
     tokenA = await smock.fake('IERC20');
     tokenB = await smock.fake('IERC20');
     intermediateToken = await smock.fake('IERC20');
     tokens = [tokenA.address, tokenB.address];
-    swapExecutionRole = await DCAHubSwapper.SWAP_EXECUTION_ROLE();
-    adminRole = await DCAHubSwapper.ADMIN_ROLE();
-    superAdminRole = await DCAHubSwapper.SUPER_ADMIN_ROLE();
     snapshotId = await snapshot.take();
   });
 
   beforeEach('Deploy and configure', async () => {
     await snapshot.revert(snapshotId);
     DCAHub.swap.reset();
-    swapperRegistry.isSwapperAllowlisted.reset();
-    swapperRegistry.isSwapperAllowlisted.returns(true);
-    swapperRegistry.isValidAllowanceTarget.returns(true);
     tokenA.transfer.reset();
     tokenA.transfer.returns(true);
     tokenB.transfer.returns(true);
     tokenA.transferFrom.returns(true);
     tokenB.transferFrom.returns(true);
-  });
-  describe('constructor', () => {
-    when('super admin is zero address', () => {
-      then('tx is reverted with reason error', async () => {
-        await behaviours.deployShouldRevertWithMessage({
-          contract: DCAHubSwapperFactory,
-          args: [swapperRegistry.address, constants.ZERO_ADDRESS, [], []],
-          message: 'ZeroAddress',
-        });
-      });
-    });
-    when('contract is initiated', () => {
-      then('super admin is set correctly', async () => {
-        const hasRole = await DCAHubSwapper.hasRole(superAdminRole, superAdmin.address);
-        expect(hasRole).to.be.true;
-      });
-      then('initial admins are set correctly', async () => {
-        const hasRole = await DCAHubSwapper.hasRole(adminRole, admin.address);
-        expect(hasRole).to.be.true;
-      });
-      then('initial swap executioners are set correctly', async () => {
-        const hasRole = await DCAHubSwapper.hasRole(swapExecutionRole, swapExecutioner.address);
-        expect(hasRole).to.be.true;
-      });
-      then('super admin role is set as admin for super admin role', async () => {
-        const admin = await DCAHubSwapper.getRoleAdmin(superAdminRole);
-        expect(admin).to.equal(superAdminRole);
-      });
-      then('super admin role is set as admin for swap execution role', async () => {
-        const admin = await DCAHubSwapper.getRoleAdmin(swapExecutionRole);
-        expect(admin).to.equal(superAdminRole);
-      });
-      then('super admin role is set as admin for admin role', async () => {
-        const admin = await DCAHubSwapper.getRoleAdmin(adminRole);
-        expect(admin).to.equal(superAdminRole);
-      });
-      then('swap executor starts empty', async () => {
-        expect(await DCAHubSwapper.isSwapExecutorEmpty()).to.be.true;
-      });
-    });
+    DCAHub.hasRole.returns(true);
   });
   describe('swapForCaller', () => {
     const SOME_RANDOM_ADDRESS = wallet.generateRandomAddress();
@@ -112,6 +64,30 @@ contract('CallerOnlyDCAHubSwapper', () => {
           deadline: 0,
         },
       ],
+    });
+    when('caller doesnt have privilege', () => {
+      given(() => {
+        DCAHub.hasRole.returns(false);
+      });
+      then('tx reverts', async () => {
+        await behaviours.txShouldRevertWithMessage({
+          contract: DCAHubSwapper,
+          func: 'swapForCaller',
+          args: [
+            {
+              hub: DCAHub.address,
+              tokens,
+              pairsToSwap: INDEXES,
+              oracleData: BYTES,
+              minimumOutput: [],
+              maximumInput: [],
+              recipient: SOME_RANDOM_ADDRESS,
+              deadline: constants.MAX_UINT_256,
+            },
+          ],
+          message: 'NotPrivilegedSwapper',
+        });
+      });
     });
     when('hub returns less than minimum output', () => {
       const MIN_OUTPUT = 200000;
@@ -217,67 +193,6 @@ contract('CallerOnlyDCAHubSwapper', () => {
       then('swap executor is cleared', async () => {
         expect(await DCAHubSwapper.isSwapExecutorEmpty()).to.be.true;
       });
-    });
-    behaviours.shouldBeExecutableOnlyByRole({
-      contract: () => DCAHubSwapper,
-      funcAndSignature: 'swapForCaller',
-      params: () => [
-        {
-          hub: DCAHub.address,
-          tokens,
-          pairsToSwap: INDEXES,
-          oracleData: BYTES,
-          minimumOutput: [0, 0],
-          maximumInput: [constants.MAX_UINT_256, constants.MAX_UINT_256],
-          recipient: SOME_RANDOM_ADDRESS,
-          deadline: constants.MAX_UINT_256,
-        },
-      ],
-      addressWithRole: () => swapExecutioner,
-      role: () => swapExecutionRole,
-    });
-  });
-  describe('revokeAllowances', () => {
-    when('allowance is revoked', () => {
-      given(async () => {
-        await DCAHubSwapper.connect(admin).revokeAllowances([{ spender: recipient.address, tokens: [tokenA.address] }]);
-      });
-      then('revoke was called correctly', async () => {
-        const calls = await DCAHubSwapper.revokeAllowancesCalls();
-        expect(calls).to.have.lengthOf(1);
-        expect(calls[0]).to.have.lengthOf(1);
-        expect((calls[0][0] as any).spender).to.equal(recipient.address);
-        expect((calls[0][0] as any).tokens).to.eql([tokenA.address]);
-      });
-    });
-    behaviours.shouldBeExecutableOnlyByRole({
-      contract: () => DCAHubSwapper,
-      funcAndSignature: 'revokeAllowances',
-      params: [[]],
-      addressWithRole: () => admin,
-      role: () => adminRole,
-    });
-  });
-  describe('sendDust', () => {
-    when('function is called', () => {
-      given(async () => {
-        await DCAHubSwapper.connect(admin).sendDust(tokenA.address, 10000, recipient.address);
-      });
-      then('send to recipient was called correctly', async () => {
-        const calls = await DCAHubSwapper.sendToRecipientCalls();
-        expect(calls).to.have.lengthOf(1);
-        expect(calls).to.have.lengthOf(1);
-        expect(calls[0].token).to.equal(tokenA.address);
-        expect(calls[0].amount).to.equal(10000);
-        expect(calls[0].recipient).to.equal(recipient.address);
-      });
-    });
-    behaviours.shouldBeExecutableOnlyByRole({
-      contract: () => DCAHubSwapper,
-      funcAndSignature: 'sendDust',
-      params: () => [tokenA.address, 10000, recipient.address],
-      addressWithRole: () => admin,
-      role: () => adminRole,
     });
   });
   describe('DCAHubSwapCall', () => {

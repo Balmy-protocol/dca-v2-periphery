@@ -26,7 +26,7 @@ contract('ThirdPartyDCAHubSwapper', () => {
     DCAHubSwapper = await DCAHubSwapperFactory.deploy();
     token = await smock.fake('IERC20');
     intermediateToken = await smock.fake('IERC20');
-    dcaHub = await smock.fake('IDCAHubWithAccessControl');
+    dcaHub = await smock.fake('contracts/DCAHubSwapper/ThirdPartyDCAHubSwapper.sol:IDCAHubWithAccessControl');
     snapshotId = await snapshot.take();
   });
 
