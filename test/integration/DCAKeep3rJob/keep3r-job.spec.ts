@@ -159,7 +159,6 @@ contract('DCAKeep3rJob', () => {
       executions: [{ swapper: quote.tx.to, data: quote.tx.data }],
       leftoverRecipient: keeper,
       extraTokens: [],
-      sendToProvideLeftoverToHub: false,
     });
 
     const swapTx = await DCAHub.populateTransaction.swap(
@@ -221,21 +220,20 @@ contract('DCAKeep3rJob', () => {
     allowanceTargets: { token: string; spender: string; amount: BigNumberish }[];
     executions: { data: BytesLike; swapper: string }[];
     extraTokens: string[];
-    sendToProvideLeftoverToHub: boolean;
     leftoverRecipient: { address: string };
   };
   function encodeSwap(bytes: SwapData) {
     const abiCoder = new utils.AbiCoder();
     return abiCoder.encode(
-      ['tuple(uint256, tuple(address, address, uint256)[], tuple(address, uint256, bytes)[], address[], address, bool)'],
+      ['tuple(bool, uint256, tuple(address, address, uint256)[], tuple(address, uint256, bytes)[], address[], address)'],
       [
         [
+          false,
           constants.MAX_UINT_256,
           bytes.allowanceTargets.map(({ token, spender, amount }) => [token, spender, amount]),
           bytes.executions.map(({ swapper, data }) => [swapper, 0, data]),
           bytes.extraTokens,
           bytes.leftoverRecipient.address,
-          bytes.sendToProvideLeftoverToHub,
         ],
       ]
     );
