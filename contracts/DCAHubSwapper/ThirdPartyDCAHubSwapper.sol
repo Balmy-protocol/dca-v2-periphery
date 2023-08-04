@@ -22,6 +22,8 @@ contract ThirdPartyDCAHubSwapper is IDCAHubSwapCallee {
 
   /// @notice Data used for the callback
   struct SwapWithDexesCallbackData {
+    // If this is a test check
+    bool isTest;
     // Timestamp where the tx is no longer valid
     uint256 deadline;
     // Targets to set allowance to
@@ -32,10 +34,16 @@ contract ThirdPartyDCAHubSwapper is IDCAHubSwapCallee {
     IERC20[] intermediateTokensToCheck;
     // The address that will receive the unspent tokens
     address leftoverRecipient;
-    // This flag is just a way to make transactions cheaper. If Mean Finance is executing the swap, then it's the same for us
-    // if the leftover tokens go to the hub, or to another address. But, it's cheaper in terms of gas to send them to the hub
-    bool sendToProvideLeftoverToHub;
   }
+
+  /// @notice An amount of certain token
+  struct AmountOfToken {
+    address token;
+    uint256 amount;
+  }
+
+  /// @notice Thrown when the swap is a test. It reports the amount of tokens help by the swapper
+  error SwapResults(AmountOfToken[] amounts);
 
   /// @notice Thrown when deadline has passed
   error TransactionTooOld();
@@ -59,7 +67,10 @@ contract ThirdPartyDCAHubSwapper is IDCAHubSwapCallee {
     if (block.timestamp > _callbackData.deadline) revert TransactionTooOld();
     _approveAllowances(_callbackData.allowanceTargets);
     _executeSwaps(_callbackData.executions);
-    _handleLeftoverTokens(_tokens, _callbackData.leftoverRecipient, _callbackData.sendToProvideLeftoverToHub);
+    if (_callbackData.isTest) {
+      _revertWithResults(_tokens, _callbackData.intermediateTokensToCheck);
+    }
+    _handleSwapTokens(_tokens, _callbackData.leftoverRecipient);
     _handleIntermediateTokens(_callbackData.intermediateTokensToCheck, _callbackData.leftoverRecipient);
   }
 
@@ -112,28 +123,15 @@ contract ThirdPartyDCAHubSwapper is IDCAHubSwapCallee {
     }
   }
 
-  function _handleLeftoverTokens(
-    IDCAHub.TokenInSwap[] calldata _tokens,
-    address _leftoverRecipient,
-    bool _sendToProvideLeftoverToHub
-  ) internal {
+  function _handleSwapTokens(IDCAHub.TokenInSwap[] calldata _tokens, address _leftoverRecipient) internal {
     for (uint256 i = 0; i < _tokens.length; ) {
       IERC20 _token = IERC20(_tokens[i].token);
       uint256 _balance = _token.balanceOf(address(this));
       if (_balance > 0) {
         uint256 _toProvide = _tokens[i].toProvide;
         if (_toProvide > 0) {
-          if (_sendToProvideLeftoverToHub) {
-            // Send everything to hub (we assume the hub is msg.sender)
-            _token.safeTransfer(msg.sender, _balance);
-          } else {
-            // Send necessary to hub (we assume the hub is msg.sender)
-            _token.safeTransfer(msg.sender, _toProvide);
-            if (_balance > _toProvide) {
-              // If there is some left, send to leftover recipient
-              _token.safeTransfer(_leftoverRecipient, _balance - _toProvide);
-            }
-          }
+          // Send everything to hub (we assume the hub is msg.sender)
+          _token.safeTransfer(msg.sender, _balance);
         } else {
           // Send reward to the leftover recipient
           _token.safeTransfer(_leftoverRecipient, _balance);
@@ -155,6 +153,21 @@ contract ThirdPartyDCAHubSwapper is IDCAHubSwapCallee {
         ++i;
       }
     }
+  }
+
+  function _revertWithResults(IDCAHub.TokenInSwap[] calldata _tokens, IERC20[] memory _intermediateTokens) internal view {
+    AmountOfToken[] memory _amounts = new AmountOfToken[](_tokens.length + _intermediateTokens.length);
+    for (uint256 i; i < _tokens.length; i++) {
+      address _token = _tokens[i].token;
+      _amounts[i] = AmountOfToken({token: _token, amount: IERC20(_token).balanceOf(address(this))});
+    }
+    for (uint256 i; i < _intermediateTokens.length; i++) {
+      _amounts[i + _tokens.length] = AmountOfToken({
+        token: address(_intermediateTokens[i]),
+        amount: _intermediateTokens[i].balanceOf(address(this))
+      });
+    }
+    revert SwapResults(_amounts);
   }
 }
 

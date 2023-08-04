@@ -111,7 +111,6 @@ contract('Swap with DEX, using native', () => {
         const data = encode({
           allowanceTargets: [],
           executions: [{ swapper: dexQuote.tx.to, data: dexQuote.tx.data, value: RATE }],
-          sendToProvideLeftoverToHub: true,
         });
         const swapTx = await DCAHubSwapper.connect(swapStarter).executeSwap(DCAHub.address, tokensInSwap, indexesInSwap, [0, 0], data, '0x', {
           value: RATE,
@@ -142,19 +141,18 @@ contract('Swap with DEX, using native', () => {
     allowanceTargets?: { token: string; spender: string; amount: BigNumberish }[];
     executions: { data: BytesLike; swapper: string; value: BigNumberish }[];
     extraTokens?: string[];
-    sendToProvideLeftoverToHub?: boolean;
   };
   function encode(bytes: SwapData) {
     return ABI_CODER.encode(
-      ['tuple(uint256, tuple(address, address, uint256)[], tuple(address, uint256, bytes)[], address[], address, bool)'],
+      ['tuple(bool, uint256, tuple(address, address, uint256)[], tuple(address, uint256, bytes)[], address[], address)'],
       [
         [
+          false,
           constants.MAX_UINT_256,
           bytes.allowanceTargets?.map(({ token, spender, amount }) => [token, spender, amount]) ?? [],
           bytes.executions?.map(({ swapper, data, value }) => [swapper, value, data]) ?? [],
           bytes.extraTokens ?? [],
           recipient.address,
-          bytes.sendToProvideLeftoverToHub ?? false,
         ],
       ]
     );
