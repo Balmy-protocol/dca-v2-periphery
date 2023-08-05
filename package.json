@@ -1,6 +1,6 @@
 {
   "name": "@mean-finance/dca-v2-periphery",
-  "version": "3.7.2",
+  "version": "3.8.0",
   "description": "💱 Periphery smart contracts of DCA V2 by mean.finance",
   "keywords": [
     "ethereum",
