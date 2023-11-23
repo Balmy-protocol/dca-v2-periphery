@@ -7,7 +7,7 @@ const deployFunction: DeployFunction = async function (hre: HardhatRuntimeEnviro
   const { deployer, msig } = await hre.getNamedAccounts();
 
   const permit2 = '0x000000000022d473030f116ddee9f6b43ac78ba3';
-  const swapper = '0x227F070ED2afd8744eF059959b8a8B8e8edC6C0f';
+  const swapper = '0xA70C8401C058B6198e1cb085091DE13498CEc0dC';
 
   await deployThroughDeterministicFactory({
     deployer,
