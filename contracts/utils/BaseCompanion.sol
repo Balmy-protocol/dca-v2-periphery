@@ -91,7 +91,7 @@ abstract contract BaseCompanion is SimulationAdapter, RevokableWithGovernor, Pay
     uint256 _minTokenOut
   ) external payable returns (uint256 _amountOut) {
     if (_allowanceToken != address(0)) {
-      IERC20(_allowanceToken).approve(allowanceTarget, type(uint256).max);
+      IERC20(_allowanceToken).forceApprove(allowanceTarget, type(uint256).max);
     }
 
     _executeSwap(swapper, _swapData, _value);

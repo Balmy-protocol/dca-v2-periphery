@@ -2,9 +2,12 @@
 pragma solidity >=0.8.7 <0.9.0;
 
 import '../interfaces/IDCAHubCompanion.sol';
+import '@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol';
 
 /// @dev All public functions are payable, so that they can be multicalled together with other payable functions when msg.value > 0
 abstract contract DCAHubCompanionHubProxyHandler is IDCAHubCompanionHubProxyHandler {
+  using SafeERC20 for IERC20;
+
   /// @inheritdoc IDCAHubCompanionHubProxyHandler
   function permissionPermit(
     IDCAPermissionManager _permissionManager,
@@ -151,9 +154,9 @@ abstract contract DCAHubCompanionHubProxyHandler is IDCAHubCompanionHubProxyHand
     uint256 _allowance = IERC20(_token).allowance(address(this), address(_hub));
     if (_allowance < _amount) {
       if (_allowance > 0) {
-        IERC20(_token).approve(address(_hub), 0); // We do this because some tokens (like USDT) fail if we don't
+        IERC20(_token).forceApprove(address(_hub), 0); // We do this because some tokens (like USDT) fail if we don't
       }
-      IERC20(_token).approve(address(_hub), type(uint256).max);
+      IERC20(_token).forceApprove(address(_hub), type(uint256).max);
     }
   }
 

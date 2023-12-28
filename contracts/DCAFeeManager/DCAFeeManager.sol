@@ -227,9 +227,9 @@ contract DCAFeeManager is SwapAdapter, AccessControl, Multicall, IDCAFeeManager 
       uint256 _allowance = _token.allowance(address(this), _spender);
       if (_allowance < _minAllowance) {
         if (_allowance > 0) {
-          _token.approve(_spender, 0); // We do this because some tokens (like USDT) fail if we don't
+          _token.forceApprove(_spender, 0); // We do this because some tokens (like USDT) fail if we don't
         }
-        _token.approve(_spender, type(uint256).max);
+        _token.forceApprove(_spender, type(uint256).max);
       }
     }
   }
