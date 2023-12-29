@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: GPL-2.0-or-later
-pragma solidity >=0.8.7 <0.9.0;
+pragma solidity >=0.8.22 <0.9.0;
 
 import '@openzeppelin/contracts/access/AccessControl.sol';
 import '@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol';
@@ -36,30 +36,21 @@ contract DCAFeeManager is SwapAdapter, AccessControl, Multicall, IDCAFeeManager 
   /// @inheritdoc IDCAFeeManager
   function runSwapsAndTransferMany(RunSwapsAndTransferManyParams calldata _parameters) public payable onlyRole(ADMIN_ROLE) {
     // Approve whatever is necessary
-    for (uint256 i = 0; i < _parameters.allowanceTargets.length; ) {
+    for (uint256 i = 0; i < _parameters.allowanceTargets.length; ++i) {
       Allowance memory _allowance = _parameters.allowanceTargets[i];
       _maxApproveSpenderIfNeeded(_allowance.token, _allowance.allowanceTarget, _allowance.minAllowance);
-      unchecked {
-        i++;
-      }
     }
 
     // Execute swaps
-    for (uint256 i = 0; i < _parameters.swaps.length; ) {
+    for (uint256 i = 0; i < _parameters.swaps.length; ++i) {
       SwapContext memory _context = _parameters.swapContext[i];
       _executeSwap(_parameters.swappers[_context.swapperIndex], _parameters.swaps[i], _context.value);
-      unchecked {
-        i++;
-      }
     }
 
     // Transfer out whatever was left in the contract
-    for (uint256 i = 0; i < _parameters.transferOutBalance.length; ) {
+    for (uint256 i = 0; i < _parameters.transferOutBalance.length; ++i) {
       TransferOutBalance memory _transferOutBalance = _parameters.transferOutBalance[i];
       _sendBalanceOnContractToRecipient(_transferOutBalance.token, _transferOutBalance.recipient);
-      unchecked {
-        i++;
-      }
     }
   }
 
@@ -74,15 +65,12 @@ contract DCAFeeManager is SwapAdapter, AccessControl, Multicall, IDCAFeeManager 
 
   /// @inheritdoc IDCAFeeManager
   function withdrawFromBalance(IDCAHub.AmountOfToken[] calldata _amountToWithdraw, address _recipient) external onlyRole(ADMIN_ROLE) {
-    for (uint256 i = 0; i < _amountToWithdraw.length; ) {
+    for (uint256 i = 0; i < _amountToWithdraw.length; ++i) {
       IDCAHub.AmountOfToken memory _amountOfToken = _amountToWithdraw[i];
       if (_amountOfToken.amount == type(uint256).max) {
         _sendBalanceOnContractToRecipient(_amountOfToken.token, _recipient);
       } else {
         _sendToRecipient(_amountOfToken.token, _amountOfToken.amount, _recipient);
-      }
-      unchecked {
-        i++;
       }
     }
   }
@@ -102,7 +90,7 @@ contract DCAFeeManager is SwapAdapter, AccessControl, Multicall, IDCAFeeManager 
     AmountToFill[] calldata _amounts,
     TargetTokenShare[] calldata _distribution
   ) external onlyRole(ADMIN_ROLE) {
-    for (uint256 i = 0; i < _amounts.length; ) {
+    for (uint256 i = 0; i < _amounts.length; ++i) {
       AmountToFill memory _amount = _amounts[i];
 
       _maxApproveSpenderIfNeeded(
@@ -114,7 +102,7 @@ contract DCAFeeManager is SwapAdapter, AccessControl, Multicall, IDCAFeeManager 
 
       // Distribute to different tokens
       uint256 _amountSpent;
-      for (uint256 j = 0; j < _distribution.length; ) {
+      for (uint256 j = 0; j < _distribution.length; ++j) {
         uint256 _amountToDeposit = j < _distribution.length - 1
           ? (_amount.amount * _distribution[j].shares) / MAX_TOKEN_TOTAL_SHARE
           : _amount.amount - _amountSpent; // If this is the last token, then assign everything that hasn't been spent. We do this to prevent unspent tokens due to rounding errors
@@ -123,12 +111,6 @@ contract DCAFeeManager is SwapAdapter, AccessControl, Multicall, IDCAFeeManager 
         if (!_failed) {
           _amountSpent += _amountToDeposit;
         }
-        unchecked {
-          j++;
-        }
-      }
-      unchecked {
-        i++;
       }
     }
   }
@@ -139,14 +121,11 @@ contract DCAFeeManager is SwapAdapter, AccessControl, Multicall, IDCAFeeManager 
     uint256[] calldata _positionIds,
     address _recipient
   ) external onlyRole(ADMIN_ROLE) {
-    for (uint256 i = 0; i < _positionIds.length; ) {
+    for (uint256 i = 0; i < _positionIds.length; ++i) {
       uint256 _positionId = _positionIds[i];
       IDCAHubPositionHandler.UserPosition memory _position = _hub.userPosition(_positionId);
       _hub.terminate(_positionId, _recipient, _recipient);
       delete positions[getPositionKey(address(_position.from), address(_position.to))];
-      unchecked {
-        i++;
-      }
     }
   }
 

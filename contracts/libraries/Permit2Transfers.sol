@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: GPL-2.0-or-later
-pragma solidity >=0.8.0;
+pragma solidity >=0.8.22;
 
 import {IPermit2} from '../interfaces/external/IPermit2.sol';
 
@@ -83,11 +83,8 @@ library Permit2Transfers {
     returns (IPermit2.SignatureTransferDetails[] memory _details)
   {
     _details = new IPermit2.SignatureTransferDetails[](_tokens.length);
-    for (uint256 i; i < _details.length; ) {
+    for (uint256 i; i < _details.length; ++i) {
       _details[i] = IPermit2.SignatureTransferDetails({to: _recipient, requestedAmount: _tokens[i].amount});
-      unchecked {
-        ++i;
-      }
     }
   }
 }

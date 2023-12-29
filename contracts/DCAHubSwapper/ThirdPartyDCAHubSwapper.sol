@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: GPL-2.0-or-later
-pragma solidity >=0.8.7 <0.9.0;
+pragma solidity >=0.8.22 <0.9.0;
 
 import '@openzeppelin/contracts/access/IAccessControl.sol';
 import '@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol';
@@ -98,30 +98,24 @@ contract ThirdPartyDCAHubSwapper is IDCAHubSwapCallee {
   }
 
   function _approveAllowances(Allowance[] memory _allowanceTargets) internal {
-    for (uint256 i = 0; i < _allowanceTargets.length; ) {
+    for (uint256 i = 0; i < _allowanceTargets.length; ++i) {
       Allowance memory _target = _allowanceTargets[i];
       uint256 _currentAllowance = _target.token.allowance(address(this), _target.spender);
       if (_currentAllowance < _target.amount) {
         _target.token.forceApprove(_target.spender, type(uint256).max);
       }
-      unchecked {
-        ++i;
-      }
     }
   }
 
   function _executeSwaps(SwapExecution[] memory _executions) internal {
-    for (uint256 i = 0; i < _executions.length; ) {
+    for (uint256 i = 0; i < _executions.length; ++i) {
       SwapExecution memory _execution = _executions[i];
       _execution.swapper.functionCallWithValue(_execution.swapData, _execution.value, 'Call to swapper failed');
-      unchecked {
-        ++i;
-      }
     }
   }
 
   function _handleSwapTokens(IDCAHub.TokenInSwap[] calldata _tokens, address _leftoverRecipient) internal {
-    for (uint256 i = 0; i < _tokens.length; ) {
+    for (uint256 i = 0; i < _tokens.length; ++i) {
       IERC20 _token = IERC20(_tokens[i].token);
       uint256 _balance = _token.balanceOf(address(this));
       if (_balance > 0) {
@@ -134,20 +128,14 @@ contract ThirdPartyDCAHubSwapper is IDCAHubSwapCallee {
           _token.safeTransfer(_leftoverRecipient, _balance);
         }
       }
-      unchecked {
-        ++i;
-      }
     }
   }
 
   function _handleIntermediateTokens(IERC20[] memory _intermediateTokens, address _leftoverRecipient) internal {
-    for (uint256 i = 0; i < _intermediateTokens.length; ) {
+    for (uint256 i = 0; i < _intermediateTokens.length; ++i) {
       uint256 _balance = _intermediateTokens[i].balanceOf(address(this));
       if (_balance > 0) {
         _intermediateTokens[i].safeTransfer(_leftoverRecipient, _balance);
-      }
-      unchecked {
-        ++i;
       }
     }
   }

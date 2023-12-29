@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: GPL-2.0-or-later
-pragma solidity >=0.8.7 <0.9.0;
+pragma solidity >=0.8.22 <0.9.0;
 
 import '@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol';
 import '../interfaces/ICallerOnlyDCAHubSwapper.sol';
@@ -45,15 +45,12 @@ contract CallerOnlyDCAHubSwapper is DeadlineValidation, ICallerOnlyDCAHubSwapper
     );
 
     // Check that limits were met
-    for (uint256 i = 0; i < _swapInfo.tokens.length; ) {
+    for (uint256 i = 0; i < _swapInfo.tokens.length; ++i) {
       IDCAHub.TokenInSwap memory _tokenInSwap = _swapInfo.tokens[i];
       if (_tokenInSwap.reward < _parameters.minimumOutput[i]) {
         revert RewardNotEnough();
       } else if (_tokenInSwap.toProvide > _parameters.maximumInput[i]) {
         revert ToProvideIsTooMuch();
-      }
-      unchecked {
-        i++;
       }
     }
 
@@ -70,14 +67,11 @@ contract CallerOnlyDCAHubSwapper is DeadlineValidation, ICallerOnlyDCAHubSwapper
   ) external {
     // Load to mem to avoid reading storage multiple times
     address _swapExecutorMem = _swapExecutor;
-    for (uint256 i = 0; i < _tokens.length; ) {
+    for (uint256 i = 0; i < _tokens.length; ++i) {
       IDCAHub.TokenInSwap memory _token = _tokens[i];
       if (_token.toProvide > 0) {
         // We assume that msg.sender is the DCAHub
         IERC20(_token.token).safeTransferFrom(_swapExecutorMem, msg.sender, _token.toProvide);
-      }
-      unchecked {
-        i++;
       }
     }
   }
