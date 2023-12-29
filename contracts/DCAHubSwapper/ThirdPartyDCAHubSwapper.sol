@@ -102,9 +102,6 @@ contract ThirdPartyDCAHubSwapper is IDCAHubSwapCallee {
       Allowance memory _target = _allowanceTargets[i];
       uint256 _currentAllowance = _target.token.allowance(address(this), _target.spender);
       if (_currentAllowance < _target.amount) {
-        if (_currentAllowance > 0) {
-          _target.token.forceApprove(_target.spender, 0); // We do this because some tokens (like USDT) fail if we don't
-        }
         _target.token.forceApprove(_target.spender, type(uint256).max);
       }
       unchecked {
