@@ -1,3 +1,4 @@
+import { DeterministicFactory, DeterministicFactory__factory } from '@mean-finance/deterministic-factory';
 import { address as DETERMINISTIC_FACTORY_ADDRESS } from '@mean-finance/deterministic-factory/deployments/ethereum/DeterministicFactory.json';
 import { wallet } from '@test-utils';
 import { getNamedAccounts, deployments, ethers } from 'hardhat';
@@ -20,6 +21,12 @@ export async function deployWithAddress(
   await ethers.provider.send('hardhat_setBalance', [msigAddress, '0xffffffffffffffff']);
   await ethers.provider.send('hardhat_setBalance', [deployerAddress, '0xffffffffffffffff']);
 
+  const deterministicFactory = await ethers.getContractAt<DeterministicFactory>(
+    DeterministicFactory__factory.abi,
+    DETERMINISTIC_FACTORY_ADDRESS
+  );
+
+  await deterministicFactory.connect(deployerAdmin).grantRole(await deterministicFactory.DEPLOYER_ROLE(), deployer);
   await deployments.run(
     [
       'DCAHubPositionDescriptor',

@@ -4,7 +4,7 @@ pragma solidity >=0.8.7 <0.9.0;
 import '@openzeppelin/contracts/access/AccessControl.sol';
 import '@openzeppelin/contracts/utils/Address.sol';
 import '@openzeppelin/contracts/utils/cryptography/ECDSA.sol';
-import '@openzeppelin/contracts/utils/cryptography/draft-EIP712.sol';
+import '@openzeppelin/contracts/utils/cryptography/EIP712.sol';
 import '../interfaces/IDCAKeep3rJob.sol';
 
 contract DCAKeep3rJob is AccessControl, EIP712, IDCAKeep3rJob {
