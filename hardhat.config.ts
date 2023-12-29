@@ -1,7 +1,7 @@
 import 'dotenv/config';
 import '@nomiclabs/hardhat-waffle';
 import '@nomiclabs/hardhat-ethers';
-import '@nomiclabs/hardhat-etherscan';
+import '@nomicfoundation/hardhat-verify';
 import '@typechain/hardhat';
 import '@typechain/hardhat/dist/type-extensions';
 import { removeConsoleLog } from 'hardhat-preprocessor';
@@ -9,6 +9,7 @@ import 'hardhat-gas-reporter';
 import 'hardhat-contract-sizer';
 import '@0xged/hardhat-deploy';
 import 'solidity-coverage';
+import 'hardhat-dependency-compiler';
 import './tasks/npm-publish-clean-typechain';
 import { HardhatUserConfig, MultiSolcUserConfig, NetworksUserConfig } from 'hardhat/types';
 import { getNodeUrl, accounts } from './utils/network';
@@ -84,6 +85,11 @@ const networks: NetworksUserConfig = process.env.TEST
         accounts: accounts('polygon'),
         tags: ['production'],
       },
+      rootstock: {
+        url: getNodeUrl('rootstock'),
+        accounts: accounts('rootstock'),
+        tags: ['production'],
+      },
     };
 
 const config: HardhatUserConfig = {
@@ -101,6 +107,7 @@ const config: HardhatUserConfig = {
       optimism: '0x308810881807189cAe91950888b2cB73A1CC5920',
       polygon: '0xCe9F6991b48970d6c9Ef99Fffb112359584488e3',
       arbitrum: '0x84F4836e8022765Af9FBCE3Bb2887fD826c668f1',
+      rootstock: '0x26d249089b2849bb0643405a9003f35824fa1f24',
     },
   },
   networks,
@@ -116,6 +123,34 @@ const config: HardhatUserConfig = {
         },
       },
     ],
+    // CONFIG ONLY USED FOR ROOTSTOCK
+    // overrides: {
+    //   'contracts/DCAHubCompanion/DCAHubCompanion.sol:DCAHubCompanion': {
+    //     version: '0.8.16',
+    //     settings: {
+    //       viaIR: true,
+    //       optimizer: {
+    //         enabled: true,
+    //         runs: 9999,
+    //       },
+    //     },
+    //   },
+    // },
+  },
+  etherscan: {
+    apiKey: {
+      rootstock: 'PLACEHOLDER_STRING',
+    },
+    customChains: [
+      {
+        network: 'rootstock',
+        chainId: 30,
+        urls: {
+          apiURL: 'https://rootstock.blockscout.com/api',
+          browserURL: 'https://rootstock.blockscout.com',
+        },
+      },
+    ],
   },
   gasReporter: {
     currency: process.env.COINMARKETCAP_DEFAULT_CURRENCY || 'USD',
@@ -126,9 +161,6 @@ const config: HardhatUserConfig = {
   },
   preprocess: {
     eachLine: removeConsoleLog((hre) => hre.network.name !== 'hardhat'),
-  },
-  etherscan: {
-    apiKey: process.env.ETHERSCAN_API_KEY,
   },
   external: {
     deployments: {
