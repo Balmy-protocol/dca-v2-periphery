@@ -112,14 +112,6 @@ contract('ThirdPartyDCAHubSwapper', () => {
       const ACCOUNT = '0x0000000000000000000000000000000000000010';
 
       allowanceTest({
-        when: 'current allowance is enough',
-        then: 'approve is not called',
-        allowance: 100,
-        needed: 5,
-        assertion: (token) => expect(token.approve).to.not.have.been.called,
-      });
-
-      allowanceTest({
         when: 'need approval and current allowance is zero',
         then: 'approve is called only once',
         allowance: 0,
@@ -147,9 +139,6 @@ contract('ThirdPartyDCAHubSwapper', () => {
             await DCAHubSwapper.connect(hub).DCAHubSwapCall(constants.ZERO_ADDRESS, [], [], data);
           });
           then(thenTitle, () => assertion(token));
-          then('allowance is checked correctly', () => {
-            expect(token.allowance).to.have.been.calledOnceWith(DCAHubSwapper.address, ACCOUNT);
-          });
         });
       }
     });

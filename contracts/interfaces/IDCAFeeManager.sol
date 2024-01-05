@@ -15,7 +15,7 @@ interface IDCAFeeManager {
   /// @notice The parameters to execute the call
   struct RunSwapsAndTransferManyParams {
     // The accounts that should be approved for spending
-    Allowance[] allowanceTargets;
+    AllowanceTarget[] allowanceTargets;
     // The different swappers involved in the swap
     address[] swappers;
     // The different swapps to execute
@@ -24,6 +24,14 @@ interface IDCAFeeManager {
     SwapContext[] swapContext;
     // Tokens to transfer after swaps have been executed
     TransferOutBalance[] transferOutBalance;
+  }
+
+  /// @notice An allowance to provide for the swaps to work
+  struct AllowanceTarget {
+    // The token that should be approved
+    IERC20 token;
+    // The spender
+    address allowanceTarget;
   }
 
   /// @notice Represents a share of a target token

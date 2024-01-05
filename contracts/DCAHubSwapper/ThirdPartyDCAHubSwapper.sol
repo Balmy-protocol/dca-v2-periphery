@@ -10,7 +10,6 @@ contract ThirdPartyDCAHubSwapper is IDCAHubSwapCallee {
   struct Allowance {
     IERC20 token;
     address spender;
-    uint256 amount;
   }
 
   /// @notice The data necessary for a swap to be executed
@@ -100,10 +99,7 @@ contract ThirdPartyDCAHubSwapper is IDCAHubSwapCallee {
   function _approveAllowances(Allowance[] memory _allowanceTargets) internal {
     for (uint256 i = 0; i < _allowanceTargets.length; ++i) {
       Allowance memory _target = _allowanceTargets[i];
-      uint256 _currentAllowance = _target.token.allowance(address(this), _target.spender);
-      if (_currentAllowance < _target.amount) {
-        _target.token.forceApprove(_target.spender, type(uint256).max);
-      }
+      _target.token.forceApprove(_target.spender, type(uint256).max);
     }
   }
 

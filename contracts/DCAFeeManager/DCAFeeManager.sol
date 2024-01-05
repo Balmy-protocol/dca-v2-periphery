@@ -37,8 +37,8 @@ contract DCAFeeManager is SwapAdapter, AccessControl, Multicall, IDCAFeeManager 
   function runSwapsAndTransferMany(RunSwapsAndTransferManyParams calldata _parameters) public payable onlyRole(ADMIN_ROLE) {
     // Approve whatever is necessary
     for (uint256 i = 0; i < _parameters.allowanceTargets.length; ++i) {
-      Allowance memory _allowance = _parameters.allowanceTargets[i];
-      _maxApproveSpenderIfNeeded(_allowance.token, _allowance.allowanceTarget);
+      AllowanceTarget memory _allowance = _parameters.allowanceTargets[i];
+      _maxApproveSpender(_allowance.token, _allowance.allowanceTarget);
     }
 
     // Execute swaps
@@ -197,7 +197,7 @@ contract DCAFeeManager is SwapAdapter, AccessControl, Multicall, IDCAFeeManager 
   }
 
   /// @dev This version does not check the swapper registry at all
-  function _maxApproveSpenderIfNeeded(IERC20 _token, address _spender) internal {
+  function _maxApproveSpender(IERC20 _token, address _spender) internal {
     if (_spender != address(0)) {
       _token.forceApprove(_spender, type(uint256).max);
     }
