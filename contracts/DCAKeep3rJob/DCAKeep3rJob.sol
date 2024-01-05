@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: GPL-2.0-or-later
-pragma solidity >=0.8.22 <0.9.0;
+pragma solidity >=0.8.22;
 
 import '@openzeppelin/contracts/access/AccessControl.sol';
 import '@openzeppelin/contracts/utils/Address.sol';
@@ -35,10 +35,10 @@ contract DCAKeep3rJob is AccessControl, EIP712, IDCAKeep3rJob {
     // We are setting the super admin role as its own admin so we can transfer it
     _setRoleAdmin(SUPER_ADMIN_ROLE, SUPER_ADMIN_ROLE);
     _setRoleAdmin(CAN_SIGN_ROLE, SUPER_ADMIN_ROLE);
-    _setupRole(SUPER_ADMIN_ROLE, _superAdmin);
+    _grantRole(SUPER_ADMIN_ROLE, _superAdmin);
 
     for (uint256 i = 0; i < _initialCanSign.length; ++i) {
-      _setupRole(CAN_SIGN_ROLE, _initialCanSign[i]);
+      _grantRole(CAN_SIGN_ROLE, _initialCanSign[i]);
     }
   }
 

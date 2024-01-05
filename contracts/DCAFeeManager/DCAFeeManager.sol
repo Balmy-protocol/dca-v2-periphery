@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: GPL-2.0-or-later
-pragma solidity >=0.8.22 <0.9.0;
+pragma solidity >=0.8.22;
 
 import '@openzeppelin/contracts/access/AccessControl.sol';
 import '@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol';
@@ -27,9 +27,9 @@ contract DCAFeeManager is SwapAdapter, AccessControl, Multicall, IDCAFeeManager 
     // We are setting the super admin role as its own admin so we can transfer it
     _setRoleAdmin(SUPER_ADMIN_ROLE, SUPER_ADMIN_ROLE);
     _setRoleAdmin(ADMIN_ROLE, SUPER_ADMIN_ROLE);
-    _setupRole(SUPER_ADMIN_ROLE, _superAdmin);
+    _grantRole(SUPER_ADMIN_ROLE, _superAdmin);
     for (uint256 i; i < _initialAdmins.length; i++) {
-      _setupRole(ADMIN_ROLE, _initialAdmins[i]);
+      _grantRole(ADMIN_ROLE, _initialAdmins[i]);
     }
   }
 
@@ -38,7 +38,7 @@ contract DCAFeeManager is SwapAdapter, AccessControl, Multicall, IDCAFeeManager 
     // Approve whatever is necessary
     for (uint256 i = 0; i < _parameters.allowanceTargets.length; ++i) {
       Allowance memory _allowance = _parameters.allowanceTargets[i];
-      _maxApproveSpenderIfNeeded(_allowance.token, _allowance.allowanceTarget, _allowance.minAllowance);
+      _maxApproveSpenderIfNeeded(_allowance.token, _allowance.allowanceTarget);
     }
 
     // Execute swaps
@@ -197,16 +197,9 @@ contract DCAFeeManager is SwapAdapter, AccessControl, Multicall, IDCAFeeManager 
   }
 
   /// @dev This version does not check the swapper registry at all
-  function _maxApproveSpenderIfNeeded(
-    IERC20 _token,
-    address _spender,
-    uint256 _minAllowance
-  ) internal {
+  function _maxApproveSpenderIfNeeded(IERC20 _token, address _spender) internal {
     if (_spender != address(0)) {
-      uint256 _allowance = _token.allowance(address(this), _spender);
-      if (_allowance < _minAllowance) {
-        _token.forceApprove(_spender, type(uint256).max);
-      }
+      _token.forceApprove(_spender, type(uint256).max);
     }
   }
 }

@@ -52,6 +52,7 @@ contract('DCAHubCompanionHubProxyHandler', () => {
   afterEach(() => {
     erc20Token.approve.reset();
     erc20Token.transferFrom.reset();
+    erc20Token.approve.returns(true);
     DCAPermissionManager.hasPermission.reset();
     DCAHub['deposit(address,address,uint256,uint32,uint32,address,(address,uint8[])[],bytes)'].reset();
     DCAHub.withdrawSwapped.reset();

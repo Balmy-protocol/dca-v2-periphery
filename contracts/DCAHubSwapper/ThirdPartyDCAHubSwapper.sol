@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: GPL-2.0-or-later
-pragma solidity >=0.8.22 <0.9.0;
+pragma solidity >=0.8.22;
 
 import '@openzeppelin/contracts/access/IAccessControl.sol';
 import '@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol';
@@ -110,7 +110,7 @@ contract ThirdPartyDCAHubSwapper is IDCAHubSwapCallee {
   function _executeSwaps(SwapExecution[] memory _executions) internal {
     for (uint256 i = 0; i < _executions.length; ++i) {
       SwapExecution memory _execution = _executions[i];
-      _execution.swapper.functionCallWithValue(_execution.swapData, _execution.value, 'Call to swapper failed');
+      _execution.swapper.functionCallWithValue(_execution.swapData, _execution.value);
     }
   }
 

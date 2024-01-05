@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: GPL-2.0-or-later
-pragma solidity >=0.8.22 <0.9.0;
+pragma solidity >=0.8.22;
 
 import '@mean-finance/swappers/solidity/contracts/extensions/RevokableWithGovernor.sol';
 import '@mean-finance/swappers/solidity/contracts/extensions/PayableMulticall.sol';
