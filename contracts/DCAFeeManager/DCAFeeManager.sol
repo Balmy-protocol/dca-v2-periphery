@@ -198,8 +198,6 @@ contract DCAFeeManager is SwapAdapter, AccessControl, Multicall, IDCAFeeManager 
 
   /// @dev This version does not check the swapper registry at all
   function _maxApproveSpender(IERC20 _token, address _spender) internal {
-    if (_spender != address(0)) {
-      _token.forceApprove(_spender, type(uint256).max);
-    }
+    _token.forceApprove(_spender, type(uint256).max);
   }
 }
