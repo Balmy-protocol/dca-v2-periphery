@@ -164,8 +164,8 @@ contract('Multi pair swap with DEX', () => {
         ];
         const data = encode({
           allowanceTargets: [
-            { token: dexQuotes[0].sellToken.address, spender: dexQuotes[0].source.allowanceTarget, amount: dexQuotes[0].sellAmount.amount },
-            { token: dexQuotes[1].sellToken.address, spender: dexQuotes[1].source.allowanceTarget, amount: dexQuotes[1].sellAmount.amount },
+            { token: dexQuotes[0].sellToken.address, spender: dexQuotes[0].source.allowanceTarget },
+            { token: dexQuotes[1].sellToken.address, spender: dexQuotes[1].source.allowanceTarget },
           ],
           executions: [
             { swapper: dexQuotes[0].tx.to, data: dexQuotes[0].tx.data },
@@ -211,18 +211,18 @@ contract('Multi pair swap with DEX', () => {
   });
 
   type SwapData = {
-    allowanceTargets?: { token: string; spender: string; amount: BigNumberish }[];
+    allowanceTargets?: { token: string; spender: string }[];
     executions: { data: BytesLike; swapper: string }[];
     extraTokens?: string[];
   };
   function encode(bytes: SwapData) {
     return ABI_CODER.encode(
-      ['tuple(bool, uint256, tuple(address, address, uint256)[], tuple(address, uint256, bytes)[], address[], address)'],
+      ['tuple(bool, uint256, tuple(address, address)[], tuple(address, uint256, bytes)[], address[], address)'],
       [
         [
           false,
           constants.MAX_UINT_256,
-          bytes.allowanceTargets?.map(({ token, spender, amount }) => [token, spender, amount]) ?? [],
+          bytes.allowanceTargets?.map(({ token, spender }) => [token, spender]) ?? [],
           bytes.executions?.map(({ swapper, data }) => [swapper, 0, data]) ?? [],
           bytes.extraTokens ?? [],
           recipient.address,
