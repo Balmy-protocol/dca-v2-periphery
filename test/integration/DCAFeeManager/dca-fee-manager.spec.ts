@@ -159,7 +159,7 @@ contract('DCAFeeManager', () => {
       constants.MAX_UINT_256
     );
     const { data: unwrapData } = await DCAFeeManager.populateTransaction.runSwapsAndTransferMany({
-      allowanceTargets: [{ token: WETH.address, allowanceTarget: transformerRegistry.address, minAllowance: total }],
+      allowanceTargets: [{ token: WETH.address, allowanceTarget: transformerRegistry.address }],
       swappers: [transformerRegistry.address],
       swaps: [unwrapExecutionData!],
       swapContext: [{ swapperIndex: 0, value: 0 }],
