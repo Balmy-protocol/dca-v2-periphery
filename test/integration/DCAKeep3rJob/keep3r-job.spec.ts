@@ -155,7 +155,7 @@ contract('DCAKeep3rJob', () => {
       .then((quotes) => quotes[0]);
 
     const bytes = encodeSwap({
-      allowanceTargets: [{ token: quote.sellToken.address, spender: quote.source.allowanceTarget, amount: quote.sellAmount.amount }],
+      allowanceTargets: [{ token: quote.sellToken.address, spender: quote.source.allowanceTarget }],
       executions: [{ swapper: quote.tx.to, data: quote.tx.data }],
       leftoverRecipient: keeper,
       extraTokens: [],
@@ -217,7 +217,7 @@ contract('DCAKeep3rJob', () => {
   };
 
   type SwapData = {
-    allowanceTargets: { token: string; spender: string; amount: BigNumberish }[];
+    allowanceTargets: { token: string; spender: string }[];
     executions: { data: BytesLike; swapper: string }[];
     extraTokens: string[];
     leftoverRecipient: { address: string };
@@ -225,12 +225,12 @@ contract('DCAKeep3rJob', () => {
   function encodeSwap(bytes: SwapData) {
     const abiCoder = new utils.AbiCoder();
     return abiCoder.encode(
-      ['tuple(bool, uint256, tuple(address, address, uint256)[], tuple(address, uint256, bytes)[], address[], address)'],
+      ['tuple(bool, uint256, tuple(address, address)[], tuple(address, uint256, bytes)[], address[], address)'],
       [
         [
           false,
           constants.MAX_UINT_256,
-          bytes.allowanceTargets.map(({ token, spender, amount }) => [token, spender, amount]),
+          bytes.allowanceTargets.map(({ token, spender }) => [token, spender]),
           bytes.executions.map(({ swapper, data }) => [swapper, 0, data]),
           bytes.extraTokens,
           bytes.leftoverRecipient.address,

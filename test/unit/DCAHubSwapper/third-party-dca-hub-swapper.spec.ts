@@ -38,6 +38,7 @@ contract('ThirdPartyDCAHubSwapper', () => {
     token.allowance.reset();
     token.transfer.returns(true);
     token.transferFrom.returns(true);
+    token.approve.returns(true);
     intermediateToken.transfer.reset();
     intermediateToken.balanceOf.reset();
     intermediateToken.transfer.returns(true);
@@ -111,26 +112,6 @@ contract('ThirdPartyDCAHubSwapper', () => {
       const ACCOUNT = '0x0000000000000000000000000000000000000010';
 
       allowanceTest({
-        when: 'current allowance is enough',
-        then: 'approve is not called',
-        allowance: 100,
-        needed: 5,
-        assertion: (token) => expect(token.approve).to.not.have.been.called,
-      });
-
-      allowanceTest({
-        when: 'need approval but current allowance more than zero',
-        then: 'approve is called twice',
-        allowance: 100,
-        needed: 200,
-        assertion: (token) => {
-          expect(token.approve).to.have.been.calledTwice;
-          expect(token.approve).to.have.been.calledWith(ACCOUNT, 0);
-          expect(token.approve).to.have.been.calledWith(ACCOUNT, constants.MAX_UINT_256);
-        },
-      });
-
-      allowanceTest({
         when: 'need approval and current allowance is zero',
         then: 'approve is called only once',
         allowance: 0,
@@ -158,9 +139,6 @@ contract('ThirdPartyDCAHubSwapper', () => {
             await DCAHubSwapper.connect(hub).DCAHubSwapCall(constants.ZERO_ADDRESS, [], [], data);
           });
           then(thenTitle, () => assertion(token));
-          then('allowance is checked correctly', () => {
-            expect(token.allowance).to.have.been.calledOnceWith(DCAHubSwapper.address, ACCOUNT);
-          });
         });
       }
     });
@@ -174,7 +152,7 @@ contract('ThirdPartyDCAHubSwapper', () => {
           tx = DCAHubSwapper.connect(hub).DCAHubSwapCall(constants.ZERO_ADDRESS, [], [], data);
         });
         then('then swap reverts', async () => {
-          await expect(tx).to.have.revertedWith('Call to swapper failed');
+          await expect(tx).to.have.revertedWith('FailedInnerCall');
         });
       });
     });

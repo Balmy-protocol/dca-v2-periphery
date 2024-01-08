@@ -52,6 +52,7 @@ contract('DCAHubCompanionHubProxyHandler', () => {
   afterEach(() => {
     erc20Token.approve.reset();
     erc20Token.transferFrom.reset();
+    erc20Token.approve.returns(true);
     DCAPermissionManager.hasPermission.reset();
     DCAHub['deposit(address,address,uint256,uint32,uint32,address,(address,uint8[])[],bytes)'].reset();
     DCAHub.withdrawSwapped.reset();
@@ -149,8 +150,6 @@ contract('DCAHubCompanionHubProxyHandler', () => {
         expect(erc20Token.allowance).to.have.been.calledWith(DCAHubCompanionHubProxyHandler.address, DCAHub.address);
       });
       then('token is reset', () => {
-        expect(erc20Token.approve).to.have.been.calledTwice;
-        expect(erc20Token.approve).to.have.been.calledWith(DCAHub.address, 0);
         expect(erc20Token.approve).to.have.been.calledWith(DCAHub.address, constants.MAX_UINT_256);
       });
       then('hub is called', () => {
@@ -295,8 +294,6 @@ contract('DCAHubCompanionHubProxyHandler', () => {
         expect(erc20Token.allowance).to.have.been.calledWith(DCAHubCompanionHubProxyHandler.address, DCAHub.address);
       });
       then('allowance is resetted', () => {
-        expect(erc20Token.approve).to.have.been.calledTwice;
-        expect(erc20Token.approve).to.have.been.calledWith(DCAHub.address, 0);
         expect(erc20Token.approve).to.have.been.calledWith(DCAHub.address, constants.MAX_UINT_256);
       });
     });
@@ -341,8 +338,6 @@ contract('DCAHubCompanionHubProxyHandler', () => {
         expect(erc20Token.allowance).to.have.been.calledWith(DCAHubCompanionHubProxyHandler.address, DCAHub.address);
       });
       then('allowance is resetted', () => {
-        expect(erc20Token.approve).to.have.been.calledTwice;
-        expect(erc20Token.approve).to.have.been.calledWith(DCAHub.address, 0);
         expect(erc20Token.approve).to.have.been.calledWith(DCAHub.address, constants.MAX_UINT_256);
       });
       then('hub is called correctly', () => {

@@ -107,12 +107,13 @@ const config: HardhatUserConfig = {
   solidity: {
     compilers: [
       {
-        version: '0.8.16',
+        version: '0.8.22',
         settings: {
           optimizer: {
             enabled: true,
             runs: 9999,
           },
+          evmVersion: 'paris', // Prevent using the `PUSH0` opcode
         },
       },
     ],

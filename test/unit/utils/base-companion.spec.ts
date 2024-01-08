@@ -37,6 +37,7 @@ contract('BaseCompanion', () => {
     token.approve.reset();
     token.transferFrom.returns(true);
     token.transfer.returns(true);
+    token.approve.returns(true);
   });
 
   describe('sendToRecipient', () => {
