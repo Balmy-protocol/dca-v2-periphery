@@ -2,8 +2,8 @@
 pragma solidity >=0.8.22;
 
 import './DCAHubCompanionLibrariesHandler.sol';
-import './DCAHubCompanionHubProxyHandler.sol';
-import '../utils/BaseCompanion.sol';
+import {DCAHubCompanionHubProxyHandler} from './DCAHubCompanionHubProxyHandler.sol';
+import {BaseCompanion, IPermit2} from '../utils/BaseCompanion.sol';
 
 contract DCAHubCompanion is DCAHubCompanionLibrariesHandler, DCAHubCompanionHubProxyHandler, BaseCompanion, IDCAHubCompanion {
   constructor(

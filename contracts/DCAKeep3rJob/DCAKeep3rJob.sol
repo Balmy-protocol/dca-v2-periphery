@@ -1,10 +1,10 @@
 // SPDX-License-Identifier: GPL-2.0-or-later
 pragma solidity >=0.8.22;
 
-import '@openzeppelin/contracts/access/AccessControl.sol';
-import '@openzeppelin/contracts/utils/Address.sol';
-import '@openzeppelin/contracts/utils/cryptography/ECDSA.sol';
-import '@openzeppelin/contracts/utils/cryptography/EIP712.sol';
+import '@openzeppelin/contracts-5.0.1/access/AccessControl.sol';
+import '@openzeppelin/contracts-5.0.1/utils/Address.sol';
+import '@openzeppelin/contracts-5.0.1/utils/cryptography/ECDSA.sol';
+import '@openzeppelin/contracts-5.0.1/utils/cryptography/EIP712.sol';
 import '../interfaces/IDCAKeep3rJob.sol';
 
 contract DCAKeep3rJob is AccessControl, EIP712, IDCAKeep3rJob {

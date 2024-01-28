@@ -1,8 +1,9 @@
 // SPDX-License-Identifier: GPL-2.0-or-later
 pragma solidity >=0.8.22;
 
-import '@mean-finance/swappers/solidity/contracts/extensions/RevokableWithGovernor.sol';
-import '@mean-finance/swappers/solidity/contracts/extensions/PayableMulticall.sol';
+import '@openzeppelin/contracts-5.0.1/token/ERC20/utils/SafeERC20.sol';
+import {RevokableWithGovernor, SwapAdapter, Governable} from '@mean-finance/swappers/solidity/contracts/extensions/RevokableWithGovernor.sol';
+import {PayableMulticall} from '@mean-finance/swappers/solidity/contracts/extensions/PayableMulticall.sol';
 import {SimulationAdapter} from '@mean-finance/call-simulation/contracts/SimulationAdapter.sol';
 import {IPermit2} from '../interfaces/external/IPermit2.sol';
 import {Permit2Transfers} from '../libraries/Permit2Transfers.sol';

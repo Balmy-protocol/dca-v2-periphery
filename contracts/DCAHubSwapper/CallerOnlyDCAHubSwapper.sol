@@ -1,8 +1,8 @@
 // SPDX-License-Identifier: GPL-2.0-or-later
 pragma solidity >=0.8.22;
 
-import '@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol';
-import '../interfaces/ICallerOnlyDCAHubSwapper.sol';
+import '@openzeppelin/contracts-5.0.1/token/ERC20/utils/SafeERC20.sol';
+import {ICallerOnlyDCAHubSwapper, IDCAHub} from '../interfaces/ICallerOnlyDCAHubSwapper.sol';
 import './utils/DeadlineValidation.sol';
 
 contract CallerOnlyDCAHubSwapper is DeadlineValidation, ICallerOnlyDCAHubSwapper {

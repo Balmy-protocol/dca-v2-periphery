@@ -1,9 +1,9 @@
 // SPDX-License-Identifier: GPL-2.0-or-later
 pragma solidity >=0.8.22;
 
-import '@openzeppelin/contracts/access/IAccessControl.sol';
-import '@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol';
-import '@mean-finance/dca-v2-core/contracts/interfaces/IDCAHubSwapCallee.sol';
+import '@openzeppelin/contracts-5.0.1/access/IAccessControl.sol';
+import '@openzeppelin/contracts-5.0.1/token/ERC20/utils/SafeERC20.sol';
+import {IDCAHubSwapCallee, IDCAHub} from '@mean-finance/dca-v2-core/contracts/interfaces/IDCAHubSwapCallee.sol';
 
 contract ThirdPartyDCAHubSwapper is IDCAHubSwapCallee {
   /// @notice A target we want to give allowance to

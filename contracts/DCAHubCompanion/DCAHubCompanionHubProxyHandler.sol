@@ -1,8 +1,8 @@
 // SPDX-License-Identifier: GPL-2.0-or-later
 pragma solidity >=0.8.22;
 
-import '../interfaces/IDCAHubCompanion.sol';
-import '@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol';
+import {IDCAHubCompanionLibrariesHandler, IDCAHubCompanionHubProxyHandler, IDCAPermissionManager, IDCAHub, IERC20Metadata} from '../interfaces/IDCAHubCompanion.sol';
+import '@openzeppelin/contracts-5.0.1/token/ERC20/utils/SafeERC20.sol';
 
 /// @dev All public functions are payable, so that they can be multicalled together with other payable functions when msg.value > 0
 abstract contract DCAHubCompanionHubProxyHandler is IDCAHubCompanionHubProxyHandler {

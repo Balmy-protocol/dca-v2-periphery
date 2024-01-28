@@ -2,6 +2,7 @@
 pragma solidity >=0.8.22;
 
 import '../../utils/BaseCompanion.sol';
+import {IERC20 as IERC20_4_7_3} from '@openzeppelin/contracts-4.7.3/token/ERC20/IERC20.sol';
 
 contract BaseCompanionMock is BaseCompanion {
   constructor(
@@ -12,7 +13,7 @@ contract BaseCompanionMock is BaseCompanion {
   ) BaseCompanion(_swapper, _allowanceTarget, _governor, _permit2) {}
 
   struct TakeFromMsgSenderCall {
-    IERC20 token;
+    IERC20_4_7_3 token;
     uint256 amount;
   }
 
@@ -43,7 +44,7 @@ contract BaseCompanionMock is BaseCompanion {
     return _sendToRecipientCalls;
   }
 
-  function _takeFromMsgSender(IERC20 _token, uint256 _amount) internal override {
+  function _takeFromMsgSender(IERC20_4_7_3 _token, uint256 _amount) internal override {
     _takeFromMsgSenderCalls.push(TakeFromMsgSenderCall(_token, _amount));
     super._takeFromMsgSender(_token, _amount);
   }

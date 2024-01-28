@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: GPL-2.0-or-later
 pragma solidity >=0.8.7;
 
-import '@openzeppelin/contracts/access/IAccessControl.sol';
+import '@openzeppelin/contracts-5.0.1/access/IAccessControl.sol';
 import '@mean-finance/dca-v2-core/contracts/interfaces/IDCAHub.sol';
 import '@mean-finance/dca-v2-core/contracts/interfaces/IDCAHubSwapCallee.sol';
 

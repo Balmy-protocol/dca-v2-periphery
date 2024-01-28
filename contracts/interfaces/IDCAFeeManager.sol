@@ -1,8 +1,9 @@
 // SPDX-License-Identifier: GPL-2.0-or-later
 pragma solidity >=0.8.7;
 
-import '@mean-finance/dca-v2-core/contracts/interfaces/IDCAHub.sol';
-import '@mean-finance/swappers/solidity/contracts/extensions/TakeManyRunSwapsAndTransferMany.sol';
+import {IERC20} from '@openzeppelin/contracts-5.0.1/token/ERC20/extensions/IERC20Metadata.sol';
+import {IDCAHub, IDCAHubPositionHandler, IDCAPermissionManager, IERC20Metadata} from '@mean-finance/dca-v2-core/contracts/interfaces/IDCAHub.sol';
+import {SwapContext, TransferOutBalance, ISwapAdapter, SwapAdapter} from '@mean-finance/swappers/solidity/contracts/extensions/TakeManyRunSwapsAndTransferMany.sol';
 
 /**
  * @title DCA Fee Manager

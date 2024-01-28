@@ -1,9 +1,10 @@
 // SPDX-License-Identifier: GPL-2.0-or-later
 pragma solidity >=0.8.22;
 
-import '@openzeppelin/contracts/access/AccessControl.sol';
-import '@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol';
-import '@openzeppelin/contracts/utils/Multicall.sol';
+import '@openzeppelin/contracts-5.0.1/access/AccessControl.sol';
+import '@openzeppelin/contracts-5.0.1/token/ERC20/utils/SafeERC20.sol';
+import '@openzeppelin/contracts-5.0.1/utils/Multicall.sol';
+import {IERC20 as IERC20_4_7_3} from '@openzeppelin/contracts-4.7.3/token/ERC20/IERC20.sol';
 import '../interfaces/IDCAFeeManager.sol';
 
 contract DCAFeeManager is SwapAdapter, AccessControl, Multicall, IDCAFeeManager {
@@ -94,7 +95,7 @@ contract DCAFeeManager is SwapAdapter, AccessControl, Multicall, IDCAFeeManager 
       AmountToFill memory _amount = _amounts[i];
 
       _maxApproveSpenderIfNeeded(
-        IERC20(_amount.token),
+        IERC20_4_7_3(_amount.token),
         address(_hub),
         true, // No need to check if the hub is a valid allowance target
         _amount.amount
