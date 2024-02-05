@@ -63,7 +63,7 @@ contract('BaseCompanion', () => {
     });
     when('swap is executed', () => {
       given(async () => {
-        await baseCompanion.runSwap(token.address, 0, swapExecution, token.address, 0);
+        await baseCompanion.runSwap(token.address, 0, swapExecution, token.address);
       });
       then('max approval is given', () => {
         expect(token.approve).to.have.been.calledOnceWith(swapper.address, constants.MaxUint256);
@@ -77,16 +77,10 @@ contract('BaseCompanion', () => {
     });
     when('allowance token is not set', () => {
       given(async () => {
-        await baseCompanion.runSwap(constants.AddressZero, 0, swapExecution, token.address, 0);
+        await baseCompanion.runSwap(constants.AddressZero, 0, swapExecution, token.address);
       });
       then('approve is not called', () => {
         expect(token.approve).to.not.have.been.called;
-      });
-    });
-    when('returned balance is less than expected', () => {
-      then('call reverts', async () => {
-        const tx = baseCompanion.runSwap(constants.AddressZero, 0, swapExecution, token.address, 1);
-        expect(tx).to.have.revertedWith('ReceivedTooLittleTokenOut(0,1)');
       });
     });
   });
