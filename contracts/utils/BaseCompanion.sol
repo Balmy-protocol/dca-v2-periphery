@@ -17,13 +17,6 @@ abstract contract BaseCompanion is SimulationAdapter, RevokableWithGovernor, Pay
   using SafeERC20 for IERC20;
 
   /**
-   * @notice Thrown when the swap produced less token out than expected
-   * @param received The amount of token out received
-   * @param expected The amount of token out expected
-   */
-  error ReceivedTooLittleTokenOut(uint256 received, uint256 expected);
-
-  /**
    * @notice Returns the address of the Permit2 contract
    * @dev This value is constant and cannot change
    * @return The address of the Permit2 contract
@@ -81,14 +74,12 @@ abstract contract BaseCompanion is SimulationAdapter, RevokableWithGovernor, Pay
    * @param _value The value to send to the swapper as part of the swap
    * @param _swapData The swap data
    * @param _tokenOut The token that will be bought as part of the swap
-   * @param _minTokenOut The min amount of token out that we expect
    */
   function runSwap(
     address _allowanceToken,
     uint256 _value,
     bytes calldata _swapData,
-    address _tokenOut,
-    uint256 _minTokenOut
+    address _tokenOut
   ) external payable returns (uint256 _amountOut) {
     if (_allowanceToken != address(0)) {
       IERC20(_allowanceToken).forceApprove(allowanceTarget, type(uint256).max);
@@ -97,7 +88,6 @@ abstract contract BaseCompanion is SimulationAdapter, RevokableWithGovernor, Pay
     _executeSwap(swapper, _swapData, _value);
 
     _amountOut = _tokenOut == PROTOCOL_TOKEN ? address(this).balance : IERC20(_tokenOut).balanceOf(address(this));
-    if (_amountOut < _minTokenOut) revert ReceivedTooLittleTokenOut(_amountOut, _minTokenOut);
   }
 
   /**

@@ -638,8 +638,7 @@ contract('Multicall', () => {
       constants.ZERO_ADDRESS, // No need to set it because we are already transferring the funds to the swapper
       value?.toBigInt() ?? 0,
       arbitraryCall.data,
-      tokenOut,
-      expectedAmountOut
+      tokenOut
     );
     return { swapExecutionData: data!, expectedAmountOut };
   }
