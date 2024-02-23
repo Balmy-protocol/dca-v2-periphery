@@ -2,7 +2,9 @@
 pragma solidity >=0.8.7;
 
 import '@mean-finance/dca-v2-core/contracts/interfaces/IDCAHub.sol';
-import '@mean-finance/swappers/solidity/contracts/extensions/TakeManyRunSwapsAndTransferMany.sol';
+import '../utils/SwapAdapter.sol';
+import '../utils/types/SwapContext.sol';
+import '../utils/types/TransferOutBalance.sol';
 
 /**
  * @title DCA Fee Manager
@@ -41,6 +43,9 @@ interface IDCAFeeManager {
     uint256 feeManagerBalance;
   }
 
+  /// @notice Thrown when one of the parameters is a zero address
+  error ZeroAddress();
+  
   /**
    * @notice Executes multiple swaps
    * @dev Can only be executed by admins
@@ -74,7 +79,7 @@ interface IDCAFeeManager {
    * @dev Can only be executed by admins
    * @param revokeActions The spenders and tokens to revoke
    */
-  function revokeAllowances(ISwapAdapter.RevokeAction[] calldata revokeActions) external;
+  function revokeAllowances(SwapAdapter.RevokeAction[] calldata revokeActions) external;
 
   /**
    * @notice Returns how much is available for withdraw, for the given tokens
