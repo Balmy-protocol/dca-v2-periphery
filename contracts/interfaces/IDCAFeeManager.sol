@@ -45,7 +45,7 @@ interface IDCAFeeManager {
 
   /// @notice Thrown when one of the parameters is a zero address
   error ZeroAddress();
-  
+
   /**
    * @notice Executes multiple swaps
    * @dev Can only be executed by admins
