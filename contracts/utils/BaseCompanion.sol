@@ -42,6 +42,8 @@ abstract contract BaseCompanion is SimulationAdapter, Governable, SwapAdapter, P
     PERMIT2 = _permit2;
   }
 
+  receive() external payable {}
+
   /**
    * @notice Sends the specified amount of the given token to the recipient
    * @param _token The token to transfer
