@@ -47,6 +47,7 @@ contract('DCAFeeManager', () => {
     erc20Token.allowance.reset();
     erc20Token.approve.reset();
     erc20Token.transfer.reset();
+    erc20Token.approve.returns(true);
   });
 
   describe('constructor', () => {

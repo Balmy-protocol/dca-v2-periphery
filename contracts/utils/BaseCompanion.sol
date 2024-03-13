@@ -1,18 +1,19 @@
 // SPDX-License-Identifier: GPL-2.0-or-later
 pragma solidity >=0.8.22;
 
-import '@mean-finance/swappers/solidity/contracts/extensions/RevokableWithGovernor.sol';
-import '@mean-finance/swappers/solidity/contracts/extensions/PayableMulticall.sol';
+import './SwapAdapter.sol';
+import './PayableMulticall.sol';
 import {SimulationAdapter} from '@mean-finance/call-simulation/contracts/SimulationAdapter.sol';
 import {IPermit2} from '../interfaces/external/IPermit2.sol';
 import {Permit2Transfers} from '../libraries/Permit2Transfers.sol';
+import './Governable.sol';
 
 /**
  * @notice This contract will work as base companion for all our contracts. It will extend the capabilities of our companion
  *         contracts so that they can execute multicalls, swaps, revokes and more
  * @dev All public functions are payable, so that they can be multicalled together with other payable functions when msg.value > 0
  */
-abstract contract BaseCompanion is SimulationAdapter, RevokableWithGovernor, PayableMulticall {
+abstract contract BaseCompanion is SimulationAdapter, Governable, SwapAdapter, PayableMulticall {
   using Permit2Transfers for IPermit2;
   using SafeERC20 for IERC20;
 
@@ -35,11 +36,13 @@ abstract contract BaseCompanion is SimulationAdapter, RevokableWithGovernor, Pay
     address _allowanceTarget,
     address _governor,
     IPermit2 _permit2
-  ) SwapAdapter(address(1)) Governable(_governor) {
+  ) SwapAdapter() Governable(_governor) {
     swapper = _swapper;
     allowanceTarget = _allowanceTarget;
     PERMIT2 = _permit2;
   }
+
+  receive() external payable {}
 
   /**
    * @notice Sends the specified amount of the given token to the recipient

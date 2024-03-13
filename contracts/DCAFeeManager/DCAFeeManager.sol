@@ -5,6 +5,7 @@ import '@openzeppelin/contracts/access/AccessControl.sol';
 import '@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol';
 import '@openzeppelin/contracts/utils/Multicall.sol';
 import '../interfaces/IDCAFeeManager.sol';
+import '../utils/SwapAdapter.sol';
 
 contract DCAFeeManager is SwapAdapter, AccessControl, Multicall, IDCAFeeManager {
   bytes32 public constant SUPER_ADMIN_ROLE = keccak256('SUPER_ADMIN_ROLE');
@@ -13,7 +14,7 @@ contract DCAFeeManager is SwapAdapter, AccessControl, Multicall, IDCAFeeManager 
   using SafeERC20 for IERC20;
   using Address for address payable;
 
-  constructor(address _superAdmin, address[] memory _initialAdmins) SwapAdapter(address(1)) {
+  constructor(address _superAdmin, address[] memory _initialAdmins) SwapAdapter() {
     if (_superAdmin == address(0)) revert ZeroAddress();
     // We are setting the super admin role as its own admin so we can transfer it
     _setRoleAdmin(SUPER_ADMIN_ROLE, SUPER_ADMIN_ROLE);
@@ -23,6 +24,8 @@ contract DCAFeeManager is SwapAdapter, AccessControl, Multicall, IDCAFeeManager 
       _grantRole(ADMIN_ROLE, _initialAdmins[i]);
     }
   }
+
+  receive() external payable {}
 
   /// @inheritdoc IDCAFeeManager
   function runSwapsAndTransferMany(RunSwapsAndTransferManyParams calldata _parameters) public payable onlyRole(ADMIN_ROLE) {
