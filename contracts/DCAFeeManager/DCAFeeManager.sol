@@ -4,10 +4,11 @@ pragma solidity >=0.8.22;
 import '@openzeppelin/contracts/access/AccessControl.sol';
 import '@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol';
 import '@openzeppelin/contracts/utils/Multicall.sol';
+import '@mean-finance/call-simulation/contracts/SimulationAdapter.sol';
 import '../interfaces/IDCAFeeManager.sol';
 import '../utils/SwapAdapter.sol';
 
-contract DCAFeeManager is SwapAdapter, AccessControl, Multicall, IDCAFeeManager {
+contract DCAFeeManager is SwapAdapter, AccessControl, Multicall, IDCAFeeManager, SimulationAdapter {
   bytes32 public constant SUPER_ADMIN_ROLE = keccak256('SUPER_ADMIN_ROLE');
   bytes32 public constant ADMIN_ROLE = keccak256('ADMIN_ROLE');
 
@@ -85,6 +86,10 @@ contract DCAFeeManager is SwapAdapter, AccessControl, Multicall, IDCAFeeManager 
         feeManagerBalance: IERC20(_token).balanceOf(address(this))
       });
     }
+  }
+
+  function supportsInterface(bytes4 _interfaceId) public view virtual override(AccessControl, SimulationAdapter) returns (bool) {
+    return SimulationAdapter.supportsInterface(_interfaceId) || AccessControl.supportsInterface(_interfaceId);
   }
 
   function getPositionKey(address _from, address _to) public pure returns (bytes32) {

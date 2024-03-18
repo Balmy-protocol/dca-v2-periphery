@@ -1,10 +1,10 @@
 // SPDX-License-Identifier: GPL-2.0-or-later
 pragma solidity >=0.8.7;
 
-import '@mean-finance/dca-v2-core/contracts/interfaces/IDCAHub.sol';
-import '../utils/SwapAdapter.sol';
-import '../utils/types/SwapContext.sol';
-import '../utils/types/TransferOutBalance.sol';
+import {IDCAHub, IERC20} from '@mean-finance/dca-v2-core/contracts/interfaces/IDCAHub.sol';
+import {SwapAdapter} from '../utils/SwapAdapter.sol';
+import {SwapContext} from '../utils/types/SwapContext.sol';
+import {TransferOutBalance} from '../utils/types/TransferOutBalance.sol';
 
 /**
  * @title DCA Fee Manager
