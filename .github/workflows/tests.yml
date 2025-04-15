@@ -16,7 +16,7 @@ jobs:
           fetch-depth: 1
 
       - name: Cache node modules
-        uses: actions/cache@v2
+        uses: actions/cache@v3
         env:
           cache-name: cache-node-modules
         with:
@@ -26,7 +26,7 @@ jobs:
       - name: Install node
         uses: actions/setup-node@v1
         with:
-          node-version: "16.x"
+          node-version: "18.x"
 
       - name: Install dependencies
         run: yarn --frozen-lockfile
@@ -45,7 +45,7 @@ jobs:
           fetch-depth: 1
 
       - name: Cache node modules
-        uses: actions/cache@v2
+        uses: actions/cache@v3
         env:
           cache-name: cache-node-modules
         with:
@@ -53,7 +53,7 @@ jobs:
           key: ${{ runner.os }}-build-${{ env.cache-name }}-${{ hashFiles('**/yarn.lock') }}
 
       - name: Cache hardhat network fork
-        uses: actions/cache@v2
+        uses: actions/cache@v3
         env:
           cache-name: cache-hardhat-network-fork
         with:
@@ -63,7 +63,7 @@ jobs:
       - name: Install node
         uses: actions/setup-node@v1
         with:
-          node-version: "16.x"
+          node-version: "18.x"
 
       - name: Install dependencies
         run: yarn --frozen-lockfile
